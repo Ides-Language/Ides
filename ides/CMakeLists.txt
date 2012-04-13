@@ -1,4 +1,3 @@
-project(ides)
 
 # Now set the header and library paths:
 include_directories( ${LLVM_INCLUDE_DIR} )

@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
+project(ides)
 
 set(CMAKE_PROJECT_NAME Ides)
+set(IDES_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
 	"${CMAKE_CURRENT_SOURCE_DIR}/deps/cmake"
@@ -11,11 +13,9 @@ set(LLVM_LFLAGS all)
 
 find_package(LLVM REQUIRED)
 find_package(YamlCpp REQUIRED)
+find_package(Boost COMPONENTS system filesystem program_options REQUIRED)
 
-add_subdirectory(ides-util)
-add_subdirectory(ides-parsing)
-add_subdirectory(ides-codegen)
-
+add_subdirectory(libides)
 add_subdirectory(ides)
 
 

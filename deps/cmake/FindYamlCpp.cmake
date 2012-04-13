@@ -28,6 +28,7 @@ find_path(YAMLCPP_INCLUDE_DIR yaml-cpp/yaml.h
           /opt/local/yaml-cpp/  # DarwinPorts
           /opt/csw/yaml-cpp/    # Blastwave
           /opt/yaml-cpp/
+	  ${IDES_ROOT}/deps/yaml-cpp/include
           ${YAMLCPP_DIR}/include/)
 
 # find the yaml-cpp library
@@ -42,6 +43,7 @@ find_library(YAMLCPP_LIBRARY
                     /opt/local
                     /opt/csw
                     /opt
+	            ${IDES_ROOT}/deps/yaml-cpp/
                     ${YAMLCPP_DIR}/lib)
 
 # handle the QUIETLY and REQUIRED arguments and set YAMLCPP_FOUND to TRUE if all listed variables are TRUE
