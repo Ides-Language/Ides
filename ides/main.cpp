@@ -3,9 +3,11 @@
 #include <iostream>
 #include <algorithm>
 #include <map>
+#include <fstream>
 
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
 
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
@@ -13,10 +15,8 @@ namespace fs = boost::filesystem;
 po::variables_map args;
 std::string current_file;
 
-int _tmain(int argc, const char* argv[])
+int main(int argc, const char* argv[])
 {
-	log4cplus::Logger::getRoot().addAppender(log4cplus::SharedAppenderPtr(new log4cplus::ConsoleAppender()));
-
 	po::options_description genericdesc("Options");
 	genericdesc.add_options()
 		("help,h", "Show help message")
@@ -94,8 +94,6 @@ int _tmain(int argc, const char* argv[])
 		return 1;
 	}
 
-	LOG4CPLUS_INFO(log4cplus::Logger::getInstance("Ides"), "Build started.");
-
 	std::string output_file = args["name"].as<std::string>() + ".ll";
 	if (args.count("output-file")) {
 		output_file = args["output-file"].as<std::string>();
@@ -143,17 +141,14 @@ int _tmain(int argc, const char* argv[])
 			
 			std::string errinfo;
 		}
-		catch (const compiler_error&) {
-			LOG4CPLUS_ERROR(log4cplus::Logger::getInstance("Ides"), "Build completed with errors.");
-			return 1;
-		}
+//		catch (const compiler_error&) {
+//			return 1;
+//		}
 		catch (const std::exception& ex) {
 			std::cerr << "Unhandled exception during compilation: " << ex.what() << std::endl;
 		}
 
 	}
-
-	LOG4CPLUS_INFO(log4cplus::Logger::getInstance("Ides"), "Build complete.");
 
 	return 0;
 }
