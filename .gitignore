@@ -1,4 +1,6 @@
 build/*
 deps/*
 !deps/cmake/
+!deps/semparse-library/
+!deps/ext-autolink/
 
