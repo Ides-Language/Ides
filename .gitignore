@@ -1,5 +1,6 @@
 build
 docs
-deps/llvm
+deps/*
+!deps/CMakeLists.txt
 !deps/cmake/
 
