@@ -9,6 +9,9 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
+#include <ides/semparse/parse_input.hpp>
+#include <semparse/serialization.hpp>
+
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
 
@@ -49,28 +52,22 @@ int main(int argc, const char* argv[])
 		("no-extlib", "Disable extended standard library (disables garbage collection and class support)")
 		("use-gc", po::value<std::string>()->default_value("shadow-stack"), "The GC algorithm to use")
 		;
-#ifdef _DEBUG
 	po::options_description devdesc("Developer Options");
 	devdesc.add_options()
 		("show-ast", "Print the full AST of the compiled source.")
 		("show-mod", "Dump the full LLVM module assembly code.")
 		;
-#endif
 
 	po::options_description hiddendesc("Hidden Options");
 	hiddendesc.add_options()
-		("input-file", po::value<std::vector<fs::path> >()->required(), "input file")
+		("input-file", po::value<std::vector<fs::path> >(), "input file")
 		;
 
 	po::options_description visibledesc("Allowed Options");
-	visibledesc.add(genericdesc).add(compilerdesc).add(linkerdesc)
-#ifdef _DEBUG
-		.add(devdesc)
-#endif
-		;
+	visibledesc.add(genericdesc).add(compilerdesc).add(linkerdesc);
 
 	po::options_description alldesc("All Options");
-	alldesc.add(visibledesc).add(hiddendesc);
+	alldesc.add(visibledesc).add(hiddendesc).add(devdesc);
 
 	po::positional_options_description p;
 	p.add("input-file", -1);
@@ -119,25 +116,27 @@ int main(int argc, const char* argv[])
 		current_file = i->string();
 
 		fs::ifstream srcfile(*i);
+
+		root_parser parser;
+		semparse::semantic_graph_node root;
+		root.name = current_file;
 		std::string data(
 			std::istreambuf_iterator<char>(srcfile.rdbuf()),
 			std::istreambuf_iterator<char>());
 		
 		srcfile.close();
 
-#ifdef _DEBUG
+		parser.parse(data.c_str(), root);
+
 		if (args.count("show-ast")) {
-			std::cout << "AST: " << std::endl;
+			serialize(root, std::cout);
 			std::cout << std::endl;
 		}
-#endif
 		try {
-#ifdef _DEBUG
 			if (args.count("show-mod")) {
 				std::cout << "Module: " << std::endl;
 				std::cout << std::endl;
 			}
-#endif
 			
 			std::string errinfo;
 		}

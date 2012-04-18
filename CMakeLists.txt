@@ -15,7 +15,7 @@ add_subdirectory(deps)
 
 find_package(LLVM REQUIRED)
 find_package(YamlCpp REQUIRED)
-find_package(Boost COMPONENTS system filesystem program_options REQUIRED)
+find_package(Boost COMPONENTS system filesystem program_options regex REQUIRED)
 
 include_directories( 
 	${Boost_INCLUDE_DIRS}
@@ -23,6 +23,7 @@ include_directories(
 	${YAMLCPP_INCLUDE_DIR} 
 	"${CMAKE_CURRENT_SOURCE_DIR}/libides/include"
 	"${CMAKE_CURRENT_SOURCE_DIR}/deps/semparse-library/include"
+	"${CMAKE_CURRENT_SOURCE_DIR}/deps/semparse-yaml-serialization/include"
 	)
 
 link_directories( ${LLVM_LIBRARY_DIR} )

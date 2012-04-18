@@ -1,9 +1,9 @@
 
-include_directories(semparse)
+include_directories(include/ides/semparse)
 
 add_library(ides STATIC
 	# Parsing
-	semparse/parse_input.cpp
+	src/semparse/parse_input.cpp
 	# Util
 	src/Util/SymbolTable.cpp
 
