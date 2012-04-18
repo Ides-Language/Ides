@@ -12,8 +12,8 @@ find_program(LLVM_CONFIG_EXECUTABLE NAMES
        llvm-config-2.9
        llvm-config-2.8
        PATHS 
-       #           ${CMAKE_CURRENT_SOURCE_DIR}/deps/llvm/*/bin
-       #    ${CMAKE_CURRENT_SOURCE_DIR}/../llvm/*/bin
+           ${CMAKE_CURRENT_SOURCE_DIR}/deps/llvm/*/bin
+           ${CMAKE_CURRENT_SOURCE_DIR}/../llvm/*/bin
        DOC "llvm-config executable")
 
 if (LLVM_CONFIG_EXECUTABLE)
