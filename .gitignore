@@ -1,6 +1,5 @@
 build
 docs
 deps/*
-!deps/CMakeLists.txt
 !deps/cmake/
 
