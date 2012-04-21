@@ -11,7 +11,7 @@ target_link_libraries(idesc
 	ides
 	semparse-yaml-serialization
 	semparse
-	#${Boost_LIBRARIES}
+	${Boost_LIBRARIES}
 	${LLVM_MODULE_LIBS}
 	${YAMLCPP_LIBRARY}
 	)
