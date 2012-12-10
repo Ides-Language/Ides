@@ -1,32 +1,35 @@
 
-include_directories(include/ides/semparse)
-
 add_definitions(-DLIBIDES_EXPORTS)
 
-set(LIBIDES_SOURCES
-    # Parsing
-	src/semparse/parse_input.cpp
-	# Util
-	src/Util/SymbolTable.cpp
+file(GLOB HEADER_MODULES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/include/ides" "${CMAKE_CURRENT_SOURCE_DIR}/include/ides/*")
+file(GLOB SRC_MODULES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/src/*")
 
-	# Types
+foreach (DIR ${HEADER_MODULES})
+	if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/include/ides/${DIR}/")
+		file(GLOB_RECURSE MODULE_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/ides/${DIR}/*.h")
 
-	# AST
-	)
+		set(LIBIDES_HEADERS ${LIBIDES_HEADERS} ${MODULE_HEADERS})
+		source_group("${DIR}" FILES ${MODULE_HEADERS})
+	else()
+		set(HEADER "${CMAKE_CURRENT_SOURCE_DIR}/include/ides/${DIR}")
+		set(LIBIDES_HEADERS ${LIBIDES_HEADERS} ${HEADER})
+		source_group("" FILES ${HEADER})
+	endif()
+endforeach(DIR ${INCLUDE_MODULES})
 
-set(LIBIDES_HEADERS
-    include/ides/common.h
-    include/ides/ides.h
-    
-    # Parsing
-    include/ides/Util/SymbolTable.h
-    
-    # Types
-    include/ides/Types/IdesType.h
-    
-    # AST
-    include/ides/AST/ASTNode.h
-    )
+foreach (DIR ${SRC_MODULES})
+	if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/${DIR}/")
+		file(GLOB_RECURSE MODULE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/${DIR}/*.cpp")
+
+		set(LIBIDES_SOURCES ${LIBIDES_SOURCES} ${MODULE_SOURCES})
+		source_group("${DIR}" FILES ${MODULE_SOURCES})
+	else()
+		set(SRCFILE "${CMAKE_CURRENT_SOURCE_DIR}/src/${DIR}")
+		set(LIBIDES_SOURCES ${LIBIDES_SOURCES} ${SRCFILE})
+		source_group("" FILES ${HEADER})
+	endif()
+endforeach(DIR ${SRC_MODULES})
+
 add_library(ides STATIC
     ${LIBIDES_SOURCES}
     ${LIBIDES_HEADERS}

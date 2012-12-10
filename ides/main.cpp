@@ -9,8 +9,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
-#include <ides/semparse/parse_input.hpp>
-#include <semparse/serialization.hpp>
+#include <ides/Parsing/Parser.h>
 
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
@@ -54,6 +53,7 @@ int main(int argc, const char* argv[])
 		;
 	po::options_description devdesc("Developer Options");
 	devdesc.add_options()
+        ("show-lex", "Dump the token sequence from the lexer.")
 		("show-ast", "Print the full AST of the compiled source.")
 		("show-mod", "Dump the full LLVM module assembly code.")
 		;
@@ -105,7 +105,7 @@ int main(int argc, const char* argv[])
 			return 1;
 		}
 	}
-
+    
 	const std::vector<fs::path> files = args["input-file"].as<std::vector<fs::path> >();
 	for (std::vector<fs::path>::const_iterator i = files.begin(); i != files.end(); ++i) {
 		if (!fs::is_regular_file(*i)) {
@@ -116,37 +116,8 @@ int main(int argc, const char* argv[])
 		current_file = i->string();
 
 		fs::ifstream srcfile(*i);
-
-		root_parser parser;
-		semparse::semantic_graph_node root;
-		root.name = current_file;
-		std::string data(
-			std::istreambuf_iterator<char>(srcfile.rdbuf()),
-			std::istreambuf_iterator<char>());
-		
-		srcfile.close();
-
-		parser.parse(data.c_str(), root);
-
-		if (args.count("show-ast")) {
-			serialize(root, std::cout);
-			std::cout << std::endl;
-		}
-		try {
-			if (args.count("show-mod")) {
-				std::cout << "Module: " << std::endl;
-				std::cout << std::endl;
-			}
-			
-			std::string errinfo;
-		}
-//		catch (const compiler_error&) {
-//			return 1;
-//		}
-		catch (const std::exception& ex) {
-			std::cerr << "Unhandled exception during compilation: " << ex.what() << std::endl;
-		}
-
+        
+        Ides::Parsing::Parse(srcfile, current_file);
 	}
 
 	return 0;
