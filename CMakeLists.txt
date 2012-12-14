@@ -8,7 +8,9 @@ set(IDES_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
 
+set(Boost_USE_STATIC_LIBS        ON)
 find_package(Boost 1.50.0 COMPONENTS system filesystem program_options regex REQUIRED)
+
 include_directories(${Boost_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARY_DIRS})
 if (MSVC)
@@ -24,7 +26,7 @@ endif(NOT DEFINED LLVM_MODULE_LIBS)
 
 set(CMAKE_CXX_FLAGS ${LLVM_CFLAGS})
 
-add_definitions("-std=c++11" "-stdlib=libc++")
+#add_definitions("-std=c++11" "-stdlib=libc++")
 
 include_directories("libides/include")
 

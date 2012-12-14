@@ -11,7 +11,6 @@ target_link_libraries(idesc
 	ides
 	${Boost_LIBRARIES}
 	${LLVM_MODULE_LIBS}
-	${YAMLCPP_LIBRARY}
 	)
 
 

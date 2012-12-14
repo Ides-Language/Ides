@@ -30,8 +30,23 @@ foreach (DIR ${SRC_MODULES})
 	endif()
 endforeach(DIR ${SRC_MODULES})
 
+find_package(BISON)
+find_package(FLEX)
+
+FLEX_TARGET(IdesScanner src/lexer.l  ${CMAKE_CURRENT_BINARY_DIR}/lexer.cpp)
+BISON_TARGET(IdesParser src/parser.y ${CMAKE_CURRENT_BINARY_DIR}/parser.cpp)
+ADD_FLEX_BISON_DEPENDENCY(IdesScanner IdesParser)
+
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
+source_group("Generated" FILES ${FLEX_IdesScanner_OUTPUTS} ${BISON_IdesParser_OUTPUTS})
+
 add_library(ides STATIC
     ${LIBIDES_SOURCES}
     ${LIBIDES_HEADERS}
+    ${FLEX_IdesScanner_OUTPUTS}
+    ${BISON_IdesParser_OUTPUTS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lexer.l
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/parser.y
 	)
 
