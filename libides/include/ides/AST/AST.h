@@ -16,7 +16,7 @@ namespace AST {
     class AST;
     
     
-    class IDES_EXPORTS SymbolTable : public std::map<Ides::String, boost::shared_ptr<AST> > {
+    class IDES_EXPORTS SymbolTable : public std::map<Ides::String, AST* > {
     public:
         
     private:
@@ -28,6 +28,7 @@ namespace AST {
     public:
         
         AST();
+        virtual ~AST() { }
         
         template<typename T>
         T* As() {
@@ -46,24 +47,50 @@ namespace AST {
     class ASTIdentifier : public AST {
     public:
         ASTIdentifier (const Ides::String& name) : name(name) {}
+        virtual ~ASTIdentifier() { }
         
         virtual Ides::String GetDOT() const;
         
         const Ides::String name;
     };
     
+    class ASTType : public AST {
+    public:
+    };
+    
+    class ASTPtrType : public ASTType {
+    public:
+        ASTPtrType(const ASTType* type) : basetype(type) { }
+        ~ASTPtrType() { delete basetype; }
+        virtual Ides::String GetDOT() const;
+        
+        const ASTType* basetype;
+    };
+    
+    class ASTTypeName : public ASTType {
+    public:
+        ASTTypeName (const ASTIdentifier* name) : name(name) {}
+        virtual ~ASTTypeName() { delete name; }
+        virtual Ides::String GetDOT() const;
+        
+        const ASTIdentifier* name;
+        
+    };
+    
     class ASTList : public AST, public std::list<AST*> {
     public:
+        ~ASTList();
+        
         virtual Ides::String GetDOT() const;
     };
     
     
-    class ASTCompilationUnit {
+    class ASTCompilationUnit : public ASTList {
     public:
-        ASTCompilationUnit(ASTList* symbols) : symbols(symbols) {}
+        ASTCompilationUnit() {}
+        virtual ~ASTCompilationUnit() { }
         
         virtual Ides::String GetDOT() const;
-        const ASTList* symbols;
     };
     
 } // namespace AST
