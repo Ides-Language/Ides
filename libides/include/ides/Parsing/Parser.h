@@ -2,16 +2,18 @@
 #define _IDES_PARSER_H_
 
 #include <string>
-
+#include <ides/common.h>
 #include <boost/shared_ptr.hpp>
 
-#include <ides/AST/AST.h>
-
 namespace Ides {
+    namespace AST {
+        class AST;
+    }
+    
     namespace Parsing {
-        typedef std::string::const_iterator Iterator;
+        typedef Ides::String::const_iterator Iterator;
         
-        Ides::AST::AST::Ptr Parse(std::istream& is, const std::string& srcname);
+        Ides::AST::AST* Parse(std::istream& is, const Ides::String& srcname);
         
         class SourceLocation
         {
@@ -29,54 +31,31 @@ namespace Ides {
             typedef boost::shared_ptr<Line> Ptr;
             
             Line(const SourceLocation& loc);
-            std::string GetText() const;
+            Ides::String GetText() const;
             const SourceLocation& GetSourceLocation() const { return this->loc; }
         private:
             SourceLocation loc;
         };
         
-        
-        class Token {
-        public:
-            typedef boost::shared_ptr<Token> Ptr;
-            
-            Token(int token, const SourceLocation& loc, Line::Ptr line);
-            static Token::Ptr Create(int token, const SourceLocation& loc, Line::Ptr line);
-            
-            Line::Ptr GetLine() const { return this->line; }
-            std::string GetText() const;
-            int GetToken() const { return this->token; }
-            const SourceLocation& GetLocation() const { return this->loc; }
-            
-            union {
-                int intval;
-                double fltval;
-                char* strval;
-                char chrval;
-            };
-        private:
-            Line::Ptr line;
-            SourceLocation loc;
-            int token;
-        };
-        
         class Parser {
         public:
             
-            Parser(const std::string& src);
+            Parser(const Ides::String& src);
+            ~Parser();
+            
             void* GetScanner() const { return this->scanner; }
             
-            int ReadInput(int max_bytes);
+            int ReadInput(char *buffer, size_t* numBytesRead, int maxBytesToRead);
             
             const Line::Ptr GetCurrentLine() const { return this->current_line; }
-            const std::string& GetSource() const { return this->src; }
+            const Ides::String& GetSource() const { return this->src; }
         protected:
             void InitParser();
             void DestroyParser();
         private:
             Line::Ptr current_line;
             void* scanner;
-            std::string src;
+            Ides::String src;
             Iterator src_iter;
             Iterator src_end;
         };
@@ -84,6 +63,13 @@ namespace Ides {
         
     }
 }
+
+std::ostream& operator<<(std::ostream& os, const Ides::Parsing::SourceLocation& loc);
+
+
+#include <ides/AST/AST.h>
+#include <ides/AST/ASTExpression.h>
+#include <ides/AST/ASTConstantExpression.h>
 
 
 #endif // _IDES_PARSER_H_

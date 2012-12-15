@@ -9,10 +9,8 @@
 
 namespace Ides {
 namespace AST {
-        
-        AST::AST() : uuid(boost::uuids::random_generator()()) {}
     
-    
+
     
 }
 }

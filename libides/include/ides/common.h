@@ -11,5 +11,9 @@
 #define IDES_EXPORTS
 #endif
 
+namespace Ides {
+    typedef std::string String;
+} // namespace Ides
+
 #endif // _IDES_COMMON_H_
 

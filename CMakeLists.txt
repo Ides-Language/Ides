@@ -18,6 +18,7 @@ if (MSVC)
 endif(MSVC)
 
 find_package(LLVM REQUIRED)
+message(STATUS "LLVM Include: ${LLVM_INCLUDE_DIRS}")
 include_directories(${LLVM_INCLUDE_DIRS})
 link_directories(${LLVM_LIBRARY_DIRS})
 if(NOT DEFINED LLVM_MODULE_LIBS)

@@ -32,5 +32,4 @@ extern "C" {
 
 #define LOCATION_STEP(Loc) ((Loc).first = (Loc).last)
 
-
 #endif

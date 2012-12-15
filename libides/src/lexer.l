@@ -1,20 +1,16 @@
 %top{
     #include <string>
     #include <sstream>
-    #include <parser.hpp>
     #include <ides/Parsing/ParserCommon.h>
     
-    #define YY_INPUT(buf, result, maxSize) (result = yyextra->ReadInput(maxSize));
+    #include <ides/AST/ASTConstantExpression.h>
+    
+    #include <parser.hpp>
+    
+    #define YY_INPUT(buf, result, maxSize) yyextra->ReadInput(buf, &(result), maxSize)
+    
+    #define SAVE_TOKEN(x) return x
 }
-
-%{
-    std::string parse_string();
-    int64_t parse_int(const std::string& str);
-    int64_t parse_hexnum(const std::string& str);
-
-    #define SAVE_TOKEN(x) yylval->reset(new Ides::Parsing::Token(x, *yylloc, yyextra->GetCurrentLine()))
-    #define RETURN_TOKEN(x) { SAVE_TOKEN(x); return x; }
-%}
 
 %option reentrant
 %option stack
@@ -26,6 +22,8 @@
 %option bison-bridge
 %option bison-locations
 
+%option debug
+
 %s IN_COMMENT
 %s IN_STRING
 %%
@@ -34,14 +32,25 @@
 
 [\n]                    {  }
 
-<<EOF>>                 {  }
-
-[a-zA-Z_][a-zA-Z0-9_]*  { SAVE_TOKEN(TIDENTIFIER); return TIDENTIFIER; }
+<<EOF>>                 { yyterminate(); }
 
 
--?[0-9]+\.[0-9]*        { SAVE_TOKEN(TDOUBLE); return TDOUBLE; }
--?0x[0-9A-F]+           { SAVE_TOKEN(TINTEGER); return TINTEGER; }
--?(0[xb]?)[0-9]+        { SAVE_TOKEN(TINTEGER); (*yylval)->intval = parse_int((*yylval)->GetText()); return TINTEGER; }
+[0-9]+\.[0-9]*          { double val = atof(yytext); return TDOUBLE; }
+
+0x[0-9A-F]+             { int64_t val = strtol(&yytext[3], NULL, 16); yylval->ast_base = new Ides::AST::ASTConstantIntExpression(val); return TINTEGER; }
+0b[0-1]+                { int64_t val = strtol(&yytext[3], NULL, 2); yylval->ast_base = new Ides::AST::ASTConstantIntExpression(val); return TINTEGER; }
+[0-9]+                  { int64_t val = strtol(yytext, NULL, 10); yylval->ast_base = new Ides::AST::ASTConstantIntExpression(val); return TINTEGER; }
+
+
+"def"                   return KW_DEF;
+"var"                   return KW_VAR;
+"val"                   return KW_VAL;
+
+"++"                    return OP_INC;
+"--"                    return OP_DEC;
+
+"or"                    return KW_OR;
+
 
 <INITIAL>{
     "/*"                BEGIN(IN_COMMENT);
@@ -52,48 +61,12 @@
     "*"                 // eat the lone star
 }
 
-<INITIAL>"\""                    { parse_string(); return TSTRING; }
-(L|W)?\'.\'           { SAVE_TOKEN(TCHAR); }
+<INITIAL>"\""           { return TSTRING; }
+(L|W)?\'.\'             { return TCHAR; }
 
-"="                     { SAVE_TOKEN(TEQUAL); }
-"=="                    { SAVE_TOKEN(TCEQ); }
-"!="                    { SAVE_TOKEN(TCNE); }
-"::="                   { SAVE_TOKEN(TDEFAS); }
+[a-zA-Z_][a-zA-Z0-9_]*  { yylval->ast_ident = new Ides::AST::ASTIdentifier(yytext); return TIDENTIFIER; }
 
-"("                     { SAVE_TOKEN(TLPAREN); }
-")"                     { SAVE_TOKEN(TRPAREN); }
-"{"                     { SAVE_TOKEN(TLBRACE); }
-"}"                     { SAVE_TOKEN(TRBRACE); }
-"["                     { SAVE_TOKEN(TLBRACKET); }
-"]"                     { SAVE_TOKEN(TRBRACKET); }
-
-"."                     { SAVE_TOKEN(TDOT); }
-","                     { SAVE_TOKEN(TCOMMA); }
-
-"+"                     { SAVE_TOKEN(TPLUS); }
-"-"                     { SAVE_TOKEN(TMINUS); }
-"*"                     { SAVE_TOKEN(TMUL); }
-"/"                     { SAVE_TOKEN(TDIV); }
-"%"                     { SAVE_TOKEN(TMOD); }
-
-"^"                     { SAVE_TOKEN(TCARET); }
-"&"                     { SAVE_TOKEN(TAMP); }
-"|"                     { SAVE_TOKEN(TBAR); }
-"~"                     { SAVE_TOKEN(TTILDE); }
-"!"                     { SAVE_TOKEN(TEXPT); }
-
-"<"                     { SAVE_TOKEN(TCLT); }
-"<="                    { SAVE_TOKEN(TCLE); }
-">"                     { SAVE_TOKEN(TCGT); }
-">="                    { SAVE_TOKEN(TCGE); }
-
-":"                     { SAVE_TOKEN(TCOLON); }
-";"                     { SAVE_TOKEN(TSEMICOLON); }
-
-"@"                     { SAVE_TOKEN(TAT); }
-"#"                     { SAVE_TOKEN(TPOUND); }
-
-.                       printf("Unrecognized token!\n"); yyterminate();
+.                       return yytext[0];
 
 %%
 
@@ -105,10 +78,4 @@ void Ides::Parsing::Parser::InitParser() {
 
 void Ides::Parsing::Parser::DestroyParser() {
     yylex_destroy(this->scanner);
-}
-
-
-int64_t parse_int(const std::string& str) {
-    bool negative = false;
-    
 }

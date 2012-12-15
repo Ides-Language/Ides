@@ -18,6 +18,10 @@ namespace Types {
         
     };
     
+    class StringType : public ReferenceType {
+        
+    };
+    
     template<typename T>
     class NumericType : public Type {
         
