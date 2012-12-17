@@ -1,4 +1,5 @@
 #include <ides/Parsing/Parser.h>
+#include <ides/Parsing/ParserCommon.h>
 
 #include <iostream>
 #include <iomanip>
@@ -8,11 +9,15 @@
 
 #include <parser.hpp>
 
+#include <ides/AST/AST.h>
+
 typedef void* yyscan_t;
-int yyparse (Ides::Parsing::Parser* context);
+int yyparse (Ides::Parsing::Parser* context, Ides::AST::ASTCompilationUnit** program);
 
 namespace Ides {
 namespace Parsing {
+    
+    using namespace Ides::Diagnostics;
     
     Ides::AST::AST* Parse(std::istream& is, const Ides::String& srcname)
     {
@@ -20,35 +25,44 @@ namespace Parsing {
         
         std::stringstream buffer;
         buffer << is.rdbuf();
-        Parser p(buffer.str());
+        Parser p(buffer.str(), srcname);
 
         return NULL;
     }
     
-    /** class SourceLocation **/
-    SourceLocation::SourceLocation(const Iterator& first, const Iterator& last) : first(first), last(last) {}
-
-    /** class Line **/
-    Line::Line(const SourceLocation& loc) : loc(loc)
-    {
-
-    }
-    
-    Ides::String Line::GetText() const
-    {
-        return Ides::String(this->loc.first, this->loc.last);
-    }
-    
     /** class Parser **/
     
-    Parser::Parser(const Ides::String& src) : src(src) {
+    Parser::Parser(const Ides::String& src, const Ides::String& srcname) :
+        src_name(srcname), src(src)
+    {
         this->src_iter = this->src.begin();
         this->src_end = this->src.end();
-        this->current_line.reset(new Line(SourceLocation(src_iter, src_end)));
         
         this->InitParser();
         
-        yyparse(this);
+        Ides::AST::ASTCompilationUnit* program = NULL;
+        try {
+            yyparse(this, &program);
+            
+            if (program) {
+                std::cout << "Original source: " << std::endl;
+                std::cout << src << std::endl << std::endl;
+                
+                std::cout << "C Header: " << std::endl;
+                std::cout << program->GetCHeader() << std::endl << std::endl;
+                
+                std::cout << "LLVM Module: " << std::endl;
+                llvm::Module m(srcname, llvm::getGlobalContext());
+                
+                program->Compile(m);
+                
+                //std::cout << program->GetDOT() << std::endl;
+                
+                delete program;
+            }
+        } catch (const std::exception& ex) {
+            std::cerr << ex.what() << std::endl;
+        }
     }
     
     Parser::~Parser() {
@@ -69,10 +83,3 @@ namespace Parsing {
     
 } // namespace Parsing
 } // namespace Ides
-
-
-std::ostream& operator<<(std::ostream& os, const Ides::Parsing::SourceLocation& loc)
-{
-    os << Ides::String(loc.first, loc.last);
-    return os;
-}

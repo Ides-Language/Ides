@@ -1,13 +1,15 @@
 %{
     #include <iostream>
     #include <ides/Parsing/ParserCommon.h>
+    #include <stdexcept>
+    #include <sstream>
     
-    void yyerror(YYLTYPE* locp, Ides::Parsing::Parser* context, const char* err)
+    void yyerror(YYLTYPE* locp, Ides::Parsing::Parser* context, Ides::AST::ASTCompilationUnit** output, const char* err)
 	{
-		std::cout << err << std::endl;
-        std::cout << "We're all gonna die!" << std::endl;
+        throw Ides::Diagnostics::CompileError(err, *locp);
 	}
     
+    #define SET_EXPRLOC(x, loc) (x)->exprloc = (loc)
     #define UNARY_EXPR(x, arg) (Ides::AST::ASTExpression*)new Ides::AST::AST##x##Expression(arg)
     #define BINARY_EXPR(x, lhs, rhs) (Ides::AST::ASTExpression*)new Ides::AST::AST##x##Expression(lhs, rhs)
 %}
@@ -20,9 +22,11 @@
 
 
 %parse-param { Ides::Parsing::Parser* context }
+%parse-param { Ides::AST::ASTCompilationUnit** output }
 %lex-param { void* scanner  }
 
 %union {
+    /***** AST Elements *****/
     Ides::AST::AST* ast_base;
     Ides::AST::ASTIdentifier* ast_ident;
     Ides::AST::ASTList* ast_list;
@@ -46,6 +50,9 @@
     Ides::AST::ASTConstantCStringExpression* ast_cstr;
     Ides::AST::ASTConstantWCStringExpression* ast_wstr;
     Ides::AST::ASTConstantLCStringExpression* ast_lstr;
+    
+    /***** Type Elements *****/
+    Ides::Types::Type* type_base;
 }
 
 %{
@@ -56,10 +63,13 @@
     
 %}
 
+// Builtin types
+%token KW_INT8 KW_INT16 KW_INT32 KW_INT64
+
 // Keywords
-%token KW_DEF KW_VAR KW_VAL KW_OR KW_AS KW_THROW KW_NEW KW_IF KW_EXTERN KW_NULL
+%token KW_DEF KW_VAR KW_VAL KW_THROW KW_NEW KW_IF KW_EXTERN KW_NULL KW_RETURN
 // Operators
-%token OP_INC OP_DEC OP_EQ
+%token OP_INC OP_DEC OP_EQ OP_COALESCE OP_CAST
 
 %token <ast_int> TINTEGER
 %token <ast_ident> TIDENTIFIER
@@ -81,18 +91,23 @@
 %type <ast_stmt> stmt
 %type <ast_block> stmt_list
 
+%type <ast_prog> root
+
 
 /* Operator precedence for mathematical operators */
 %left '='
-%left KW_OR
+%left OP_COALESCE OP_CAST
 %left '+' '-'
 %left '*' '/' '%'
 
-%start program
+%start root
 
 %%
 
-program : program_decl_list { $$ = $1; std::cout << $$->GetDOT() << std::endl; delete $$; }
+root : program { *output = $1; }
+;
+
+program : program_decl_list
 ;
 
 program_decl : fn_def
@@ -108,14 +123,14 @@ program_decl_list : program_decl { $$ = new Ides::AST::ASTCompilationUnit(); $$-
                   | program_decl_list program_decl { $$ = $1; $$->push_back($2); }
 ;
 
-primary_expression : TIDENTIFIER
-                   | TINTEGER
-                   | TSTRING
-                   | TDOUBLE
-                   | TCHAR
-                   | KW_NULL { $$ = new Ides::AST::ASTNullExpr(); }
-                   | array_expression
-                   | dictionary_expression
+primary_expression : TIDENTIFIER { SET_EXPRLOC($$, @$); }
+                   | TINTEGER { SET_EXPRLOC($$, @$); }
+                   | TSTRING { SET_EXPRLOC($$, @$); }
+                   | TDOUBLE { SET_EXPRLOC($$, @$); }
+                   | TCHAR { SET_EXPRLOC($$, @$); }
+                   | KW_NULL { $$ = new Ides::AST::ASTNullExpr(); SET_EXPRLOC($$, @$); }
+                   //| array_expression
+                   //| dictionary_expression
                    | '(' expression ')' { $$ = $2; }
 ;
 
@@ -130,59 +145,65 @@ dictionary_val_list : expression ':' expression { $$ = new Ides::AST::ASTDictExp
 ;
 
 postfix_expression : primary_expression
-                   | postfix_expression OP_INC { $$ = UNARY_EXPR(PostInc, $1); }
-                   | postfix_expression OP_DEC { $$ = UNARY_EXPR(PostDec, $1); }
-                   | postfix_expression '(' ')' { $$ = new Ides::AST::ASTFunctionCall($1, NULL); }
-                   | postfix_expression '(' arg_val_list ')' { $$ = new Ides::AST::ASTFunctionCall($1, $3); }
-                   | postfix_expression '[' arg_val_list ']' { $$ = new Ides::AST::ASTBracketCall($1, $3); }
+                   | postfix_expression OP_INC { $$ = UNARY_EXPR(PostInc, $1); SET_EXPRLOC($$, @$); }
+                   | postfix_expression OP_DEC { $$ = UNARY_EXPR(PostDec, $1); SET_EXPRLOC($$, @$); }
+                   | postfix_expression '(' ')' { $$ = new Ides::AST::ASTFunctionCall($1, NULL); SET_EXPRLOC($$, @$); }
+                   | postfix_expression '(' arg_val_list ')' { $$ = new Ides::AST::ASTFunctionCall($1, $3); SET_EXPRLOC($$, @$); }
+                   | postfix_expression '[' arg_val_list ']' { $$ = new Ides::AST::ASTBracketCall($1, $3); SET_EXPRLOC($$, @$); }
                    | postfix_expression '.' TIDENTIFIER
 ;
 
 unary_expression : postfix_expression
-                 | '*' unary_expression { $$ = UNARY_EXPR(Deref, $2); }
-                 | '!' unary_expression { $$ = UNARY_EXPR(Not, $2); }
-                 | '~' unary_expression { $$ = UNARY_EXPR(Bnot, $2); }
-                 | '-' unary_expression { $$ = UNARY_EXPR(Neg, $2); }
-                 | KW_NEW unary_expression
-                 | KW_THROW unary_expression
-                 | OP_INC unary_expression { $$ = UNARY_EXPR(PreInc, $2); }
-                 | OP_DEC unary_expression { $$ = UNARY_EXPR(PreDec, $2); }
+                 | '*' unary_expression { $$ = UNARY_EXPR(Deref, $2); SET_EXPRLOC($$, @$); }
+                 | '!' unary_expression { $$ = UNARY_EXPR(Not, $2); SET_EXPRLOC($$, @$); }
+                 | '~' unary_expression { $$ = UNARY_EXPR(Bnot, $2); SET_EXPRLOC($$, @$); }
+                 | '-' unary_expression { $$ = UNARY_EXPR(Neg, $2); SET_EXPRLOC($$, @$); }
+                 | KW_NEW unary_expression { $$ = UNARY_EXPR(New, $2); SET_EXPRLOC($$, @$); }
+                 | KW_THROW unary_expression { $$ = UNARY_EXPR(Throw, $2); SET_EXPRLOC($$, @$); }
+                 | KW_RETURN unary_expression { $$ = UNARY_EXPR(Return, $2); SET_EXPRLOC($$, @$); }
+                 | OP_INC unary_expression { $$ = UNARY_EXPR(PreInc, $2); SET_EXPRLOC($$, @$); }
+                 | OP_DEC unary_expression { $$ = UNARY_EXPR(PreDec, $2); SET_EXPRLOC($$, @$); }
 ;
 
 binary_expression : unary_expression
-                 | binary_expression '=' binary_expression { $$ = BINARY_EXPR(Eq, $1, $3); }
-                 | binary_expression '+' binary_expression { $$ = BINARY_EXPR(Add, $1, $3); }
-                 | binary_expression '-' binary_expression { $$ = BINARY_EXPR(Sub, $1, $3); }
-                 | binary_expression '*' binary_expression { $$ = BINARY_EXPR(Mul, $1, $3); }
-                 | binary_expression '/' binary_expression { $$ = BINARY_EXPR(Div, $1, $3); }
-                 | binary_expression '%' binary_expression { $$ = BINARY_EXPR(Mod, $1, $3); }
+                 | binary_expression '=' binary_expression { $$ = BINARY_EXPR(Eq, $1, $3); SET_EXPRLOC($$, @$); }
+                 | binary_expression '+' binary_expression { $$ = BINARY_EXPR(Add, $1, $3); SET_EXPRLOC($$, @$); }
+                 | binary_expression '-' binary_expression { $$ = BINARY_EXPR(Sub, $1, $3); SET_EXPRLOC($$, @$); }
+                 | binary_expression '*' binary_expression { $$ = BINARY_EXPR(Mul, $1, $3); SET_EXPRLOC($$, @$); }
+                 | binary_expression '/' binary_expression { $$ = BINARY_EXPR(Div, $1, $3); SET_EXPRLOC($$, @$); }
+                 | binary_expression '%' binary_expression { $$ = BINARY_EXPR(Mod, $1, $3); SET_EXPRLOC($$, @$); }
 
-                 | binary_expression '&' binary_expression { $$ = BINARY_EXPR(Band, $1, $3); }
-                 | binary_expression '|' binary_expression { $$ = BINARY_EXPR(Bor, $1, $3); }
-                 | binary_expression '^' binary_expression { $$ = BINARY_EXPR(Bxor, $1, $3); }
+                 | binary_expression '&' binary_expression { $$ = BINARY_EXPR(Band, $1, $3); SET_EXPRLOC($$, @$); }
+                 | binary_expression '|' binary_expression { $$ = BINARY_EXPR(Bor, $1, $3); SET_EXPRLOC($$, @$); }
+                 | binary_expression '^' binary_expression { $$ = BINARY_EXPR(Bxor, $1, $3); SET_EXPRLOC($$, @$); }
 
-                 | binary_expression KW_OR binary_expression { $$ = BINARY_EXPR(Coalesce, $1, $3); }
-                 | binary_expression KW_AS binary_expression { $$ = BINARY_EXPR(Cast, $1, $3); }
+                 | binary_expression OP_COALESCE binary_expression { $$ = BINARY_EXPR(Coalesce, $1, $3); SET_EXPRLOC($$, @$); }
+                 | binary_expression OP_CAST binary_expression { $$ = BINARY_EXPR(Cast, $1, $3); SET_EXPRLOC($$, @$); }
 ;
 
 infix_expression : binary_expression
-                 | infix_expression TIDENTIFIER infix_expression { $$ = new Ides::AST::ASTInfixExpression($2, $1, $3); }
+                 | infix_expression TIDENTIFIER infix_expression { $$ = new Ides::AST::ASTInfixExpression($2, $1, $3); SET_EXPRLOC($$, @$); }
 ;
 
 expression : infix_expression
 ;
 
-var_type : TIDENTIFIER { $$ = new Ides::AST::ASTTypeName($1); }
-         | var_type '*' { $$ = new Ides::AST::ASTPtrType($1); }
+var_type : TIDENTIFIER { $$ = new Ides::AST::ASTTypeName($1); SET_EXPRLOC($$, @$); }
+         | KW_INT8 { $$ = new Ides::AST::ASTInteger8Type(); SET_EXPRLOC($$, @$); }
+         | KW_INT16 { $$ = new Ides::AST::ASTInteger16Type(); SET_EXPRLOC($$, @$); }
+         | KW_INT32 { $$ = new Ides::AST::ASTInteger32Type(); SET_EXPRLOC($$, @$); }
+         | KW_INT64 { $$ = new Ides::AST::ASTInteger64Type(); SET_EXPRLOC($$, @$); }
+         | var_type '*' { $$ = new Ides::AST::ASTPtrType($1); SET_EXPRLOC($$, @$); }
 ;
 
-var_decl : KW_VAR TIDENTIFIER '=' expression { $$ = new Ides::AST::ASTDeclaration(Ides::AST::ASTDeclaration::DECL_VAR, $2, $4); }
-         | KW_VAR TIDENTIFIER ':' var_type { $$ = new Ides::AST::ASTDeclaration(Ides::AST::ASTDeclaration::DECL_VAR, $2, $4); }
-         | KW_VAR TIDENTIFIER ':' var_type '=' expression { $$ = new Ides::AST::ASTDeclaration(Ides::AST::ASTDeclaration::DECL_VAR, $2, $4, $6); }
+var_decl : KW_VAR TIDENTIFIER '=' expression { $$ = new Ides::AST::ASTDeclaration(Ides::AST::ASTDeclaration::DECL_VAR, $2, $4); SET_EXPRLOC($$, @$); }
+         | KW_VAR TIDENTIFIER ':' var_type { $$ = new Ides::AST::ASTDeclaration(Ides::AST::ASTDeclaration::DECL_VAR, $2, $4); SET_EXPRLOC($$, @$); }
+         | KW_VAR TIDENTIFIER ':' var_type '=' expression { $$ = new Ides::AST::ASTDeclaration(Ides::AST::ASTDeclaration::DECL_VAR, $2, $4, $6); SET_EXPRLOC($$, @$); }
 ;
 
-val_decl : KW_VAL TIDENTIFIER '=' expression { $$ = new Ides::AST::ASTDeclaration(Ides::AST::ASTDeclaration::DECL_VAL, $2, $4); }
-         | KW_VAL TIDENTIFIER ':' var_type '=' expression { $$ = new Ides::AST::ASTDeclaration(Ides::AST::ASTDeclaration::DECL_VAL, $2, $4, $6); }
+val_decl : KW_VAL TIDENTIFIER '=' expression { $$ = new Ides::AST::ASTDeclaration(Ides::AST::ASTDeclaration::DECL_VAL, $2, $4); SET_EXPRLOC($$, @$); }
+         | KW_VAL TIDENTIFIER ':' var_type { $$ = new Ides::AST::ASTDeclaration(Ides::AST::ASTDeclaration::DECL_VAL, $2, $4); SET_EXPRLOC($$, @$); }
+         | KW_VAL TIDENTIFIER ':' var_type '=' expression { $$ = new Ides::AST::ASTDeclaration(Ides::AST::ASTDeclaration::DECL_VAL, $2, $4, $6); SET_EXPRLOC($$, @$); }
 ;
 
 
@@ -190,19 +211,19 @@ arg_decl : var_decl
          | val_decl
 ;
 
-arg_decl_list : arg_decl { $$ = new Ides::AST::ASTList(); $$->push_back($1); }
-              | arg_decl_list ',' arg_decl { $$ = $1; $$->push_back($3); }
+arg_decl_list : arg_decl { $$ = new Ides::AST::ASTList(); $$->push_back($1); SET_EXPRLOC($$, @$); }
+              | arg_decl_list ',' arg_decl { $$ = $1; $$->push_back($3); SET_EXPRLOC($$, @$); }
 ;
 
-arg_val_list : expression { $$ = new Ides::AST::ASTList(); $$->push_back($1); }
-             | arg_val_list ',' expression { $$ = $1; $$->push_back($1); }
+arg_val_list : expression { $$ = new Ides::AST::ASTList(); $$->push_back($1); SET_EXPRLOC($$, @$); }
+             | arg_val_list ',' expression { $$ = $1; $$->push_back($3); SET_EXPRLOC($$, @$); }
 ;
 
 
-fn_decl : KW_DEF TIDENTIFIER '(' arg_decl_list ')' { $$ = new Ides::AST::ASTFunction($2, $4, NULL); }
-        | KW_DEF TIDENTIFIER '(' arg_decl_list ')' ':' var_type { $$ = new Ides::AST::ASTFunction($2, $4, $7); }
-        | KW_DEF TIDENTIFIER '(' ')' { $$ = new Ides::AST::ASTFunction($2, NULL, NULL); }
-        | KW_DEF TIDENTIFIER '(' ')' ':' var_type { $$ = new Ides::AST::ASTFunction($2, NULL, $6); }
+fn_decl : KW_DEF TIDENTIFIER '(' arg_decl_list ')' { $$ = new Ides::AST::ASTFunction($2, $4, NULL); SET_EXPRLOC($$, @$); }
+        | KW_DEF TIDENTIFIER '(' arg_decl_list ')' ':' var_type { $$ = new Ides::AST::ASTFunction($2, $4, $7); SET_EXPRLOC($$, @$); }
+        | KW_DEF TIDENTIFIER '(' ')' { $$ = new Ides::AST::ASTFunction($2, NULL, NULL); SET_EXPRLOC($$, @$); }
+        | KW_DEF TIDENTIFIER '(' ')' ':' var_type { $$ = new Ides::AST::ASTFunction($2, NULL, $6); SET_EXPRLOC($$, @$); }
 ;
 
 fn_def  : fn_decl '{' stmt_list '}' { $$ = $1; $$->body = $3; }
@@ -221,8 +242,9 @@ stmt : var_decl ';'
      | expression ';'
 ;
 
-stmt_list : stmt { $$ = new Ides::AST::ASTCompoundStatement(); $$->push_back($1); }
+stmt_list : stmt { $$ = new Ides::AST::ASTCompoundStatement(); }
           | stmt_list stmt { $$ = $1; $$->push_back($2); }
+          | stmt_list ';' { $$ = $1; }
 ;
 
 literal : TINTEGER

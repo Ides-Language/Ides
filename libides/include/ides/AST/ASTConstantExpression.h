@@ -31,7 +31,14 @@ namespace AST {
     public:
         ASTConstantIntExpression(uint64_t v) : val(v) { }
         virtual ~ASTConstantIntExpression() { }
-
+        
+        virtual Ides::Types::Type* GetType(llvm::IRBuilder<>* builder, SymbolTable& scope) {
+            return Ides::Types::Integer32Type::GetSingletonPtr();
+        }
+        virtual llvm::Value* GetValue(llvm::IRBuilder<>* builder, SymbolTable& scope) {
+            return llvm::ConstantInt::get(this->GetType(builder, scope)->GetLLVMType(builder), val);
+        }
+        
         virtual Ides::String GetDOT() const;
     private:
         uint64_t val;
@@ -41,6 +48,11 @@ namespace AST {
     public:
         ASTConstantCharExpression(uint8_t v) : val(v) { }
         virtual ~ASTConstantCharExpression() { }
+        
+        virtual Ides::Types::Type* GetType(llvm::IRBuilder<>* builder, SymbolTable& scope) {
+            return Ides::Types::Integer8Type::GetSingletonPtr();
+        }
+        virtual llvm::Value* GetValue(llvm::IRBuilder<>* builder, SymbolTable& scope) { return NULL; }
         
         virtual Ides::String GetDOT() const;
     private:

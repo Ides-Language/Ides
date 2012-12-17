@@ -58,13 +58,13 @@ namespace AST {
         buf << "node [shape=plaintext];" << std::endl;
         //buf << "graph [ranksep=0];" << std::endl;
         
-        buf << THIS_UUID << " [label=\"compilation_unit\" shape=tripleoctagon rank=2];" << std::endl;
+        buf << THIS_UUID << " [label=\"compilation_unit\" shape=tripleoctagon];" << std::endl;
         for (auto i = this->begin(); i != this->end(); ++i) {
             buf << (*i)->GetDOT();
             buf << Link((AST*)this, (AST*)*i);
         }
         
-        buf << "{ key [label=\"key:\" shape=plaintext]; literal [shape=ellipse]; identifier [shape=diamond]; declaration [shape=box]; type [shape=doubleoctagon]; }" << std::endl;
+        buf << "key [label=\"key:\" shape=plaintext]; literal [shape=ellipse]; identifier [shape=diamond]; declaration [shape=box]; type [shape=octagon];" << std::endl;
         
         buf << "}" << std::endl;
         
@@ -82,8 +82,14 @@ namespace AST {
         return buf.str();
     }
     
-    Ides::String ASTPtrType::GetDOT() const { OUT(THIS_UUID << " [label=\"ptr*\" shape=doubleoctagon];" << std::endl << this->basetype->GetDOT() << Link((AST*)this, (AST*)basetype) << std::endl); }
-    Ides::String ASTTypeName::GetDOT() const { OUT(THIS_UUID << " [label=\"" << this->name->name << "\" shape=doubleoctagon];" << std::endl); }
+    Ides::String ASTPtrType::GetDOT() const { OUT(THIS_UUID << " [label=\"ptr*\" shape=octagon];" << std::endl << this->basetype->GetDOT() << Link((AST*)this, (AST*)basetype)); }
+    Ides::String ASTTypeName::GetDOT() const { OUT(THIS_UUID << " [label=\"" << this->name->name << "\" shape=octagon];" << std::endl); }
+#define INT_DOT(size) Ides::String ASTInteger##size##Type::GetDOT() const { OUT(THIS_UUID << " [label=\"int" #size "\" shape=octagon];" << std::endl); }
+    
+    INT_DOT(8)
+    INT_DOT(16)
+    INT_DOT(32)
+    INT_DOT(64)
     
     Ides::String ASTDeclaration::GetDOT() const
     {
@@ -103,12 +109,11 @@ namespace AST {
         return buf.str();
     }
     
-    
-    Ides::String ASTFunctionDecl::GetDOT() const
+    Ides::String ASTFunction::GetDOT() const
     {
         std::stringstream buf;
         buf << THIS_UUID << " [label=\"def " << this->name->name << " ...\" shape=record];" << std::endl;
-        
+
         if (this->args != NULL) {
             buf << this->args->GetDOT();
             buf << UUIDFormat(this->GetUUID()) << " -> " << UUIDFormat(this->args->GetUUID()) << " [label=\"args\"];" << std::endl;
@@ -119,16 +124,8 @@ namespace AST {
             buf << UUIDFormat(this->GetUUID()) << " -> " << UUIDFormat(this->rettype->GetUUID()) << " [label=\"ret\"];" << std::endl;
         }
         
-        return buf.str();
-    }
-    
-    Ides::String ASTFunction::GetDOT() const
-    {
-        std::stringstream buf;
-        buf << ASTFunctionDecl::GetDOT();
-        
         if (this->val != NULL) {
-            buf << this->val->GetDOT() << Link((AST*)this, (AST*)val, "expr") << std::endl;
+            buf << this->val->GetDOT() << Link((AST*)this, (AST*)val, "expr");
         }
         
         if (this->body != NULL) {
@@ -191,6 +188,9 @@ namespace AST {
     UNARY_GETDOT(PreDec, "pre --");
     UNARY_GETDOT(PostInc, "post ++");
     UNARY_GETDOT(PostDec, "post --");
+    UNARY_GETDOT(New, "new");
+    UNARY_GETDOT(Throw, "throw");
+    UNARY_GETDOT(Return, "return");
     
     /*********************************************************
      ****************** Binary Expressions *******************

@@ -9,7 +9,31 @@
 
 namespace Ides {
 namespace AST {
-        
+    
+#define ADD_INTTYPE(size) this->symbols.insert(std::make_pair("int" #size, \
+    new Ides::AST::ASTInteger##size##Type))
+    
+    ASTCompilationUnit::ASTCompilationUnit() {
+        ADD_INTTYPE(8);
+        ADD_INTTYPE(16);
+        ADD_INTTYPE(32);
+        ADD_INTTYPE(64);
+    }
+    
+    
+    AST* SymbolTable::LookupRecursive(const Ides::String& symbol) const {
+        AST* ret = this->Lookup(symbol);
+        if (ret == NULL && this->parentScope != NULL) {
+            ret = parentScope->LookupRecursive(symbol);
+        }
+        return ret;
+    }
+    
+    AST* SymbolTable::Lookup(const Ides::String& symbol) const {
+        SymbolMap::const_iterator i = this->find(symbol);
+        return (i != this->end()) ? i->second : NULL;
+    }
+    
     AST::AST() : uuid(boost::uuids::random_generator()()) {}
     
     ASTList::~ASTList() {
@@ -25,10 +49,12 @@ namespace AST {
         if (this->initval) delete this->initval;
     }
     
-    ASTFunctionDecl::~ASTFunctionDecl() {
+    ASTFunction::~ASTFunction() {
         delete name;
-        delete rettype;
-        delete args;
+        if (val) delete val;
+        if(body) delete body;
+        if (rettype) delete rettype;
+        if (args) delete args;
     }
     
     ASTBinaryExpression::~ASTBinaryExpression() {

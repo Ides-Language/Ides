@@ -5,71 +5,45 @@
 #include <ides/common.h>
 #include <boost/shared_ptr.hpp>
 
+#include <ides/Diagnostics/SourceLocation.h>
+
 namespace Ides {
     namespace AST {
         class AST;
     }
     
     namespace Parsing {
-        typedef Ides::String::const_iterator Iterator;
         
         Ides::AST::AST* Parse(std::istream& is, const Ides::String& srcname);
-        
-        class SourceLocation
-        {
-        public:
-            SourceLocation() {}
-            SourceLocation(const Iterator& first, const Iterator& last);
-            
-            Iterator first;
-            Iterator last;
-        };
-        
-        class Line {
-            friend class Parser;
-        public:
-            typedef boost::shared_ptr<Line> Ptr;
-            
-            Line(const SourceLocation& loc);
-            Ides::String GetText() const;
-            const SourceLocation& GetSourceLocation() const { return this->loc; }
-        private:
-            SourceLocation loc;
-        };
         
         class Parser {
         public:
             
-            Parser(const Ides::String& src);
+            Parser(const Ides::String& src, const Ides::String& srcname);
             ~Parser();
             
             void* GetScanner() const { return this->scanner; }
             
             int ReadInput(char *buffer, size_t* numBytesRead, int maxBytesToRead);
             
-            const Line::Ptr GetCurrentLine() const { return this->current_line; }
             const Ides::String& GetSource() const { return this->src; }
+            const Ides::String& GetSourceName() const { return this->src_name; }
+            
+            const Ides::SourceIterator& GetSourceIterator() const { return this->src_iter; }
         protected:
             void InitParser();
             void DestroyParser();
         private:
-            Line::Ptr current_line;
             void* scanner;
+            Ides::String src_name;
             Ides::String src;
-            Iterator src_iter;
-            Iterator src_end;
+            Ides::SourceIterator src_iter;
+            Ides::SourceIterator src_end;
         };
         
         
     }
 }
-
-std::ostream& operator<<(std::ostream& os, const Ides::Parsing::SourceLocation& loc);
-
-
-#include <ides/AST/AST.h>
-#include <ides/AST/ASTExpression.h>
-#include <ides/AST/ASTConstantExpression.h>
 
 
 #endif // _IDES_PARSER_H_

@@ -15,21 +15,27 @@ extern "C" {
 
 #include <ides/Parsing/Parser.h>
 
-#define YYLTYPE Ides::Parsing::SourceLocation
+#include <ides/AST/AST.h>
+#include <ides/AST/ASTExpression.h>
+#include <ides/AST/ASTConstantExpression.h>
+
+#include <ides/Types/Type.h>
+
+#define YYLTYPE Ides::Diagnostics::SourceLocation
 #define YY_EXTRA_TYPE Ides::Parsing::Parser*
 
 
-#define YY_USER_INIT LOCATION_STEP(*yylloc)
+#define YY_USER_INIT yylloc->line_start = yylloc->first; yylloc->source_name = yyextra->GetSourceName();
 
 
 #define YYLLOC_DEFAULT(Cur, Rhs, N)                       \
     do {                                                   \
-    if (N) { (Cur).first   = YYRHSLOC(Rhs, 1).first; (Cur).last    = YYRHSLOC(Rhs, N).last; } \
-    else { (Cur).first = (Cur).last = YYRHSLOC(Rhs, 0).last; (Cur).first = (Cur).last = YYRHSLOC(Rhs, 0).last;  } \
+    if (N) { (Cur) = YYRHSLOC(Rhs, 1) + YYRHSLOC(Rhs, N); } \
+    else { (Cur) = YYRHSLOC(Rhs, 0);  } \
     } while (0)
 
 
 
-#define LOCATION_STEP(Loc) ((Loc).first = (Loc).last)
+//#define LOCATION_STEP(Loc) ((Loc).first = (Loc).last)
 
 #endif

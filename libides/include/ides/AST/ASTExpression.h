@@ -26,7 +26,7 @@ namespace AST {
         ASTNullExpr() { }
         virtual ~ASTNullExpr() { }
         virtual Ides::String GetDOT() const;
-        
+                
     };
     
     
@@ -37,100 +37,118 @@ namespace AST {
             DECL_VAL
         };
         
-        ASTDeclaration(VarType vartype, const ASTIdentifier* name, const ASTType* type) :
+        ASTDeclaration(VarType vartype, ASTIdentifier* name, ASTType* type) :
             vartype(vartype), name(name), type(type), initval(NULL) {}
         
-        ASTDeclaration(VarType vartype, const ASTIdentifier* name, const ASTExpression* initval) :
+        ASTDeclaration(VarType vartype, ASTIdentifier* name, ASTExpression* initval) :
             vartype(vartype), name(name), type(NULL), initval(initval) {}
         
-        ASTDeclaration(VarType vartype, const ASTIdentifier* name, const ASTType* type, const ASTExpression* initval) :
+        ASTDeclaration(VarType vartype, ASTIdentifier* name, ASTType* type, ASTExpression* initval) :
             vartype(vartype), name(name), type(type), initval(initval) {}
         
         virtual ~ASTDeclaration();
         
         virtual Ides::String GetDOT() const;
+        virtual Ides::String GetCHeader() const;
+        
+        virtual llvm::Value* GetValue(llvm::IRBuilder<>* builder, SymbolTable& scope) { return this->val; }
+        virtual const Ides::Types::Type* GetType(llvm::IRBuilder<>* builder, SymbolTable& scope) {
+            return type->GetType(builder, scope);
+        }
+        
+        llvm::Value* val;
         
         VarType vartype;
-        const ASTIdentifier* name;
-        const ASTType* type;
-        const ASTExpression* initval;
+        ASTIdentifier* name;
+        ASTType* type;
+        ASTExpression* initval;
     };
     
-    
-    class ASTFunctionDecl : public ASTExpression {
+    class ASTFunction : public ASTExpression {
     public:
-        ASTFunctionDecl(const ASTIdentifier* name, const ASTList* args, const ASTType* rettype) : name(name), rettype(rettype), args(args) { }
-        virtual ~ASTFunctionDecl();
+        ASTFunction(ASTIdentifier* name, ASTList* args, ASTType* rettype) :
+            func(NULL), name(name), rettype(rettype), args(args), val(NULL), body(NULL), evaluatingtype(false)
+        {
+            if (val) val->symbols = this->symbols;
+            if (body) body->symbols = this->symbols;
+        }
+        virtual ~ASTFunction();
         
         virtual Ides::String GetDOT() const;
+        virtual Ides::String GetCHeader() const;
         
-        const ASTIdentifier* name;
-        const ASTType* rettype;
-        const ASTList* args;
-    };
-    
-    class ASTFunction : public ASTFunctionDecl {
-    public:
-        ASTFunction(const ASTIdentifier* name, const ASTList* args, const ASTType* rettype) : ASTFunctionDecl(name, args, rettype), val(NULL), body(NULL) {}
-        virtual ~ASTFunction() { if (val) delete val; if(body) delete body; }
+        virtual Ides::String GetMangledName() const { return this->name->name; }
         
-        virtual Ides::String GetDOT() const;
+        virtual llvm::Value* GetValue(llvm::IRBuilder<>* builder, SymbolTable& scope);
+        virtual const Ides::Types::Type* GetType(llvm::IRBuilder<>* builder, SymbolTable& scope);
+        void GenBody(llvm::IRBuilder<>* builder, SymbolTable& scope);
+        
+        llvm::Function* func;
+        
+        ASTIdentifier* name;
+        ASTType* rettype;
+        ASTList* args;
         
         ASTExpression* val;
         ASTCompoundStatement* body;
+        
+        bool evaluatingtype;
     };
     
     class ASTFunctionCall : public ASTExpression {
     public:
-        ASTFunctionCall(const ASTExpression* fn, const ASTList* args) : fn(fn), args(args) {}
+        ASTFunctionCall(ASTExpression* fn, ASTList* args) : fn(fn), args(args) {}
         virtual ~ASTFunctionCall() { delete fn; if(args) delete args; }
         
         virtual Ides::String GetDOT() const;
         
-        const ASTExpression* fn;
-        const ASTList* args;
+        virtual llvm::Value* GetValue(llvm::IRBuilder<>* builder, SymbolTable& scope);
+        virtual const Ides::Types::Type* GetType(llvm::IRBuilder<>* builder, SymbolTable& scope);
+        
+        ASTExpression* fn;
+        ASTList* args;
     };
     
     class ASTBracketCall : public ASTExpression {
     public:
-        ASTBracketCall(const ASTExpression* fn, const ASTList* args) : fn(fn), args(args) {}
+        ASTBracketCall(ASTExpression* fn, ASTList* args) : fn(fn), args(args) {}
         virtual ~ASTBracketCall() { delete fn; if(args) delete args; }
         
         virtual Ides::String GetDOT() const;
         
-        const ASTExpression* fn;
-        const ASTList* args;
+        ASTExpression* fn;
+        ASTList* args;
     };
     
     
     class ASTBinaryExpression : public ASTExpression {
     public:
-        ASTBinaryExpression(const ASTExpression* lhs, const ASTExpression* rhs) : lhs(lhs), rhs(rhs) { }
+        ASTBinaryExpression(ASTExpression* lhs, ASTExpression* rhs) : lhs(lhs), rhs(rhs) { }
         virtual ~ASTBinaryExpression();
         
         virtual Ides::String GetDOT() const;
         
-        const ASTExpression* lhs;
-        const ASTExpression* rhs;
+        ASTExpression* lhs;
+        ASTExpression* rhs;
     };
     
     
     class ASTUnaryExpression : public ASTExpression {
     public:
-        ASTUnaryExpression(const ASTExpression* arg) : arg(arg) { }
+        ASTUnaryExpression(ASTExpression* arg) : arg(arg) { }
         virtual ~ASTUnaryExpression() { delete arg; }
         
-        const ASTExpression* arg;
+        ASTExpression* arg;
     };
     
     class ASTInfixExpression : public ASTBinaryExpression {
     public:
-        ASTInfixExpression(const ASTIdentifier* func, const ASTExpression* lhs, const ASTExpression* rhs) : ASTBinaryExpression(lhs, rhs), func(func) { }
+        ASTInfixExpression(ASTIdentifier* func, ASTExpression* lhs, ASTExpression* rhs) : ASTBinaryExpression(lhs, rhs), func(func) { }
         virtual ~ASTInfixExpression() { delete func; }
         
         virtual Ides::String GetDOT() const;
         
-        const ASTIdentifier* func;
+        ASTIdentifier* func;
     };
     
     class ASTDictExpression : public ASTList {
@@ -140,14 +158,18 @@ namespace AST {
     
 #define BINARY_EXPRESSION(n) class AST##n##Expression : public ASTBinaryExpression { \
     public: \
-        AST##n##Expression(const ASTExpression* lhs, const ASTExpression* rhs) : ASTBinaryExpression(lhs, rhs) { } \
+        AST##n##Expression(ASTExpression* lhs, ASTExpression* rhs) : ASTBinaryExpression(lhs, rhs) { } \
         virtual Ides::String GetDOT() const; \
+        virtual llvm::Value* GetValue(llvm::IRBuilder<>* builder, SymbolTable& scope); \
+        virtual const Ides::Types::Type* GetType(llvm::IRBuilder<>* builder, SymbolTable& scope); \
 }
     
 #define UNARY_EXPRESSION(n) class AST##n##Expression : public ASTUnaryExpression { \
     public: \
-        AST##n##Expression(const ASTExpression* arg) : ASTUnaryExpression(arg) { } \
+        AST##n##Expression(ASTExpression* arg) : ASTUnaryExpression(arg) { } \
         virtual Ides::String GetDOT() const; \
+        virtual llvm::Value* GetValue(llvm::IRBuilder<>* builder, SymbolTable& scope); \
+        virtual const Ides::Types::Type* GetType(llvm::IRBuilder<>* builder, SymbolTable& scope); \
     }
     
     UNARY_EXPRESSION(Deref);
@@ -158,6 +180,9 @@ namespace AST {
     UNARY_EXPRESSION(PreDec);
     UNARY_EXPRESSION(PostInc);
     UNARY_EXPRESSION(PostDec);
+    UNARY_EXPRESSION(New);
+    UNARY_EXPRESSION(Throw);
+    UNARY_EXPRESSION(Return);
     
     BINARY_EXPRESSION(Eq);
     BINARY_EXPRESSION(Add);
