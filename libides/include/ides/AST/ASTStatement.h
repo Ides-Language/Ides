@@ -22,8 +22,6 @@ namespace AST {
     public:
         ASTCompoundStatement() { }
         virtual ~ASTCompoundStatement() { }
-        
-        virtual Ides::String GetDOT() const;
     };
     
     class ASTIfStatement : public ASTStatement {

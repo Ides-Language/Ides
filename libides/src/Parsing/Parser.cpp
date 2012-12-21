@@ -9,12 +9,15 @@
 
 #include <parser.hpp>
 
-#include <ides/AST/AST.h>
-
 typedef void* yyscan_t;
 int yyparse (Ides::Parsing::Parser* context, Ides::AST::ASTCompilationUnit** program);
 
 namespace Ides {
+namespace AST {
+    class AST;
+    class ASTCompilationUnit;
+}
+    
 namespace Parsing {
     
     using namespace Ides::Diagnostics;
@@ -30,33 +33,45 @@ namespace Parsing {
         return NULL;
     }
     
+    /** class SymbolTable **/
+    
+    Ides::AST::AST* SymbolTable::LookupRecursive(const Ides::String& symbol) const {
+        Ides::AST::AST* ret = this->Lookup(symbol);
+        if (ret == NULL && this->parentScope != NULL) {
+            ret = parentScope->LookupRecursive(symbol);
+        }
+        return ret;
+    }
+    
+    Ides::AST::AST* SymbolTable::Lookup(const Ides::String& symbol) const {
+        SymbolMap::const_iterator i = this->find(symbol);
+        return (i != this->end()) ? i->second : NULL;
+    }
+    
     /** class Parser **/
     
     Parser::Parser(const Ides::String& src, const Ides::String& srcname) :
         src_name(srcname), src(src)
     {
+        publicSymbols.reset(new SymbolTable());
+        internalSymbols.reset(new SymbolTable(publicSymbols));
+        privateSymbols.reset(new SymbolTable(internalSymbols));
+        
         this->src_iter = this->src.begin();
         this->src_end = this->src.end();
         
         this->InitParser();
         
         Ides::AST::ASTCompilationUnit* program = NULL;
+        this->mod = new llvm::Module(srcname, llvm::getGlobalContext());
+        this->builder = new llvm::IRBuilder<>(mod->getContext());
+        
         try {
             yyparse(this, &program);
             
             if (program) {
-                std::cout << "Original source: " << std::endl;
-                std::cout << src << std::endl << std::endl;
                 
-                std::cout << "C Header: " << std::endl;
-                std::cout << program->GetCHeader() << std::endl << std::endl;
-                
-                std::cout << "LLVM Module: " << std::endl;
-                llvm::Module m(srcname, llvm::getGlobalContext());
-                
-                program->Compile(m);
-                
-                //std::cout << program->GetDOT() << std::endl;
+                program->Compile(*this);
                 
                 delete program;
             }
@@ -66,6 +81,8 @@ namespace Parsing {
     }
     
     Parser::~Parser() {
+        delete this->builder;
+        delete this->mod;
         this->DestroyParser();
     }
     

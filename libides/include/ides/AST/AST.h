@@ -13,41 +13,25 @@
 #include <ides/Diagnostics/SourceLocation.h>
 #include <ides/Types/Type.h>
 
+#include <ides/Parsing/Parser.h>
 
 namespace Ides {
 namespace AST {
     class AST;
     class ASTIdentifier;
     
-    typedef boost::unordered_map<Ides::String, AST* > SymbolMap;
+    typedef Ides::Parsing::Parser ParseContext;
     
-    class IDES_EXPORTS SymbolTable : public SymbolMap {
-    public:
-        AST* LookupRecursive(const Ides::String& symbol) const;
-        AST* Lookup(const Ides::String& symbol) const;
-        
-        SymbolTable* GetParentScope() { return parentScope; }
-        void SetParentScope(SymbolTable* scope) { parentScope = scope; }
-    private:
-        SymbolTable* parentScope;
-    }; // class SymbolTable
-    
-    
-    
-    class AST : public Ides::Util::Graph {
+    class AST {
     public:
         
         AST();
         virtual ~AST() { }
         
-        virtual llvm::Value* GetValue(llvm::IRBuilder<>* builder, SymbolTable& scope) { assert(0); }
-        virtual const Ides::Types::Type* GetType(llvm::IRBuilder<>* builder, SymbolTable& scope) { assert(0); }
+        virtual llvm::Value* GetValue(ParseContext& ctx) { assert(0); }
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx) { assert(0); }
         
-        virtual Ides::String GetCHeader() const { return ""; }
         const boost::uuids::uuid& GetUUID() const { return this->uuid; }
-        
-        
-        SymbolTable symbols;
         
         Diagnostics::SourceLocation exprloc;
     private:
@@ -61,11 +45,8 @@ namespace AST {
         ASTIdentifier (const Ides::String& name) : name(name) {}
         virtual ~ASTIdentifier() { }
         
-        virtual llvm::Value* GetValue(llvm::IRBuilder<>* builder, SymbolTable& scope);
-        virtual const Ides::Types::Type* GetType(llvm::IRBuilder<>* builder, SymbolTable& scope);
-        
-        virtual Ides::String GetDOT() const;
-        virtual Ides::String GetCHeader() const { return name; }
+        virtual llvm::Value* GetValue(ParseContext& ctx);
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx);
         
         const Ides::String name;
     };
@@ -76,30 +57,44 @@ namespace AST {
     
 #define ASTINTTYPE(size) class ASTInteger##size##Type : public ASTType { \
     public: \
-        virtual llvm::Value* GetValue(llvm::IRBuilder<>* builder, SymbolTable& scope) { return NULL; } \
-        virtual const Ides::Types::Type* GetType(llvm::IRBuilder<>* builder, SymbolTable& scope) { return Ides::Types::Integer##size##Type::GetSingletonPtr(); } \
-        virtual Ides::String GetDOT() const; \
-        virtual Ides::String GetCHeader() const { return "int" #size "_t"; } \
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx) { return Ides::Types::Integer##size##Type::GetSingletonPtr(); } \
+    }
+#define ASTUINTTYPE(size) class ASTUInteger##size##Type : public ASTType { \
+    public: \
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx) { return Ides::Types::UInteger##size##Type::GetSingletonPtr(); } \
     }
     
     ASTINTTYPE(8);
+    ASTUINTTYPE(8);
     ASTINTTYPE(16);
+    ASTUINTTYPE(16);
     ASTINTTYPE(32);
+    ASTUINTTYPE(32);
     ASTINTTYPE(64);
+    ASTUINTTYPE(64);
+    
+    class ASTFloat32Type : public ASTType {
+    public:
+        virtual llvm::Value* GetValue(ParseContext& ctx) { return NULL; }
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx) { return Ides::Types::Float32Type::GetSingletonPtr(); }
+    };
+    
+    class ASTFloat64Type : public ASTType {
+    public:
+        virtual llvm::Value* GetValue(ParseContext& ctx) { return NULL; }
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx) { return Ides::Types::Float64Type::GetSingletonPtr(); }
+    };
     
     class ASTPtrType : public ASTType {
     public:
         ASTPtrType(ASTType* type) : basetype(type) { }
         ~ASTPtrType() { delete basetype; }
         
-        virtual Ides::String GetDOT() const;
-        virtual Ides::String GetCHeader() const { return basetype->GetCHeader() + "*"; }
-        
-        virtual llvm::Value* GetValue(llvm::IRBuilder<>* builder, SymbolTable& scope) {
+        virtual llvm::Value* GetValue(ParseContext& ctx) {
             return NULL;
         }
-        virtual const Ides::Types::Type* GetType(llvm::IRBuilder<>* builder, SymbolTable& scope) {
-            return Ides::Types::PointerType::Get(basetype->GetType(builder, scope));
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx) {
+            return Ides::Types::PointerType::Get(basetype->GetType(ctx));
         }
         
         ASTType* basetype;
@@ -110,10 +105,7 @@ namespace AST {
         ASTTypeName (ASTIdentifier* name) : name(name) { }
         virtual ~ASTTypeName() { delete name; }
         
-        virtual const Ides::Types::Type* GetType(llvm::IRBuilder<>* builder, SymbolTable& scope);
-        
-        virtual Ides::String GetDOT() const;
-        virtual Ides::String GetCHeader() const { return name->GetCHeader(); }
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx);
         
         ASTIdentifier* name;
         
@@ -122,8 +114,6 @@ namespace AST {
     class ASTList : public AST, public std::list<AST*> {
     public:
         ~ASTList();
-        
-        virtual Ides::String GetDOT() const;
     };
     
     
@@ -132,10 +122,7 @@ namespace AST {
         ASTCompilationUnit();
         virtual ~ASTCompilationUnit() { }
         
-        void Compile(llvm::Module& mod);
-        
-        virtual Ides::String GetDOT() const;
-        virtual Ides::String GetCHeader() const;
+        void Compile(ParseContext& ctx);
     };
     
 } // namespace AST

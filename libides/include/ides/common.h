@@ -60,15 +60,6 @@ namespace Ides {
             static T* GetSingletonPtr( void )
             { return msSingleton; }
         };
-        
-        
-        class Graph {
-        public:
-            virtual ~Graph() { }
-        
-            virtual Ides::String GetDOT() const = 0;
-            virtual Ides::String GetCHeader() const = 0;
-        };
     }
 } // namespace Ides
 

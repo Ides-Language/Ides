@@ -9,6 +9,7 @@
 #ifndef ides_ASTConstantExpression_h
 #define ides_ASTConstantExpression_h
 
+#include <llvm/Constants.h>
 #include <ides/AST/ASTExpression.h>
 
 namespace Ides {
@@ -32,16 +33,29 @@ namespace AST {
         ASTConstantIntExpression(uint64_t v) : val(v) { }
         virtual ~ASTConstantIntExpression() { }
         
-        virtual Ides::Types::Type* GetType(llvm::IRBuilder<>* builder, SymbolTable& scope) {
+        virtual Ides::Types::Type* GetType(ParseContext& ctx) {
             return Ides::Types::Integer32Type::GetSingletonPtr();
         }
-        virtual llvm::Value* GetValue(llvm::IRBuilder<>* builder, SymbolTable& scope) {
-            return llvm::ConstantInt::get(this->GetType(builder, scope)->GetLLVMType(builder), val);
+        virtual llvm::Value* GetValue(ParseContext& ctx) {
+            return llvm::ConstantInt::get(this->GetType(ctx)->GetLLVMType(ctx), val);
         }
-        
-        virtual Ides::String GetDOT() const;
     private:
         uint64_t val;
+    };
+    
+    class ASTConstantFloatExpression : public ASTConstantExpression {
+    public:
+        ASTConstantFloatExpression(double v) : val(v) { }
+        virtual ~ASTConstantFloatExpression() { }
+        
+        virtual Ides::Types::Type* GetType(ParseContext& ctx) {
+            return Ides::Types::Float64Type::GetSingletonPtr();
+        }
+        virtual llvm::Value* GetValue(ParseContext& ctx) {
+            return llvm::ConstantFP::get(this->GetType(ctx)->GetLLVMType(ctx), val);
+        }
+    private:
+        double val;
     };
     
     class ASTConstantCharExpression : public ASTConstantExpression {
@@ -49,12 +63,12 @@ namespace AST {
         ASTConstantCharExpression(uint8_t v) : val(v) { }
         virtual ~ASTConstantCharExpression() { }
         
-        virtual Ides::Types::Type* GetType(llvm::IRBuilder<>* builder, SymbolTable& scope) {
+        virtual Ides::Types::Type* GetType(ParseContext& ctx) {
             return Ides::Types::Integer8Type::GetSingletonPtr();
         }
-        virtual llvm::Value* GetValue(llvm::IRBuilder<>* builder, SymbolTable& scope) { return NULL; }
-        
-        virtual Ides::String GetDOT() const;
+        virtual llvm::Value* GetValue(ParseContext& ctx) {
+            return llvm::ConstantInt::get(this->GetType(ctx)->GetLLVMType(ctx), val);
+        }
     private:
         uint8_t val;
     };
@@ -68,8 +82,6 @@ namespace AST {
         ASTConstantStringExpression(const Ides::String& str) : val(str) { }
         virtual ~ASTConstantStringExpression() { }
         
-        virtual Ides::String GetDOT() const;
-        
     protected:
         Ides::String val;
     };
@@ -79,23 +91,25 @@ namespace AST {
         ASTConstantCStringExpression(const Ides::String& str) : ASTConstantStringExpression(str) { }
         virtual ~ASTConstantCStringExpression() { }
         
-        virtual Ides::String GetDOT() const;
+        virtual llvm::Value* GetValue(ParseContext& ctx) {
+            return ctx.GetIRBuilder()->CreateGlobalString(this->val);
+        }
+        
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx) {
+            return Ides::Types::PointerType::Get(Ides::Types::Integer8Type::GetSingletonPtr());
+        }
     };
     
     class ASTConstantWCStringExpression : public ASTConstantStringExpression {
     public:
         ASTConstantWCStringExpression(const Ides::String& str) : ASTConstantStringExpression(str) { }
         virtual ~ASTConstantWCStringExpression() { }
-        
-        virtual Ides::String GetDOT() const;
     };
     
     class ASTConstantLCStringExpression : public ASTConstantStringExpression {
     public:
         ASTConstantLCStringExpression(const Ides::String& str) : ASTConstantStringExpression(str) { }
         virtual ~ASTConstantLCStringExpression() { }
-        
-        virtual Ides::String GetDOT() const;
     };
     
     

@@ -9,9 +9,16 @@ namespace Util {
     SINGLETON(Ides::Types::UnitType);
     
     SINGLETON(Ides::Types::Integer8Type);
+    SINGLETON(Ides::Types::UInteger8Type);
     SINGLETON(Ides::Types::Integer16Type);
+    SINGLETON(Ides::Types::UInteger16Type);
     SINGLETON(Ides::Types::Integer32Type);
+    SINGLETON(Ides::Types::UInteger32Type);
     SINGLETON(Ides::Types::Integer64Type);
+    SINGLETON(Ides::Types::UInteger64Type);
+    
+    SINGLETON(Ides::Types::Float32Type);
+    SINGLETON(Ides::Types::Float64Type);
 }
     
 namespace Types {
@@ -50,13 +57,13 @@ namespace Types {
         return f;
     }
     
-    llvm::Type* FunctionType::GetLLVMType(llvm::IRBuilder<>* builder) const
+    llvm::Type* FunctionType::GetLLVMType(ParseContext& ctx) const
     {
         std::vector<llvm::Type*> llvmargTypes;
         for (auto i = this->argTypes.begin(); i != this->argTypes.end(); ++i) {
-            llvmargTypes.push_back((*i)->GetLLVMType(builder));
+            llvmargTypes.push_back((*i)->GetLLVMType(ctx));
         }
-        llvm::FunctionType *FT = llvm::FunctionType::get(retType->GetLLVMType(builder),llvmargTypes, false);
+        llvm::FunctionType *FT = llvm::FunctionType::get(retType->GetLLVMType(ctx),llvmargTypes, false);
         return FT;
     }
     

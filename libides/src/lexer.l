@@ -46,7 +46,7 @@
 [\n]                    { SET_YYLLOC; yylloc->line_start = yylloc->last + 1; ++(*yylloc).line_num; }
 
 
-[0-9]+\.[0-9]*          { SET_YYLLOC; double val = atof(yytext); return TDOUBLE; }
+[0-9]+\.[0-9]*          { SET_YYLLOC; yylval->ast_base = new Ides::AST::ASTConstantFloatExpression(strtod(yytext, NULL)); return TDOUBLE; }
 
 0                       { SET_YYLLOC; yylval->ast_base = new Ides::AST::ASTConstantIntExpression(0); return TINTEGER; }
 [1-9][0-9]*             { SET_YYLLOC; yylval->ast_base = new Ides::AST::ASTConstantIntExpression(strtol(yytext, NULL, 10)); return TINTEGER; }
@@ -65,9 +65,16 @@
 "return"                SET_YYLLOC; return KW_RETURN;
 
 "int8"                  SET_YYLLOC; return KW_INT8;
+"uint8"                 SET_YYLLOC; return KW_UINT8;
 "int16"                 SET_YYLLOC; return KW_INT16;
+"uint16"                SET_YYLLOC; return KW_UINT16;
 "int32"                 SET_YYLLOC; return KW_INT32;
+"uint32"                SET_YYLLOC; return KW_UINT32;
 "int64"                 SET_YYLLOC; return KW_INT64;
+"uint64"                SET_YYLLOC; return KW_UINT64;
+
+"float32"               SET_YYLLOC; return KW_FLOAT32;
+"float64"               SET_YYLLOC; return KW_FLOAT64;
 
 "or"                    SET_YYLLOC; return OP_COALESCE;
 "as"                    SET_YYLLOC; return OP_CAST;
