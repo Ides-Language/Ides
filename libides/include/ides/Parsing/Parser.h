@@ -2,7 +2,7 @@
 #define _IDES_PARSER_H_
 
 #include <string>
-#include <map>
+#include <boost/unordered_map.hpp>
 #include <ostream>
 #include <stack>
 #include <ides/common.h>
@@ -13,6 +13,10 @@
 namespace Ides {
     namespace AST {
         class AST;
+        class ASTFunction;
+    }
+    namespace Types {
+        class Type;
     }
     
     namespace Parsing {
@@ -90,6 +94,8 @@ namespace Ides {
             llvm::Module* mod;
             llvm::IRBuilder<>* builder;
         };
+        
+        typedef Parser ParseContext;
     }
 }
 

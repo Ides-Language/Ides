@@ -86,9 +86,9 @@
 <INITIAL>"/*"           SET_YYLSTART; BEGIN(IN_BLOCKCOMMENT);
 <INITIAL>"//"           SET_YYLSTART; BEGIN(IN_SINGLELINECOMMENT);
 <INITIAL>"\""           SET_YYLSTART; BEGIN(IN_STRING);
-<INITIAL>"C\""          SET_YYLSTART; BEGIN(IN_CSTRING);
-<INITIAL>"WC\""         SET_YYLSTART; BEGIN(IN_WCSTRING);
-<INITIAL>"LC\""         SET_YYLSTART; BEGIN(IN_LCSTRING);
+<INITIAL>"C\""          SET_YYLSTART - 2; BEGIN(IN_CSTRING);
+<INITIAL>"WC\""         SET_YYLSTART - 3; BEGIN(IN_WCSTRING);
+<INITIAL>"LC\""         SET_YYLSTART - 3; BEGIN(IN_LCSTRING);
 
 <IN_BLOCKCOMMENT>{
     "*/"                BEGIN(INITIAL);
@@ -115,10 +115,10 @@
     <<EOF>>             { SET_YYLEND; std::cerr << "unterminated quote" << std::endl; yyterminate(); }
 }
 
-<IN_STRING>\"           { SET_YYLEND; BEGIN(INITIAL); yylval->ast_istr = new Ides::AST::ASTConstantStringExpression(strbuf.str()); strbuf.str(""); return TSTRING; }
-<IN_CSTRING>\"          { SET_YYLEND; BEGIN(INITIAL); yylval->ast_cstr = new Ides::AST::ASTConstantCStringExpression(strbuf.str()); strbuf.str(""); return TSTRING; }
-<IN_WCSTRING>\"         { SET_YYLEND; BEGIN(INITIAL); yylval->ast_wstr = new Ides::AST::ASTConstantWCStringExpression(strbuf.str()); strbuf.str(""); return TSTRING; }
-<IN_LCSTRING>\"         { SET_YYLEND; BEGIN(INITIAL); yylval->ast_lstr = new Ides::AST::ASTConstantLCStringExpression(strbuf.str()); strbuf.str(""); return TSTRING; }
+<IN_STRING>\"           { SET_YYLEND + 1; BEGIN(INITIAL); yylval->ast_istr = new Ides::AST::ASTConstantStringExpression(strbuf.str()); strbuf.str(""); return TSTRING; }
+<IN_CSTRING>\"          { SET_YYLEND + 1; BEGIN(INITIAL); yylval->ast_cstr = new Ides::AST::ASTConstantCStringExpression(strbuf.str()); strbuf.str(""); return TSTRING; }
+<IN_WCSTRING>\"         { SET_YYLEND + 1; BEGIN(INITIAL); yylval->ast_wstr = new Ides::AST::ASTConstantWCStringExpression(strbuf.str()); strbuf.str(""); return TSTRING; }
+<IN_LCSTRING>\"         { SET_YYLEND + 1; BEGIN(INITIAL); yylval->ast_lstr = new Ides::AST::ASTConstantLCStringExpression(strbuf.str()); strbuf.str(""); return TSTRING; }
 
 
 \'.\'                   { SET_YYLLOC; yylval->ast_base = new Ides::AST::ASTConstantCharExpression(yytext[1]); return TCHAR; }

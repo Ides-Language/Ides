@@ -10,6 +10,7 @@
 #define ides_ASTConstantExpression_h
 
 #include <llvm/Constants.h>
+#include <llvm/GlobalVariable.h>
 #include <ides/AST/ASTExpression.h>
 
 namespace Ides {
@@ -92,7 +93,12 @@ namespace AST {
         virtual ~ASTConstantCStringExpression() { }
         
         virtual llvm::Value* GetValue(ParseContext& ctx) {
-            return ctx.GetIRBuilder()->CreateGlobalString(this->val);
+            throw Ides::Diagnostics::CompileError("Cstrings not yet implemented.", this->exprloc);
+            /*static llvm::Value *zero = llvm::ConstantInt::get(llvm::Type::getInt8Ty(ctx.GetIRBuilder()->getContext()), 0);
+            static llvm::Value *Args[] = { zero, zero };
+            
+            llvm::Value* str = llvm::ConstantDataArray::getString(ctx.GetIRBuilder()->getContext(), val, true);
+            return ctx.GetIRBuilder()->CreateInBoundsGEP(str, Args);*/
         }
         
         virtual const Ides::Types::Type* GetType(ParseContext& ctx) {
@@ -104,12 +110,28 @@ namespace AST {
     public:
         ASTConstantWCStringExpression(const Ides::String& str) : ASTConstantStringExpression(str) { }
         virtual ~ASTConstantWCStringExpression() { }
+        
+        virtual llvm::Value* GetValue(ParseContext& ctx) {
+            throw Ides::Diagnostics::CompileError("WCstrings not yet implemented.", this->exprloc);
+        }
+        
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx) {
+            return Ides::Types::PointerType::Get(Ides::Types::Integer16Type::GetSingletonPtr());
+        }
     };
     
     class ASTConstantLCStringExpression : public ASTConstantStringExpression {
     public:
         ASTConstantLCStringExpression(const Ides::String& str) : ASTConstantStringExpression(str) { }
         virtual ~ASTConstantLCStringExpression() { }
+        
+        virtual llvm::Value* GetValue(ParseContext& ctx) {
+            throw Ides::Diagnostics::CompileError("LCstrings not yet implemented.", this->exprloc);
+        }
+        
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx) {
+            return Ides::Types::PointerType::Get(Ides::Types::Integer32Type::GetSingletonPtr());
+        }
     };
     
     

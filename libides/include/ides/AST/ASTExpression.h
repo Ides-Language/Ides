@@ -63,8 +63,7 @@ namespace AST {
     public:
         ASTFunction(ASTIdentifier* name, ASTList* args, ASTType* rettype) :
             func(NULL), name(name), rettype(rettype), args(args), val(NULL), body(NULL), evaluatingtype(false)
-        {
-        }
+        { }
         virtual ~ASTFunction();
         
         virtual Ides::String GetMangledName() const { return this->name->name; }

@@ -41,8 +41,17 @@ namespace AST {
     
     const Ides::Types::Type* ASTFunction::GetType(ParseContext& ctx)
     {
+        class RecursiveTypeEvalException : public Ides::Diagnostics::CompileError {
+        public:
+            RecursiveTypeEvalException(const Ides::String& msg, const Ides::Diagnostics::SourceLocation& loc) :
+            Ides::Diagnostics::CompileError(msg, loc) { }
+            RecursiveTypeEvalException(const Ides::String& msg, const Ides::Diagnostics::SourceLocation& loc, const Ides::Diagnostics::CompileError& from) :
+            Ides::Diagnostics::CompileError(msg, loc, from) { }
+            virtual ~RecursiveTypeEvalException() throw() {}
+        };
+        
         if (evaluatingtype) {
-            throw Ides::Diagnostics::CompileError("recursive functions cannot infer types", this->val->exprloc);
+            throw RecursiveTypeEvalException("recursive functions cannot infer types", this->val->exprloc);
         }
         evaluatingtype = true;
         
@@ -60,13 +69,13 @@ namespace AST {
         const Ides::Types::Type* ret = NULL;
         
         if (this->rettype == NULL) {
-            if (val == NULL) return Ides::Types::VoidType::GetSingletonPtr();
+            if (val == NULL) ret = Ides::Types::VoidType::GetSingletonPtr();
             else {
                 try {
                     ret = val->GetType(ctx);
-                } catch (const Ides::Diagnostics::CompileError& ex) {
+                } catch (const RecursiveTypeEvalException& ex) {
                     this->evaluatingtype = false;
-                    throw Ides::Diagnostics::CompileError(ex.message(), this->val->exprloc, ex);
+                    throw RecursiveTypeEvalException(ex.message(), this->val->exprloc, ex);
                 }
             }
         } else {
@@ -74,6 +83,7 @@ namespace AST {
         }
         evaluatingtype = false;
         assert(ret != NULL);
+        ctx.PopLocalScope();
         return Ides::Types::FunctionType::Get(ret, argTypes);
     }
     
@@ -81,7 +91,8 @@ namespace AST {
     {
         if (func == NULL) {
             llvm::FunctionType *FT = static_cast<llvm::FunctionType*>(this->GetType(ctx)->GetLLVMType(ctx));
-            func = llvm::Function::Create(FT, llvm::GlobalValue::ExternalLinkage, this->name->name);
+            func = llvm::Function::Create(FT, llvm::GlobalValue::ExternalLinkage, this->GetMangledName());
+            func->setGC("refcount");
         }
         return func;
     }
@@ -136,7 +147,7 @@ namespace AST {
             for (; i != args->end() && defi != function->argTypes.end(); ++i, ++defi) {
                 if (!(*i)->GetType(ctx)->IsEquivalentType(*defi)) {
                     std::stringstream err;
-                    err << "expecting argument of type '" << (*defi)->type_name << "' at: " << this->exprloc.GetText();
+                    err << "expecting argument of type '" << (*defi)->ToString() << "' at: " << this->exprloc.GetText();
                     throw Ides::Diagnostics::CompileError(err.str(), (*i)->exprloc);
                 }
                 fnargs.push_back((*i)->GetValue(ctx));

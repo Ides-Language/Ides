@@ -20,7 +20,7 @@ namespace AST {
     class AST;
     class ASTIdentifier;
     
-    typedef Ides::Parsing::Parser ParseContext;
+    typedef Ides::Parsing::ParseContext ParseContext;
     
     class AST {
     public:
@@ -28,8 +28,12 @@ namespace AST {
         AST();
         virtual ~AST() { }
         
-        virtual llvm::Value* GetValue(ParseContext& ctx) { assert(0); }
-        virtual const Ides::Types::Type* GetType(ParseContext& ctx) { assert(0); }
+        virtual llvm::Value* GetValue(ParseContext& ctx) {
+            throw Ides::Diagnostics::CompileError("AST node not yet implemented.", this->exprloc);
+        }
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx) {
+            throw Ides::Diagnostics::CompileError("AST node not yet implemented.", this->exprloc);
+        }
         
         const boost::uuids::uuid& GetUUID() const { return this->uuid; }
         

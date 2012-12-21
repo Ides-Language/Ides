@@ -67,6 +67,47 @@ namespace Types {
         return FT;
     }
     
+    
+    
+    void VoidType::InitAllBaseTypeMembers() {
+        
+    }
+
+    
+    /** Numeric implicit conversions **/
+    
+    bool Float64Type::HasImplicitConversionTo(const Ides::Types::Type *other) const { return false; }
+    bool Float32Type::HasImplicitConversionTo(const Ides::Types::Type *other) const { return other->IsEquivalentType(Float64Type::GetSingletonPtr()); }
+    
+    bool UInteger64Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
+        return Float32Type::GetSingletonPtr()->IsEquivalentType(other) || Float32Type::GetSingletonPtr()->HasImplicitConversionTo(other);
+    }
+    bool Integer64Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
+        return Float32Type::GetSingletonPtr()->IsEquivalentType(other) || Float32Type::GetSingletonPtr()->HasImplicitConversionTo(other);
+    }
+    
+    bool UInteger32Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
+        return UInteger64Type::GetSingletonPtr()->IsEquivalentType(other) || UInteger64Type::GetSingletonPtr()->HasImplicitConversionTo(other) ||
+                Integer64Type::GetSingletonPtr()->IsEquivalentType(other) ||  Integer64Type::GetSingletonPtr()->HasImplicitConversionTo(other);
+    }
+    bool Integer32Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
+        return Integer64Type::GetSingletonPtr()->IsEquivalentType(other) || Integer64Type::GetSingletonPtr()->HasImplicitConversionTo(other);
+    }
+    bool UInteger16Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
+        return UInteger32Type::GetSingletonPtr()->IsEquivalentType(other) || UInteger32Type::GetSingletonPtr()->HasImplicitConversionTo(other) ||
+        Integer32Type::GetSingletonPtr()->IsEquivalentType(other) || Integer32Type::GetSingletonPtr()->HasImplicitConversionTo(other);
+    }
+    bool Integer16Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
+        return Integer32Type::GetSingletonPtr()->IsEquivalentType(other) || Integer32Type::GetSingletonPtr()->HasImplicitConversionTo(other);
+    }
+    bool UInteger8Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
+        return UInteger16Type::GetSingletonPtr()->IsEquivalentType(other) || UInteger16Type::GetSingletonPtr()->HasImplicitConversionTo(other) ||
+                Integer16Type::GetSingletonPtr()->IsEquivalentType(other) ||  Integer16Type::GetSingletonPtr()->HasImplicitConversionTo(other);
+    }
+    bool Integer8Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
+        return Integer16Type::GetSingletonPtr()->IsEquivalentType(other) || Integer16Type::GetSingletonPtr()->HasImplicitConversionTo(other);
+    }
+    
 }
     
 }

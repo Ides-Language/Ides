@@ -63,8 +63,9 @@ namespace Parsing {
         this->InitParser();
         
         Ides::AST::ASTCompilationUnit* program = NULL;
-        this->mod = new llvm::Module(srcname, llvm::getGlobalContext());
-        this->builder = new llvm::IRBuilder<>(mod->getContext());
+        llvm::LLVMContext& llvmctx = llvm::getGlobalContext();
+        this->mod = new llvm::Module(srcname, llvmctx);
+        this->builder = new llvm::IRBuilder<>(llvmctx);
         
         try {
             yyparse(this, &program);
@@ -77,7 +78,10 @@ namespace Parsing {
             }
         } catch (const std::exception& ex) {
             std::cerr << ex.what() << std::endl;
+            while (!localSymbols.empty()) localSymbols.pop();
         }
+        
+        assert(this->localSymbols.empty());
     }
     
     Parser::~Parser() {
