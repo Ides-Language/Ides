@@ -34,7 +34,7 @@ execute_process(
 )
 
 execute_process(
-  COMMAND ${LLVM_CONFIG_EXECUTABLE} --libs core bitreader asmparser analysis
+	COMMAND ${LLVM_CONFIG_EXECUTABLE} --libs core bitreader asmparser analysis ${LLVM_REQUIRED_LIBS}
   OUTPUT_VARIABLE LLVM_MODULE_LIBS
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )

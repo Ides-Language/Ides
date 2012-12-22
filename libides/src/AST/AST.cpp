@@ -33,7 +33,7 @@ namespace AST {
         delete name;
         if (val) delete val;
         if(body) delete body;
-        if (rettype) delete rettype;
+        if (returntype) delete returntype;
         if (args) delete args;
     }
     

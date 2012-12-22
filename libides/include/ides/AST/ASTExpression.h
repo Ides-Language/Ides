@@ -63,7 +63,7 @@ namespace AST {
     public:
         ASTFunction(ASTIdentifier* name, ASTList* args, ASTType* rettype) :
             func(NULL), retblock(NULL), returnvalue(NULL), functype(NULL),
-            name(name), rettype(rettype), args(args), val(NULL), body(NULL), evaluatingtype(false)
+            name(name), returntype(rettype), args(args), val(NULL), body(NULL), evaluatingtype(false)
         { }
         virtual ~ASTFunction();
         
@@ -71,6 +71,8 @@ namespace AST {
         
         virtual llvm::Value* GetValue(ParseContext& ctx);
         virtual const Ides::Types::Type* GetType(ParseContext& ctx);
+        
+        const Ides::Types::Type* GetReturnType(ParseContext& ctx);
         
         void GenBody(ParseContext& ctx);
         
@@ -81,12 +83,13 @@ namespace AST {
         const Ides::Types::FunctionType* functype;
         
         ASTIdentifier* name;
-        ASTType* rettype;
         ASTList* args;
         
         ASTExpression* val;
         ASTCompoundStatement* body;
         
+    private:
+        ASTType* returntype;
         bool evaluatingtype;
     };
     

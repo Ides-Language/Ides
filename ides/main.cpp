@@ -12,6 +12,10 @@
 #include <ides/Parsing/Parser.h>
 #include <ides/AST/AST.h>
 
+#include <llvm/Support/raw_os_ostream.h>
+#include <llvm/Bitcode/ReaderWriter.h>
+#include <llvm/Linker.h>
+
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
 
@@ -25,7 +29,7 @@ int main(int argc, const char* argv[])
 		("help,h", "Show help message")
 		("output-file,o", po::value<fs::path>(), "Output file")
 		("interactive,i", "Run in interactive mode")
-		("name", po::value<std::string>()->default_value("Ides Module"), "Module name")
+        ("name", po::value<std::string>()->default_value("Ides Module"), "Module name")
 		;
 
 	po::options_description compilerdesc("Compiler Options");
@@ -43,8 +47,8 @@ int main(int argc, const char* argv[])
 
 	po::options_description linkerdesc("Linker Options");
 	compilerdesc.add_options()
-		("library-path,L", po::value<std::vector<fs::path> >()->composing(), "Additional library paths")
-		("lib,l", po::value<std::vector<std::string> >()->composing(), "Additional libraries to link")
+        ("library-path,L", po::value<std::vector<std::string> >()->composing(), "Additional library paths")
+        ("lib,l", po::value<std::vector<std::string> >()->composing(), "Additional libraries to link")
 		;
 
 	po::options_description rundesc("Runtime Options");
@@ -91,8 +95,9 @@ int main(int argc, const char* argv[])
 		std::cerr << "No input files specified." << std::endl;
 		return 1;
 	}
+    std::string output_name = args["name"].as<std::string>();
 
-	std::string output_file = args["name"].as<std::string>() + ".ll";
+	std::string output_file = output_name + ".ll";
 	if (args.count("output-file")) {
 		output_file = args["output-file"].as<std::string>();
 	}
@@ -107,6 +112,8 @@ int main(int argc, const char* argv[])
 		}
 	}
     
+    std::list<llvm::Module*> modules;
+    
     Ides::Parsing::Parser parser;
 	const std::vector<fs::path> files = args["input-file"].as<std::vector<fs::path> >();
 	for (std::vector<fs::path>::const_iterator i = files.begin(); i != files.end(); ++i) {
@@ -118,6 +125,8 @@ int main(int argc, const char* argv[])
 		current_file = i->string();
 
 		fs::ifstream srcfile(*i);
+        fs::path outpath = *i;
+        outpath.replace_extension(".s");
         
         
         Ides::Parsing::Parser::ParseTree t = parser.Parse(srcfile, current_file);
@@ -125,7 +134,37 @@ int main(int argc, const char* argv[])
         
         llvm::Module* mod = parser.Compile(t);
         if (mod == NULL) return 1;
+        
+        modules.push_back(mod);
 	}
+    
+    llvm::Linker linker(output_name, output_name, llvm::getGlobalContext());
+    
+    linker.addSystemPaths();
+    if (args.count("library-path"))
+        linker.addPaths(args["library-path"].as<std::vector<std::string> >());
+    
+    if (args.count("library")) {
+        if (linker.LinkInLibraries(args["library"].as<std::vector<std::string> >())) {
+            std::cerr << linker.getLastError() << std::endl;
+        }
+    }
+    bool isnative;
+    if (linker.LinkInLibrary("c", isnative)) {
+        std::cerr << linker.getLastError() << std::endl;
+    }
+    
+    for (auto modi = modules.begin(); modi != modules.end(); ++modi) {
+        if (linker.LinkInModule(*modi)) {
+            std::cerr << linker.getLastError() << std::endl;
+        }
+    }
+    
+    linker.getModule()->dump();
+    
+    fs::ofstream outfile(output_file);
+    llvm::raw_os_ostream llvm_outfile(outfile);
+    llvm::WriteBitcodeToFile(linker.getModule(), llvm_outfile);
 
 	return 0;
 }

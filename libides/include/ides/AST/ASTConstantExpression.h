@@ -108,12 +108,7 @@ namespace AST {
         virtual ~ASTConstantCStringExpression() { }
         
         virtual llvm::Value* GetValue(ParseContext& ctx) {
-            throw Ides::Diagnostics::CompileError("Cstrings not yet implemented.", this->exprloc);
-            /*static llvm::Value *zero = llvm::ConstantInt::get(llvm::Type::getInt8Ty(ctx.GetIRBuilder()->getContext()), 0);
-            static llvm::Value *Args[] = { zero, zero };
-            
-            llvm::Value* str = llvm::ConstantDataArray::getString(ctx.GetIRBuilder()->getContext(), val, true);
-            return ctx.GetIRBuilder()->CreateInBoundsGEP(str, Args);*/
+            return ctx.GetIRBuilder()->CreateGlobalStringPtr(val);
         }
         
         virtual const Ides::Types::Type* GetType(ParseContext& ctx) {

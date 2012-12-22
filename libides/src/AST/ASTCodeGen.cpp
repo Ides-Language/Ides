@@ -28,8 +28,6 @@ namespace AST {
                 (*i)->GetValue(ctx);
                 
                 if (ASTFunction* func = dynamic_cast<ASTFunction*>(*i)) {
-                    ctx.GetModule()->getOrInsertFunction(func->name->name, (llvm::FunctionType*)func->GetType(ctx)->GetLLVMType(ctx));
-                    
                     if (func->body || func->val)
                         functions.push(func);
                 }
@@ -37,8 +35,6 @@ namespace AST {
                 ctx.Issue(ex);
             }
         }
-        
-        //ctx.GetModule()->dump();
         
         while (!functions.empty()) {
             try {
@@ -82,7 +78,7 @@ namespace AST {
         
         const Ides::Types::Type* ret = NULL;
         
-        if (this->rettype == NULL) {
+        if (this->returntype == NULL) {
             if (val == NULL) ret = Ides::Types::VoidType::GetSingletonPtr();
             else {
                 try {
@@ -93,20 +89,28 @@ namespace AST {
                 }
             }
         } else {
-            ret = this->rettype->GetType(ctx);
+            ret = this->returntype->GetType(ctx);
         }
+        
         evaluatingtype = false;
         assert(ret != NULL);
         this->functype = Ides::Types::FunctionType::Get(ret, argTypes);
         return this->functype;
     }
     
+    const Ides::Types::Type* ASTFunction::GetReturnType(ParseContext& ctx) {
+
+        if (functype == NULL) this->GetType(ctx);
+        return functype->retType;
+    }
+    
     llvm::Value* ASTFunction::GetValue(ParseContext& ctx)
     {
         if (func == NULL) {
             llvm::FunctionType *FT = static_cast<llvm::FunctionType*>(this->GetType(ctx)->GetLLVMType(ctx));
-            func = llvm::Function::Create(FT, llvm::GlobalValue::ExternalLinkage, this->GetMangledName());
-            func->setGC("refcount");
+            //func = (llvm::Function*)ctx.GetModule()->getOrInsertFunction(this->GetMangledName(), FT);
+            func = llvm::Function::Create(FT, llvm::GlobalValue::ExternalLinkage, this->GetMangledName(), ctx.GetModule());
+            //func->setGC("refcount");
         }
         return func;
     }
@@ -142,7 +146,7 @@ namespace AST {
                     ctx.GetIRBuilder()->CreateRetVoid();
                 } else {
                     const Ides::Types::Type* valtype = this->val->GetType(ctx);
-                    const Ides::Types::Type* rettype = this->rettype ? this->rettype->GetType(ctx) : valtype;
+                    const Ides::Types::Type* rettype = this->GetReturnType(ctx);
                     if (valtype->IsEquivalentType(rettype)) {
                         ctx.GetIRBuilder()->CreateRet(this->val->GetValue(ctx));
                     } else if (valtype->HasImplicitConversionTo(rettype)) {
@@ -160,7 +164,7 @@ namespace AST {
                 this->body->GetValue(ctx);
             }
             llvm::verifyFunction(*func);
-            func->dump();
+            //func->dump();
         } catch (const Ides::Diagnostics::CompileError& ex) {
             throw Ides::Diagnostics::CompileError(ex.message(), this->exprloc, ex);
         }
@@ -226,7 +230,7 @@ namespace AST {
     
     llvm::Value* ASTReturnExpression::GetValue(ParseContext& ctx) {
         const Ides::Types::Type* exprtype = this->retval ? this->retval->GetType(ctx) : Ides::Types::VoidType::GetSingletonPtr();
-        const Ides::Types::Type* funcrettype = ctx.GetEvaluatingFunction()->rettype->GetType(ctx);
+        const Ides::Types::Type* funcrettype = ctx.GetEvaluatingFunction()->GetReturnType(ctx);
         if (funcrettype == Ides::Types::VoidType::GetSingletonPtr()) {
             if (this->retval != NULL)
                 throw Ides::Diagnostics::CompileError("returning an expression from a function with void return type", this->exprloc);

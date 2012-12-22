@@ -17,6 +17,8 @@ if (MSVC)
 	unset(Boost_LIBRARY_DIRS)
 endif(MSVC)
 
+set(LLVM_REQUIRED_LIBS bitwriter linker)
+
 find_package(LLVM REQUIRED)
 message(STATUS "LLVM Include: ${LLVM_INCLUDE_DIRS}")
 include_directories(${LLVM_INCLUDE_DIRS})
@@ -24,6 +26,7 @@ link_directories(${LLVM_LIBRARY_DIRS})
 if(NOT DEFINED LLVM_MODULE_LIBS)
 	llvm_map_components_to_libraries(LLVM_MODULE_LIBS all)
 endif(NOT DEFINED LLVM_MODULE_LIBS)
+message(STATUS "LLVM Libraries: ${LLVM_MODULE_LIBS}")
 
 set(CMAKE_CXX_FLAGS ${LLVM_CFLAGS})
 
