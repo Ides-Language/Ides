@@ -168,8 +168,25 @@ namespace AST {
         return ret->GetType(ctx);
     }
     
+    const Ides::Types::Type* ASTInfixExpression::GetType(ParseContext& ctx) {
+        // Handle numeric types
+        if (const Ides::Types::NumberType* lhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(this->lhs->GetType(ctx))) {
+            return lhsnumtype->GetOperatorType(this->func->name, ctx, lhs, rhs);
+        }
+        return ASTExpression::GetType(ctx);
+        
+    }
+    
     const Ides::Types::Type* ASTTypeName::GetType(ParseContext& ctx) {
         throw Ides::Diagnostics::CompileError("no such type " + this->name->name, this->exprloc);
+    }
+    
+    llvm::Value* ASTInfixExpression::GetValue(ParseContext& ctx) {
+        // Handle numeric types
+        if (const Ides::Types::NumberType* lhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(this->lhs->GetType(ctx))) {
+            return lhsnumtype->GetOperatorValue(this->func->name, ctx, lhs, rhs);
+        }
+        return ASTExpression::GetValue(ctx);
     }
     
 }

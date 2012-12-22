@@ -3,7 +3,12 @@
 
 #include <ides/common.h>
 #include <ides/Parsing/Parser.h>
+#include <boost/function.hpp>
+#include <boost/unordered_map.hpp>
 namespace Ides {
+    namespace AST {
+        class AST;
+    }
 namespace Types {
 
     typedef Ides::Parsing::Parser ParseContext;
@@ -133,12 +138,22 @@ namespace Types {
     };
     
     class NumberType : public Type {
+        friend class VoidType;
     public:
+        typedef boost::function<llvm::Value*(ParseContext&, Ides::AST::AST*, Ides::AST::AST*)> GetValue;
+        typedef boost::function<const Ides::Types::Type*(ParseContext&, Ides::AST::AST*, Ides::AST::AST*)> GetType;
+        typedef std::pair<GetType, GetValue> NumericOperator;
+        
         NumberType(const Ides::String& type_name, Type* supertype) : Type(type_name, supertype) { }
         virtual ~NumberType() { }
         
         virtual bool IsSigned() const = 0;
         virtual uint8_t GetSize() const = 0;
+        
+        static const Ides::Types::Type* GetOperatorType(const Ides::String& opname, ParseContext& ctx, Ides::AST::AST* lhs, Ides::AST::AST* rhs);
+        static llvm::Value* GetOperatorValue(const Ides::String& opname, ParseContext& ctx, Ides::AST::AST* lhs, Ides::AST::AST* rhs);
+    private:
+        boost::unordered_map<Ides::String, NumericOperator> operators;
     };
     
 #define IntegerType(size) \

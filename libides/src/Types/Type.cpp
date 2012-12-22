@@ -1,12 +1,10 @@
 #include <ides/Types/Type.h>
-
+#include <ides/AST/AST.h>
 
 namespace Ides {
 namespace Util {
 #define SINGLETON(type) template<> type* Singleton<type>::msSingleton = new type()
     
-    SINGLETON(Ides::Types::VoidType);
-    SINGLETON(Ides::Types::UnitType);
     
     SINGLETON(Ides::Types::Integer8Type);
     SINGLETON(Ides::Types::UInteger8Type);
@@ -19,6 +17,9 @@ namespace Util {
     
     SINGLETON(Ides::Types::Float32Type);
     SINGLETON(Ides::Types::Float64Type);
+    
+    SINGLETON(Ides::Types::VoidType);
+    SINGLETON(Ides::Types::UnitType);
 }
     
 namespace Types {
@@ -66,13 +67,28 @@ namespace Types {
         llvm::FunctionType *FT = llvm::FunctionType::get(retType->GetLLVMType(ctx),llvmargTypes, false);
         return FT;
     }
-    
-    
-    
-    void VoidType::InitAllBaseTypeMembers() {
-        
-    }
 
+    
+    
+    const Ides::Types::Type* NumberType::GetOperatorType(const Ides::String& opname, ParseContext& ctx, Ides::AST::AST* lhs, Ides::AST::AST* rhs)
+    {
+        const Ides::Types::NumberType* lhstype = static_cast<const Ides::Types::NumberType*>(lhs->GetType(ctx));
+        auto oper = lhstype->operators.find(opname);
+        if (oper == lhstype->operators.end()) {
+            throw Ides::Diagnostics::CompileError("no such operator exists on type " + lhstype->ToString(), lhs->exprloc);
+        }
+        return oper->second.first(ctx, lhs, rhs);
+    }
+    
+    llvm::Value* NumberType::GetOperatorValue(const Ides::String& opname, ParseContext& ctx, Ides::AST::AST* lhs, Ides::AST::AST* rhs)
+    {
+        const Ides::Types::NumberType* lhstype = static_cast<const Ides::Types::NumberType*>(lhs->GetType(ctx));
+        auto oper = lhstype->operators.find(opname);
+        if (oper == lhstype->operators.end()) {
+            throw Ides::Diagnostics::CompileError("no such operator exists on type " + lhstype->ToString(), lhs->exprloc);
+        }
+        return oper->second.second(ctx, lhs, rhs);
+    }
     
     /** Numeric implicit conversions **/
     
@@ -80,10 +96,10 @@ namespace Types {
     bool Float32Type::HasImplicitConversionTo(const Ides::Types::Type *other) const { return other->IsEquivalentType(Float64Type::GetSingletonPtr()); }
     
     bool UInteger64Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
-        return Float32Type::GetSingletonPtr()->IsEquivalentType(other) || Float32Type::GetSingletonPtr()->HasImplicitConversionTo(other);
+        return false;
     }
     bool Integer64Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
-        return Float32Type::GetSingletonPtr()->IsEquivalentType(other) || Float32Type::GetSingletonPtr()->HasImplicitConversionTo(other);
+        return false;
     }
     
     bool UInteger32Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {

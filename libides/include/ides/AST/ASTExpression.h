@@ -131,6 +131,9 @@ namespace AST {
             delete rhs;
         }
         
+        virtual llvm::Value* GetValue(ParseContext& ctx);
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx);
+        
         ASTIdentifier* func;
         ASTExpression* lhs;
         ASTExpression* rhs;
