@@ -32,7 +32,7 @@ namespace {
             else if (rhsnumtype->HasImplicitConversionTo(lhsnumtype)) return ctx.GetIRBuilder()->method(lhs->GetValue(ctx), rhsnumtype->Convert(ctx, rhs->GetValue(ctx), lhsnumtype)); \
             else if (lhsnumtype->HasImplicitConversionTo(rhsnumtype)) return ctx.GetIRBuilder()->method(lhsnumtype->Convert(ctx, lhs->GetValue(ctx), rhsnumtype), rhs->GetValue(ctx)); \
         } \
-        throw Ides::Diagnostics::CompileError("could not resolve operator " op " for rhs argument of type ", rhs->exprloc); \
+        throw Ides::Diagnostics::CompileError("could not resolve operator " op " for rhs argument of type " + rhstype->ToString(), rhs->exprloc); \
     }
     
     MAKE_INT_ARITHMETIC_OPERATOR_VALUE(Plus, "+", CreateAdd);
@@ -57,7 +57,28 @@ namespace {
                     ctx.GetIRBuilder()->CreateSDiv(lhsnumtype->Convert(ctx, lhs->GetValue(ctx), rhsnumtype), rhs->GetValue(ctx)) :
                     ctx.GetIRBuilder()->CreateUDiv(lhsnumtype->Convert(ctx, lhs->GetValue(ctx), rhsnumtype), rhs->GetValue(ctx));
         }
-        throw Ides::Diagnostics::CompileError("could not resolve operator / for rhs argument of type ", rhs->exprloc);
+        throw Ides::Diagnostics::CompileError("could not resolve operator / for rhs argument of type " + rhstype->ToString(), rhs->exprloc);
+    }
+    
+    llvm::Value* IntModValue(ParseContext& ctx, Ides::AST::AST* lhs, Ides::AST::AST* rhs) {
+        const Ides::Types::Type* rhstype = rhs->GetType(ctx);
+        const Ides::Types::Type* lhstype = lhs->GetType(ctx);
+        if (const Ides::Types::NumberType* rhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(rhstype)) {
+            const Ides::Types::NumberType* lhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(lhstype);
+            if (rhsnumtype->IsEquivalentType(lhsnumtype))
+                return rhsnumtype->IsSigned() ?
+                ctx.GetIRBuilder()->CreateSRem(lhs->GetValue(ctx), rhs->GetValue(ctx)) :
+                ctx.GetIRBuilder()->CreateURem(lhs->GetValue(ctx), rhs->GetValue(ctx));
+            else if (rhsnumtype->HasImplicitConversionTo(lhsnumtype))
+                return lhsnumtype->IsSigned() ?
+                ctx.GetIRBuilder()->CreateSRem(lhs->GetValue(ctx), rhsnumtype->Convert(ctx, rhs->GetValue(ctx), lhsnumtype)) :
+                ctx.GetIRBuilder()->CreateURem(lhs->GetValue(ctx), rhsnumtype->Convert(ctx, rhs->GetValue(ctx), lhsnumtype));
+            else if (lhsnumtype->HasImplicitConversionTo(rhsnumtype))
+                return lhsnumtype->IsSigned() ?
+                ctx.GetIRBuilder()->CreateSRem(lhsnumtype->Convert(ctx, lhs->GetValue(ctx), rhsnumtype), rhs->GetValue(ctx)) :
+                ctx.GetIRBuilder()->CreateURem(lhsnumtype->Convert(ctx, lhs->GetValue(ctx), rhsnumtype), rhs->GetValue(ctx));
+        }
+        throw Ides::Diagnostics::CompileError("could not resolve operator % for rhs argument of type " + rhstype->ToString(), rhs->exprloc);
     }
 }
 
@@ -80,11 +101,13 @@ namespace Types {
         auto int_subtract = std::make_pair(IntArithmeticType<'-'>, IntSubValue);
         auto int_times = std::make_pair(IntArithmeticType<'*'>, IntMulValue);
         auto int_divide = std::make_pair(IntArithmeticType<'/'>, IntDivideValue);
+        auto int_mod = std::make_pair(IntArithmeticType<'%'>, IntModValue);
         
         MAKE_INT_ARITHMETIC_OPERATOR("+", int_add)
         MAKE_INT_ARITHMETIC_OPERATOR("-", int_subtract)
         MAKE_INT_ARITHMETIC_OPERATOR("*", int_times)
         MAKE_INT_ARITHMETIC_OPERATOR("/", int_divide)
+        MAKE_INT_ARITHMETIC_OPERATOR("%", int_mod)
     }
     
 }

@@ -20,14 +20,12 @@ namespace Diagnostics {
     
     CompileError::CompileError(const Ides::String& msg, const SourceLocation& loc) : std::exception(), msg(msg), loc(loc)
     {
-        std::stringstream buf;
-        buf << " from: " << this->loc;
     }
     
     CompileError::CompileError(const Ides::String& msg, const SourceLocation& loc, const CompileError& from) : std::exception(), msg(msg), loc(loc)
     {
         std::stringstream buf;
-        buf << " from: " << this->loc << std::endl <<
+        buf << " from: " << from.loc << std::endl <<
         from.from;
         this->from = buf.str();
     }

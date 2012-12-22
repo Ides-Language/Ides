@@ -171,7 +171,11 @@ namespace AST {
     const Ides::Types::Type* ASTInfixExpression::GetType(ParseContext& ctx) {
         // Handle numeric types
         if (const Ides::Types::NumberType* lhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(this->lhs->GetType(ctx))) {
-            return lhsnumtype->GetOperatorType(this->func->name, ctx, lhs, rhs);
+            try {
+                return lhsnumtype->GetOperatorType(this->func->name, ctx, lhs, rhs);
+            } catch (const Ides::Diagnostics::CompileError& e) {
+                throw Ides::Diagnostics::CompileError(e.message(), this->exprloc, e);
+            }
         }
         return ASTExpression::GetType(ctx);
         
@@ -184,7 +188,11 @@ namespace AST {
     llvm::Value* ASTInfixExpression::GetValue(ParseContext& ctx) {
         // Handle numeric types
         if (const Ides::Types::NumberType* lhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(this->lhs->GetType(ctx))) {
-            return lhsnumtype->GetOperatorValue(this->func->name, ctx, lhs, rhs);
+            try {
+                return lhsnumtype->GetOperatorValue(this->func->name, ctx, lhs, rhs);
+            } catch (const Ides::Diagnostics::CompileError& e) {
+                throw Ides::Diagnostics::CompileError(e.message(), this->exprloc, e);
+            }
         }
         return ASTExpression::GetValue(ctx);
     }
