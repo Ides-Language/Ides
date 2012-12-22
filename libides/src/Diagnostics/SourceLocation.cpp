@@ -18,11 +18,11 @@ namespace Diagnostics {
     }
     
     
-    CompileError::CompileError(const Ides::String& msg, const SourceLocation& loc) : std::exception(), msg(msg), loc(loc)
+    CompileIssue::CompileIssue(const Ides::String& msg, const SourceLocation& loc) : std::exception(), msg(msg), loc(loc)
     {
     }
     
-    CompileError::CompileError(const Ides::String& msg, const SourceLocation& loc, const CompileError& from) : std::exception(), msg(msg), loc(loc)
+    CompileIssue::CompileIssue(const Ides::String& msg, const SourceLocation& loc, const CompileIssue& from) : std::exception(), msg(msg), loc(loc)
     {
         std::stringstream buf;
         buf << " from: " << from.loc << std::endl <<
@@ -30,9 +30,14 @@ namespace Diagnostics {
         this->from = buf.str();
     }
     
-    const char* CompileError::what() const throw() {
+    const char* CompileIssue::what() const throw() {
         std::stringstream str;
-        str << "Error: " << msg << std::endl <<
+        switch(this->severity()) {
+            case CompileIssue::NOTICE: str << "Notice: "; break;
+            case CompileIssue::WARNING: str << "Warning: "; break;
+            case CompileIssue::ERROR: str << "Error: "; break;
+        }
+        str << msg << std::endl <<
         " here: " << this->loc << std::endl <<
         this->from;
         return str.str().c_str();

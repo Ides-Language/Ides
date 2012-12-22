@@ -31,19 +31,42 @@ namespace Diagnostics {
         size_t line_num;
     };
     
-    class CompileError : public std::exception {
+    class CompileIssue : public std::exception {
     public:
-        CompileError(const Ides::String& msg, const SourceLocation& loc);
-        CompileError(const Ides::String& msg, const SourceLocation& loc, const CompileError& from);
-        virtual ~CompileError() throw() {}
+        CompileIssue(const Ides::String& msg, const SourceLocation& loc);
+        CompileIssue(const Ides::String& msg, const SourceLocation& loc, const CompileIssue& from);
+        virtual ~CompileIssue() throw() {}
+        
+        enum IssueSeverity {
+            ERROR,
+            WARNING,
+            NOTICE
+        };
         
         const char* what() const throw();
         const char* message() const throw() { return msg.c_str(); }
         const SourceLocation& where() const throw() { return loc; }
+        virtual const IssueSeverity severity() const { return NOTICE; }
     private:
         Ides::String from;
         Ides::String msg;
         SourceLocation loc;
+    };
+    
+    class CompileError : public CompileIssue {
+    public:
+        CompileError(const Ides::String& msg, const SourceLocation& loc) : CompileIssue(msg, loc) { }
+        CompileError(const Ides::String& msg, const SourceLocation& loc, const CompileError& from) : CompileIssue(msg, loc, from) { }
+        virtual ~CompileError() throw() {}
+        virtual const IssueSeverity severity() const { return CompileIssue::ERROR; }
+    };
+    
+    class CompileWarning : public CompileIssue {
+    public:
+        CompileWarning(const Ides::String& msg, const SourceLocation& loc) : CompileIssue(msg, loc) { }
+        CompileWarning(const Ides::String& msg, const SourceLocation& loc, const CompileError& from) : CompileIssue(msg, loc, from) { }
+        virtual ~CompileWarning() throw() {}
+        virtual const IssueSeverity severity() const { return CompileIssue::WARNING; }
     };
 }
 }

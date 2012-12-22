@@ -22,17 +22,6 @@ namespace Parsing {
     
     using namespace Ides::Diagnostics;
     
-    Ides::AST::AST* Parse(std::istream& is, const Ides::String& srcname)
-    {
-        is.unsetf(std::ios::skipws);
-        
-        std::stringstream buffer;
-        buffer << is.rdbuf();
-        Parser p(buffer.str(), srcname);
-
-        return NULL;
-    }
-    
     /** class SymbolTable **/
     
     Ides::AST::AST* SymbolTable::LookupRecursive(const Ides::String& symbol) const {
@@ -50,9 +39,22 @@ namespace Parsing {
     
     /** class Parser **/
     
-    Parser::Parser(const Ides::String& src, const Ides::String& srcname) :
-        src_name(srcname), src(src)
+    Parser::Parser()
     {
+    }
+    
+    
+    
+    Parser::ParseTree Parser::Parse(std::istream& is, const Ides::String& srcname)
+    {
+        is.unsetf(std::ios::skipws);
+        
+        std::stringstream buffer;
+        buffer << is.rdbuf();
+        src = buffer.str();
+        src_name = srcname;
+        
+        
         publicSymbols.reset(new SymbolTable());
         internalSymbols.reset(new SymbolTable(publicSymbols));
         privateSymbols.reset(new SymbolTable(internalSymbols));
@@ -69,23 +71,35 @@ namespace Parsing {
         
         try {
             yyparse(this, &program);
-            
-            if (program) {
-                
-                program->Compile(*this);
-                
-                delete program;
-            }
         } catch (const std::exception& ex) {
-            std::cerr << ex.what() << std::endl;
             while (!localSymbols.empty()) localSymbols.pop();
+            throw ex;
+        }
+        
+        return Parser::ParseTree(program);
+    }
+    
+    llvm::Module* Parser::Compile(const ParseTree& t) {
+        try {
+            t->Compile(*this);
+        } catch (const Ides::Diagnostics::CompileError& ex) {
+            while (!localSymbols.empty()) localSymbols.pop();
+            while (!functionEval.empty()) functionEval.pop();
+            throw ex;
         }
         
         assert(this->localSymbols.empty());
         assert(this->functionEval.empty());
+        
+        return this->GetModule();
+    }
+    
+    void Parser::Issue(const Ides::Diagnostics::CompileIssue& i) {
+        std::cerr << i.what() << std::endl;
     }
     
     Parser::~Parser() {
+        while (!localSymbols.empty()) localSymbols.pop();
         delete this->builder;
         delete this->mod;
         this->DestroyParser();

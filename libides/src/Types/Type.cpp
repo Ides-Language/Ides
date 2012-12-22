@@ -63,10 +63,33 @@ namespace Types {
     {
         std::vector<llvm::Type*> llvmargTypes;
         for (auto i = this->argTypes.begin(); i != this->argTypes.end(); ++i) {
-            llvmargTypes.push_back((*i)->GetLLVMType(ctx));
+            const FunctionType* argasfunction = dynamic_cast<const FunctionType*>(*i);
+            if (argasfunction) {
+                llvmargTypes.push_back(PointerType::Get((*i))->GetLLVMType(ctx));
+            } else {
+                llvmargTypes.push_back((*i)->GetLLVMType(ctx));
+            }
         }
-        llvm::FunctionType *FT = llvm::FunctionType::get(retType->GetLLVMType(ctx),llvmargTypes, false);
+        const FunctionType* retasfunction = dynamic_cast<const FunctionType*>(retType);
+        llvm::FunctionType *FT = NULL;
+        if (retasfunction)
+            FT = llvm::FunctionType::get(PointerType::Get(retasfunction)->GetLLVMType(ctx),llvmargTypes, false);
+        else
+            FT = llvm::FunctionType::get(retType->GetLLVMType(ctx),llvmargTypes, false);
         return FT;
+    }
+    
+    const Ides::String FunctionType::ToString() const {
+        std::stringstream fntype;
+        fntype << "fn(";
+        auto i = this->argTypes.begin();
+        
+        if (i != this->argTypes.end()) fntype << *i++;
+        for (; i != this->argTypes.end(); ++i) {
+            fntype << ", " << *i;
+        }
+        fntype << "): " << this->retType->ToString();
+        return fntype.str();
     }
 
     

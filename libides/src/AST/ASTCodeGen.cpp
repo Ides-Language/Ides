@@ -24,17 +24,26 @@ namespace AST {
         
         std::queue<ASTFunction*> functions;
         for (auto i = this->begin(); i != this->end(); ++i) {
-            (*i)->GetValue(ctx);
-            if (ASTFunction* func = dynamic_cast<ASTFunction*>(*i)) {
-                ctx.GetModule()->getOrInsertFunction(func->name->name, (llvm::FunctionType*)func->GetType(ctx)->GetLLVMType(ctx));
+            try {
+                (*i)->GetValue(ctx);
                 
-                if (func->body || func->val)
-                    functions.push(func);
+                if (ASTFunction* func = dynamic_cast<ASTFunction*>(*i)) {
+                    ctx.GetModule()->getOrInsertFunction(func->name->name, (llvm::FunctionType*)func->GetType(ctx)->GetLLVMType(ctx));
+                    
+                    if (func->body || func->val)
+                        functions.push(func);
+                }
+            } catch (const Ides::Diagnostics::CompileIssue& ex) {
+                ctx.Issue(ex);
             }
         }
         
         while (!functions.empty()) {
-            functions.front()->GenBody(ctx);
+            try {
+                functions.front()->GenBody(ctx);
+            } catch (const Ides::Diagnostics::CompileIssue& ex) {
+                ctx.Issue(ex);
+            }
             functions.pop();
         }
     }
@@ -58,7 +67,7 @@ namespace AST {
         }
         evaluatingtype = true;
         
-        ctx.PushLocalScope();
+        ParseContext::ScopedLocalScope localScope(ctx);
         
         std::vector<const Ides::Types::Type*> argTypes;
         if (this->args) {
@@ -86,7 +95,6 @@ namespace AST {
         }
         evaluatingtype = false;
         assert(ret != NULL);
-        ctx.PopLocalScope();
         this->functype = Ides::Types::FunctionType::Get(ret, argTypes);
         return this->functype;
     }
@@ -105,8 +113,8 @@ namespace AST {
     {
         assert(func != NULL && (this->val != NULL || this->body != NULL));
         
-        ctx.PushLocalScope();
-        ctx.PushFunction(this);
+        ParseContext::ScopedLocalScope localScope(ctx);
+        ParseContext::ScopedFunction thisFunction(ctx, this);
         
         auto i = args->begin();
         llvm::Function::arg_iterator ai = func->arg_begin();
@@ -129,7 +137,19 @@ namespace AST {
                     this->val->GetValue(ctx);
                     ctx.GetIRBuilder()->CreateRetVoid();
                 } else {
-                    ctx.GetIRBuilder()->CreateRet(this->val->GetValue(ctx));
+                    const Ides::Types::Type* valtype = this->val->GetType(ctx);
+                    const Ides::Types::Type* rettype = this->rettype ? this->rettype->GetType(ctx) : valtype;
+                    if (valtype->IsEquivalentType(rettype)) {
+                        ctx.GetIRBuilder()->CreateRet(this->val->GetValue(ctx));
+                    } else if (valtype->HasImplicitConversionTo(rettype)) {
+                        try {
+                            ctx.GetIRBuilder()->CreateRet(valtype->Convert(ctx, this->val->GetValue(ctx), rettype));
+                        } catch (const std::runtime_error& ex) {
+                            throw Ides::Diagnostics::CompileError(ex.what(), this->val->exprloc);
+                        }
+                    } else {
+                        throw Ides::Diagnostics::CompileError("returning expression of type " + valtype->ToString() + " from a function with return type " + rettype->ToString(), this->val->exprloc);
+                    }
                 }
             }
             else if (this->body) {
@@ -138,18 +158,13 @@ namespace AST {
             llvm::verifyFunction(*func);
             func->dump();
         } catch (const Ides::Diagnostics::CompileError& ex) {
-            ctx.PopFunction();
-            ctx.PopLocalScope();
             throw Ides::Diagnostics::CompileError(ex.message(), this->exprloc, ex);
         }
-        
-        
-        ctx.PopFunction();
-        ctx.PopLocalScope();
     }
     
     llvm::Value* ASTCompoundStatement::GetValue(ParseContext &ctx) {
-        ctx.PushLocalScope();
+        
+        ParseContext::ScopedLocalScope localScope(ctx);
         
         llvm::BasicBlock* scope = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "scope", (llvm::Function*)ctx.GetEvaluatingFunction()->GetValue(ctx));
         ctx.GetIRBuilder()->CreateBr(scope);
@@ -158,11 +173,13 @@ namespace AST {
             try {
                 (*i)->GetValue(ctx);
             } catch (const Ides::AST::UnitValueException& ex) {
+                if (++i != this->end()) {
+                    ctx.Issue(Ides::Diagnostics::CompileWarning("unreachable code", (*i)->exprloc));
+                }
                 break;
             }
         }
         
-        ctx.PopLocalScope();
         return NULL;
     }
     
@@ -204,11 +221,11 @@ namespace AST {
     }
     
     llvm::Value* ASTReturnExpression::GetValue(ParseContext& ctx) {
-        const Ides::Types::Type* exprtype = this->retval->GetType(ctx);
+        const Ides::Types::Type* exprtype = this->retval ? this->retval->GetType(ctx) : Ides::Types::VoidType::GetSingletonPtr();
         const Ides::Types::Type* funcrettype = ctx.GetEvaluatingFunction()->rettype->GetType(ctx);
         if (funcrettype == Ides::Types::VoidType::GetSingletonPtr()) {
             if (this->retval != NULL)
-                throw Ides::Diagnostics::CompileError("unexpected expression in return from a function with void return type", retval->exprloc);
+                throw Ides::Diagnostics::CompileError("returning an expression from a function with void return type", this->exprloc);
             ctx.GetIRBuilder()->CreateRetVoid();
         }
         else if (funcrettype == Ides::Types::UnitType::GetSingletonPtr()) {
@@ -221,7 +238,11 @@ namespace AST {
             ctx.GetIRBuilder()->CreateRet(this->retval->GetValue(ctx));
         }
         else {
-            ctx.GetIRBuilder()->CreateRet(this->retval->GetType(ctx)->Convert(ctx, this->retval->GetValue(ctx), funcrettype));
+            try {
+                ctx.GetIRBuilder()->CreateRet(this->retval->GetType(ctx)->Convert(ctx, this->retval->GetValue(ctx), funcrettype));
+            } catch (const std::exception& ex) {
+                throw Ides::Diagnostics::CompileError(ex.what(), this->exprloc);
+            }
         }
         throw Ides::AST::UnitValueException();
     }

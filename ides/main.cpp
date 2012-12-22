@@ -10,6 +10,7 @@
 #include <boost/filesystem/fstream.hpp>
 
 #include <ides/Parsing/Parser.h>
+#include <ides/AST/AST.h>
 
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
@@ -106,6 +107,7 @@ int main(int argc, const char* argv[])
 		}
 	}
     
+    Ides::Parsing::Parser parser;
 	const std::vector<fs::path> files = args["input-file"].as<std::vector<fs::path> >();
 	for (std::vector<fs::path>::const_iterator i = files.begin(); i != files.end(); ++i) {
 		if (!fs::is_regular_file(*i)) {
@@ -117,7 +119,12 @@ int main(int argc, const char* argv[])
 
 		fs::ifstream srcfile(*i);
         
-        Ides::Parsing::Parse(srcfile, current_file);
+        
+        Ides::Parsing::Parser::ParseTree t = parser.Parse(srcfile, current_file);
+        if (t.get() == NULL) return 1;
+        
+        llvm::Module* mod = parser.Compile(t);
+        if (mod == NULL) return 1;
 	}
 
 	return 0;

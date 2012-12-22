@@ -43,11 +43,11 @@ namespace Types {
         
         virtual llvm::Value* Convert(Ides::Parsing::Parser& ctx, llvm::Value* val, const Type* to) const {
             std::stringstream err;
-            err << "no conversion from " + this->ToString() + " to type " << to->ToString() << " exists";
+            err << "no conversion from type " + this->ToString() + " to type " << to->ToString() << " exists";
             throw std::runtime_error(err.str());
         }
         
-        const Ides::String ToString() const { return type_name; }
+        virtual const Ides::String ToString() const { return type_name; }
         
     protected:
         Ides::Parsing::SymbolTable::Ptr symbols;
@@ -98,6 +98,8 @@ namespace Types {
         static const FunctionType* Get(const Ides::Types::Type* retType, const std::vector<const Ides::Types::Type*>& argTypes);
         
         virtual llvm::Type* GetLLVMType(ParseContext& ctx) const;
+        
+        virtual const Ides::String ToString() const;
 
         const Ides::Types::Type* retType;
         const std::vector<const Ides::Types::Type*> argTypes;
@@ -114,7 +116,7 @@ namespace Types {
         static const PointerType* Get(const Ides::Types::Type* target);
         
         virtual llvm::Type* GetLLVMType(ParseContext& ctx) const {
-            return llvm::PointerType::getUnqual(targetType->GetLLVMType(ctx));
+            return llvm::PointerType::get(targetType->GetLLVMType(ctx), 0);
         }
     private:
         const Ides::Types::Type* targetType;

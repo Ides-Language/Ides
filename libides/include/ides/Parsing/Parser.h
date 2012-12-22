@@ -5,8 +5,10 @@
 #include <boost/unordered_map.hpp>
 #include <ostream>
 #include <stack>
+#include <list>
 #include <ides/common.h>
 #include <boost/shared_ptr.hpp>
+#include <memory>
 
 #include <ides/Diagnostics/SourceLocation.h>
 
@@ -14,14 +16,13 @@ namespace Ides {
     namespace AST {
         class AST;
         class ASTFunction;
+        class ASTCompilationUnit;
     }
     namespace Types {
         class Type;
     }
     
     namespace Parsing {
-        
-        Ides::AST::AST* Parse(std::istream& is, const Ides::String& srcname);
         
         typedef boost::unordered_map<Ides::String, Ides::AST::AST* > SymbolMap;
         
@@ -43,9 +44,13 @@ namespace Ides {
         
         class Parser {
         public:
+            typedef std::auto_ptr<Ides::AST::ASTCompilationUnit> ParseTree;
             
-            Parser(const Ides::String& src, const Ides::String& srcname);
+            Parser();
             ~Parser();
+            
+            ParseTree Parse(std::istream& is, const Ides::String& srcname);
+            llvm::Module* Compile(const ParseTree& t);
             
             void* GetScanner() const { return this->scanner; }
             
@@ -61,6 +66,7 @@ namespace Ides {
             
             llvm::IRBuilder<>* GetIRBuilder() { return builder; }
             llvm::Module* GetModule() { return mod; }
+            llvm::LLVMContext& GetContext() { return GetIRBuilder()->getContext(); }
             
             SymbolTable::Ptr GetPublicSymbols() { return publicSymbols; }
             SymbolTable::Ptr GetInternalSymbols() { return internalSymbols; }
@@ -79,6 +85,25 @@ namespace Ides {
             Ides::AST::ASTFunction* GetEvaluatingFunction() const { return functionEval.top(); }
             
             const Ides::SourceIterator& GetSourceIterator() const { return this->src_iter; }
+            
+            void Issue(const Ides::Diagnostics::CompileIssue& i);
+            
+            class ScopedLocalScope {
+            public:
+                ScopedLocalScope(Parser& ctx) : ctx(ctx) { ctx.PushLocalScope(); }
+                ~ScopedLocalScope() { ctx.PopLocalScope(); }
+            private:
+                Parser& ctx;
+            };
+            
+            class ScopedFunction {
+            public:
+                ScopedFunction(Parser& ctx, Ides::AST::ASTFunction* func) : ctx(ctx) { ctx.PushFunction(func); }
+                ~ScopedFunction() { ctx.PopFunction(); }
+            private:
+                Parser& ctx;
+            };
+            
         protected:
             void InitParser();
             void DestroyParser();
