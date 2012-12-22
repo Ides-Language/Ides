@@ -38,6 +38,8 @@ namespace AST {
             }
         }
         
+        //ctx.GetModule()->dump();
+        
         while (!functions.empty()) {
             try {
                 functions.front()->GenBody(ctx);
@@ -116,15 +118,17 @@ namespace AST {
         ParseContext::ScopedLocalScope localScope(ctx);
         ParseContext::ScopedFunction thisFunction(ctx, this);
         
-        auto i = args->begin();
-        llvm::Function::arg_iterator ai = func->arg_begin();
-        for (; i != args->end() && ai != func->arg_end(); ++ai, ++i) {
-            ASTDeclaration* decl = dynamic_cast<ASTDeclaration*>(*i);
-            decl->val = ai;
-            ai->setName(decl->name->name);
-            ctx.GetLocalSymbols()->insert(std::make_pair(decl->name->name, decl));
+        if (args) {
+            auto i = args->begin();
+            llvm::Function::arg_iterator ai = func->arg_begin();
+            for (; i != args->end() && ai != func->arg_end(); ++ai, ++i) {
+                ASTDeclaration* decl = dynamic_cast<ASTDeclaration*>(*i);
+                decl->val = ai;
+                ai->setName(decl->name->name);
+                ctx.GetLocalSymbols()->insert(std::make_pair(decl->name->name, decl));
+            }
+            assert (i == args->end() && ai == func->arg_end());
         }
-        assert (i == args->end() && ai == func->arg_end());
         
         llvm::BasicBlock* entryblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "entry", this->func);
         //this->retblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "return", this->func);
@@ -262,6 +266,17 @@ namespace AST {
         }
         return ASTExpression::GetType(ctx);
         
+    }
+    
+    const Ides::Types::Type* ASTFunctionType::GetType(ParseContext &ctx) {
+        std::vector<const Ides::Types::Type*> argTypes;
+        const Ides::Types::Type* rtype = this->rettype ? this->rettype->GetType(ctx) : Ides::Types::VoidType::GetSingletonPtr();
+        if (this->argtypes) {
+            for (auto i = this->argtypes->begin(); i != this->argtypes->end(); ++i) {
+                argTypes.push_back((*i)->GetType(ctx));
+            }
+        }
+        return Ides::Types::FunctionType::Get(rtype, argTypes);
     }
     
     const Ides::Types::Type* ASTTypeName::GetType(ParseContext& ctx) {

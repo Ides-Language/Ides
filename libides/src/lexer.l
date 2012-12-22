@@ -56,6 +56,7 @@
 
 
 "def"                   SET_YYLLOC; return KW_DEF;
+"function"              SET_YYLLOC; return KW_FN;
 "var"                   SET_YYLLOC; return KW_VAR;
 "val"                   SET_YYLLOC; return KW_VAL;
 "throw"                 SET_YYLLOC; return KW_THROW;

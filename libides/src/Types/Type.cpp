@@ -84,9 +84,9 @@ namespace Types {
         fntype << "fn(";
         auto i = this->argTypes.begin();
         
-        if (i != this->argTypes.end()) fntype << *i++;
+        if (i != this->argTypes.end()) fntype << (*i++)->ToString();
         for (; i != this->argTypes.end(); ++i) {
-            fntype << ", " << *i;
+            fntype << ", " << (*i)->ToString();
         }
         fntype << "): " << this->retType->ToString();
         return fntype.str();

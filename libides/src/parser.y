@@ -69,7 +69,7 @@
 %token KW_TRUE KW_FALSE
 
 // Keywords
-%token KW_DEF KW_VAR KW_VAL KW_THROW KW_NEW KW_IF KW_EXTERN KW_NULL KW_RETURN
+%token KW_DEF KW_FN KW_VAR KW_VAL KW_THROW KW_NEW KW_IF KW_EXTERN KW_NULL KW_RETURN
 // Operators
 %token OP_INC OP_DEC OP_EQ OP_COALESCE OP_CAST
 
@@ -87,6 +87,7 @@
 
 %type <ast_decl> var_decl val_decl arg_decl
 %type <ast_type> var_type
+%type <ast_list> var_type_list
 
 %type <ast_expr> expression infix_expression prefix_expression postfix_expression primary_expression
 %type <ast_stmt> stmt
@@ -184,7 +185,8 @@ expression : infix_expression
            | KW_RETURN infix_expression { $$ = new Ides::AST::ASTReturnExpression($2); SET_EXPRLOC($$, @$); }
 ;
 
-var_type : TIDENTIFIER { $$ = new Ides::AST::ASTTypeName($1);  SET_EXPRLOC($$, @$); }
+var_type : '(' var_type ')' { $$ = $2; SET_EXPRLOC($$, @$); }
+         | TIDENTIFIER { $$ = new Ides::AST::ASTTypeName($1); SET_EXPRLOC($$, @$); }
 
          | KW_VOID   { $$ = new Ides::AST::ASTVoidType(); SET_EXPRLOC($$, @$); }
          | KW_UNIT   { $$ = new Ides::AST::ASTUnitType(); SET_EXPRLOC($$, @$); }
@@ -202,7 +204,16 @@ var_type : TIDENTIFIER { $$ = new Ides::AST::ASTTypeName($1);  SET_EXPRLOC($$, @
          | KW_FLOAT32 { $$ = new Ides::AST::ASTFloat32Type(); SET_EXPRLOC($$, @$); }
          | KW_FLOAT64 { $$ = new Ides::AST::ASTFloat64Type(); SET_EXPRLOC($$, @$); }
          
+         | KW_FN '(' ')' ':' var_type { $$ = new Ides::AST::ASTFunctionType(NULL, $5); SET_EXPRLOC($$, @$); }
+         | KW_FN '(' var_type_list ')' ':' var_type { $$ = new Ides::AST::ASTFunctionType($3, $6); SET_EXPRLOC($$, @$); }
+         | KW_FN '(' ')' { $$ = new Ides::AST::ASTFunctionType(NULL, NULL); SET_EXPRLOC($$, @$); }
+         | KW_FN '(' var_type_list ')' { $$ = new Ides::AST::ASTFunctionType($3, NULL); SET_EXPRLOC($$, @$); }
+         
          | var_type '*' { $$ = new Ides::AST::ASTPtrType($1); SET_EXPRLOC($$, @$); }
+;
+
+var_type_list : var_type { $$ = new Ides::AST::ASTList(); $$->push_back($1); SET_EXPRLOC($$, @$); }
+              | var_type_list ',' var_type { $$ = $1; $$->push_back($3); SET_EXPRLOC($$, @$); }
 ;
 
 var_decl : KW_VAR TIDENTIFIER '=' expression { $$ = new Ides::AST::ASTDeclaration(Ides::AST::ASTDeclaration::DECL_VAR, $2, $4); SET_EXPRLOC($$, @$); }

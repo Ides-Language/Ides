@@ -44,6 +44,11 @@ namespace AST {
         const boost::uuids::uuid uuid;
     };
     
+    class ASTList : public AST, public std::list<AST*> {
+    public:
+        ~ASTList();
+    };
+    
     
     
     class ASTIdentifier : public AST {
@@ -92,13 +97,11 @@ namespace AST {
     
     class ASTFloat32Type : public ASTType {
     public:
-        virtual llvm::Value* GetValue(ParseContext& ctx) { return NULL; }
         virtual const Ides::Types::Type* GetType(ParseContext& ctx) { return Ides::Types::Float32Type::GetSingletonPtr(); }
     };
     
     class ASTFloat64Type : public ASTType {
     public:
-        virtual llvm::Value* GetValue(ParseContext& ctx) { return NULL; }
         virtual const Ides::Types::Type* GetType(ParseContext& ctx) { return Ides::Types::Float64Type::GetSingletonPtr(); }
     };
     
@@ -117,6 +120,17 @@ namespace AST {
         ASTType* basetype;
     };
     
+    class ASTFunctionType : public ASTType {
+    public:
+        ASTFunctionType(ASTList* argtypes, ASTType* rettype) : rettype(rettype), argtypes(argtypes) { }
+        virtual ~ASTFunctionType() { delete rettype; delete argtypes; }
+        
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx);
+        
+        ASTType* rettype;
+        ASTList* argtypes;
+    };
+    
     class ASTTypeName : public ASTType {
     public:
         ASTTypeName (ASTIdentifier* name) : name(name) { }
@@ -126,11 +140,6 @@ namespace AST {
         
         ASTIdentifier* name;
         
-    };
-    
-    class ASTList : public AST, public std::list<AST*> {
-    public:
-        ~ASTList();
     };
     
     
