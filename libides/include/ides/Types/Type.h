@@ -43,7 +43,7 @@ namespace Types {
         
         virtual llvm::Value* Convert(Ides::Parsing::Parser& ctx, llvm::Value* val, const Type* to) const {
             std::stringstream err;
-            err << "no conversion to type " << to->ToString() << " exists.";
+            err << "no conversion from " + this->ToString() + " to type " << to->ToString() << " exists";
             throw std::runtime_error(err.str());
         }
         
@@ -72,7 +72,7 @@ namespace Types {
         static void InitAllBaseTypeMembers();
     };
     
-    class UnitType : public Type {
+    class UnitType : public Type, public Ides::Util::Singleton<UnitType> {
     public:
         UnitType() : Type("unit", NULL) { }
         virtual llvm::Type* GetLLVMType(ParseContext& ctx) const {
@@ -147,8 +147,16 @@ namespace Types {
         NumberType(const Ides::String& type_name, Type* supertype) : Type(type_name, supertype) { }
         virtual ~NumberType() { }
         
-        virtual bool IsSigned() const = 0;
+        enum NumberClass {
+            N_UINT,
+            N_SINT,
+            N_FLOAT
+        };
+        
+        virtual NumberClass GetNumberClass() const = 0;
         virtual uint8_t GetSize() const = 0;
+        
+        bool IsSigned() const { return this->GetNumberClass() == N_SINT; }
         
         static const Ides::Types::Type* GetOperatorType(const Ides::String& opname, ParseContext& ctx, Ides::AST::AST* lhs, Ides::AST::AST* rhs);
         static llvm::Value* GetOperatorValue(const Ides::String& opname, ParseContext& ctx, Ides::AST::AST* lhs, Ides::AST::AST* rhs);
@@ -164,12 +172,14 @@ namespace Types {
         virtual llvm::Type* GetLLVMType(ParseContext& ctx) const { \
             return llvm::Type::getInt##size##Ty(ctx.GetIRBuilder()->getContext()); \
         } \
-        virtual bool IsSigned() const { return true; } \
+        virtual NumberType::NumberClass GetNumberClass() const { return NumberType::N_SINT; } \
         virtual uint8_t GetSize() const { return size; } \
         virtual bool HasImplicitConversionTo(const Type* other) const; \
         virtual llvm::Value* Convert(Ides::Parsing::Parser& ctx, llvm::Value* val, const Type* to) const { \
             const NumberType* t = dynamic_cast<const NumberType*>(to); assert(t); \
-            return ctx.GetIRBuilder()->CreateIntCast(val, to->GetLLVMType(ctx), t->IsSigned(), "impconv");\
+            if (t->GetNumberClass() == NumberType::N_FLOAT) \
+                return ctx.GetIRBuilder()->CreateSIToFP(val, t->GetLLVMType(ctx)); \
+            return ctx.GetIRBuilder()->CreateIntCast(val, t->GetLLVMType(ctx), t->GetNumberClass() == NumberType::N_SINT, "impconv");\
         }\
     }
 
@@ -181,15 +191,18 @@ namespace Types {
         virtual llvm::Type* GetLLVMType(ParseContext& ctx) const { \
             return llvm::Type::getInt##size##Ty(ctx.GetIRBuilder()->getContext()); \
         } \
-        virtual bool IsSigned() const { return false; } \
+        virtual NumberType::NumberClass GetNumberClass() const { return NumberType::N_UINT; } \
         virtual uint8_t GetSize() const { return size; } \
         virtual bool HasImplicitConversionTo(const Type* other) const; \
         virtual llvm::Value* Convert(Ides::Parsing::Parser& ctx, llvm::Value* val, const Type* to) const { \
             const NumberType* t = dynamic_cast<const NumberType*>(to); assert(t); \
-            return ctx.GetIRBuilder()->CreateIntCast(val, to->GetLLVMType(ctx), t->IsSigned(), "impconv");\
+            if (t->GetNumberClass() == NumberType::N_FLOAT) \
+                return ctx.GetIRBuilder()->CreateUIToFP(val, t->GetLLVMType(ctx)); \
+            return ctx.GetIRBuilder()->CreateIntCast(val, t->GetLLVMType(ctx), t->GetNumberClass() == NumberType::N_SINT, "impconv");\
         }\
     }
     
+    IntegerType(1);
     IntegerType(8);
     UIntegerType(8);
     IntegerType(16);
@@ -206,7 +219,7 @@ namespace Types {
         virtual llvm::Type* GetLLVMType(ParseContext& ctx) const {
             return llvm::Type::getFloatTy(ctx.GetIRBuilder()->getContext());
         }
-        virtual bool IsSigned() const { return true; }
+        virtual NumberType::NumberClass GetNumberClass() const { return NumberType::N_FLOAT; }
         virtual uint8_t GetSize() const { return 32; }
         virtual bool HasImplicitConversionTo(const Type* other) const;
     };
@@ -218,7 +231,7 @@ namespace Types {
         virtual llvm::Type* GetLLVMType(ParseContext& ctx) const {
             return llvm::Type::getDoubleTy(ctx.GetIRBuilder()->getContext());
         }
-        virtual bool IsSigned() const { return true; }
+        virtual NumberType::NumberClass GetNumberClass() const { return NumberType::N_FLOAT; }
         virtual uint8_t GetSize() const { return 64; }
         virtual bool HasImplicitConversionTo(const Type* other) const;
     };

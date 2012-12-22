@@ -50,6 +50,9 @@ namespace AST {
             virtual ~RecursiveTypeEvalException() throw() {}
         };
         
+        // No need to re-calculate the type.
+        if (functype != NULL) return functype;
+        
         if (evaluatingtype) {
             throw RecursiveTypeEvalException("recursive functions cannot infer types", this->val->exprloc);
         }
@@ -84,7 +87,8 @@ namespace AST {
         evaluatingtype = false;
         assert(ret != NULL);
         ctx.PopLocalScope();
-        return Ides::Types::FunctionType::Get(ret, argTypes);
+        this->functype = Ides::Types::FunctionType::Get(ret, argTypes);
+        return this->functype;
     }
     
     llvm::Value* ASTFunction::GetValue(ParseContext& ctx)
@@ -102,6 +106,7 @@ namespace AST {
         assert(func != NULL && (this->val != NULL || this->body != NULL));
         
         ctx.PushLocalScope();
+        ctx.PushFunction(this);
         
         auto i = args->begin();
         llvm::Function::arg_iterator ai = func->arg_begin();
@@ -113,22 +118,52 @@ namespace AST {
         }
         assert (i == args->end() && ai == func->arg_end());
         
-        llvm::BasicBlock* entryblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "entry", func);
+        llvm::BasicBlock* entryblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "entry", this->func);
+        //this->retblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "return", this->func);
+        
         ctx.GetIRBuilder()->SetInsertPoint(entryblock);
-        if (this->val) {
-            ctx.GetIRBuilder()->CreateRet(this->val->GetValue(ctx));
+        try {
+            if (this->val) {
+                if (this->functype->retType->IsEquivalentType(Ides::Types::VoidType::GetSingletonPtr())
+                    || this->functype->retType->IsEquivalentType(Ides::Types::UnitType::GetSingletonPtr())) {
+                    this->val->GetValue(ctx);
+                    ctx.GetIRBuilder()->CreateRetVoid();
+                } else {
+                    ctx.GetIRBuilder()->CreateRet(this->val->GetValue(ctx));
+                }
+            }
+            else if (this->body) {
+                this->body->GetValue(ctx);
+            }
+            llvm::verifyFunction(*func);
+            func->dump();
+        } catch (const Ides::Diagnostics::CompileError& ex) {
+            ctx.PopFunction();
+            ctx.PopLocalScope();
+            throw Ides::Diagnostics::CompileError(ex.message(), this->exprloc, ex);
         }
-        else if (this->body) {
-            llvm::BasicBlock* exitblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext());
-            
-            for (auto i = this->body->begin(); i != this->body->end(); ++i) {
+        
+        
+        ctx.PopFunction();
+        ctx.PopLocalScope();
+    }
+    
+    llvm::Value* ASTCompoundStatement::GetValue(ParseContext &ctx) {
+        ctx.PushLocalScope();
+        
+        llvm::BasicBlock* scope = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "scope", (llvm::Function*)ctx.GetEvaluatingFunction()->GetValue(ctx));
+        ctx.GetIRBuilder()->CreateBr(scope);
+        ctx.GetIRBuilder()->SetInsertPoint(scope);
+        for (auto i = this->begin(); i != this->end(); ++i) {
+            try {
                 (*i)->GetValue(ctx);
+            } catch (const Ides::AST::UnitValueException& ex) {
+                break;
             }
         }
-        llvm::verifyFunction(*func);
-        func->dump();
         
         ctx.PopLocalScope();
+        return NULL;
     }
     
     const Ides::Types::Type* ASTFunctionCall::GetType(ParseContext& ctx) {
@@ -166,6 +201,33 @@ namespace AST {
         AST* ret = ctx.GetLocalSymbols()->LookupRecursive(this->name);
         if (ret == NULL) throw Ides::Diagnostics::CompileError("no such identifier " + this->name, this->exprloc);
         return ret->GetType(ctx);
+    }
+    
+    llvm::Value* ASTReturnExpression::GetValue(ParseContext& ctx) {
+        const Ides::Types::Type* exprtype = this->retval->GetType(ctx);
+        const Ides::Types::Type* funcrettype = ctx.GetEvaluatingFunction()->rettype->GetType(ctx);
+        if (funcrettype == Ides::Types::VoidType::GetSingletonPtr()) {
+            if (this->retval != NULL)
+                throw Ides::Diagnostics::CompileError("unexpected expression in return from a function with void return type", retval->exprloc);
+            ctx.GetIRBuilder()->CreateRetVoid();
+        }
+        else if (funcrettype == Ides::Types::UnitType::GetSingletonPtr()) {
+            throw Ides::Diagnostics::CompileError("functions with unit return type cannot return", this->exprloc);
+        }
+        else if (this->retval == NULL && funcrettype == Ides::Types::VoidType::GetSingletonPtr()) {
+            throw Ides::Diagnostics::CompileError("expected expression", this->exprloc);
+        }
+        else if (exprtype->IsEquivalentType(funcrettype)) {
+            ctx.GetIRBuilder()->CreateRet(this->retval->GetValue(ctx));
+        }
+        else {
+            ctx.GetIRBuilder()->CreateRet(this->retval->GetType(ctx)->Convert(ctx, this->retval->GetValue(ctx), funcrettype));
+        }
+        throw Ides::AST::UnitValueException();
+    }
+    
+    const Ides::Types::Type* ASTReturnExpression::GetType(ParseContext& ctx) {
+        return Ides::Types::UnitType::GetSingletonPtr();
     }
     
     const Ides::Types::Type* ASTInfixExpression::GetType(ParseContext& ctx) {

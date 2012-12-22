@@ -29,6 +29,21 @@ namespace AST {
      * are handled automatically by the unary - operator.
      */
     
+    class ASTConstantBoolExpression : public ASTConstantExpression {
+    public:
+        ASTConstantBoolExpression(bool v) : val(v) { }
+        virtual ~ASTConstantBoolExpression() { }
+        
+        virtual Ides::Types::Type* GetType(ParseContext& ctx) {
+            return Ides::Types::Integer1Type::GetSingletonPtr();
+        }
+        virtual llvm::Value* GetValue(ParseContext& ctx) {
+            return val ? llvm::ConstantInt::getTrue(ctx.GetIRBuilder()->getContext()) : llvm::ConstantInt::getFalse(ctx.GetIRBuilder()->getContext());
+        }
+    private:
+        bool val;
+    };
+    
     class ASTConstantIntExpression : public ASTConstantExpression {
     public:
         ASTConstantIntExpression(uint64_t v) : val(v) { }

@@ -64,6 +64,9 @@
 "null"                  SET_YYLLOC; return KW_NULL;
 "return"                SET_YYLLOC; return KW_RETURN;
 
+"void"                  SET_YYLLOC; return KW_VOID;
+"unit"                  SET_YYLLOC; return KW_UNIT;
+"bool"                  SET_YYLLOC; return KW_BOOL;
 "int8"                  SET_YYLLOC; return KW_INT8;
 "uint8"                 SET_YYLLOC; return KW_UINT8;
 "int16"                 SET_YYLLOC; return KW_INT16;
@@ -75,6 +78,9 @@
 
 "float32"               SET_YYLLOC; return KW_FLOAT32;
 "float64"               SET_YYLLOC; return KW_FLOAT64;
+
+"true"                  SET_YYLLOC; yylval->ast_base = new Ides::AST::ASTConstantBoolExpression(true); return KW_TRUE;
+"false"                 SET_YYLLOC; yylval->ast_base = new Ides::AST::ASTConstantBoolExpression(true); return KW_FALSE;
 
 "or"                    SET_YYLLOC; return OP_COALESCE;
 "as"                    SET_YYLLOC; return OP_CAST;

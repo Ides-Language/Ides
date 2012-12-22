@@ -5,7 +5,7 @@ namespace {
     typedef Ides::Types::ParseContext ParseContext;
     
     template<char op>
-    const Ides::Types::Type* IntArithmeticType(ParseContext& ctx, Ides::AST::AST* lhs, Ides::AST::AST* rhs) {
+    const Ides::Types::Type* NumericArithmeticType(ParseContext& ctx, Ides::AST::AST* lhs, Ides::AST::AST* rhs) {
         const Ides::Types::Type* rhstype = rhs->GetType(ctx);
         const Ides::Types::Type* lhstype = lhs->GetType(ctx);
         if (const Ides::Types::NumberType* rhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(rhstype)) {
@@ -16,14 +16,16 @@ namespace {
                 return lhsnumtype;
             else if (lhsnumtype->HasImplicitConversionTo(rhsnumtype))
                 return rhsnumtype;
+            else
+                throw Ides::Diagnostics::CompileError("no implicit conversion for rhs argument", rhs->exprloc);
         }
         std::stringstream err;
         err << "could not resolve operator " << op << " for rhs argument of type " << rhstype->ToString();
         throw Ides::Diagnostics::CompileError(err.str(), rhs->exprloc);
     }
     
-#define MAKE_INT_ARITHMETIC_OPERATOR_VALUE(name, op, method) \
-    llvm::Value* Int##name##Value(ParseContext& ctx, Ides::AST::AST* lhs, Ides::AST::AST* rhs) { \
+#define MAKE_NUM_ARITHMETIC_OPERATOR_VALUE(name, op, method) \
+    llvm::Value* name##Value(ParseContext& ctx, Ides::AST::AST* lhs, Ides::AST::AST* rhs) { \
         const Ides::Types::Type* rhstype = rhs->GetType(ctx); \
         const Ides::Types::Type* lhstype = lhs->GetType(ctx); \
         if (const Ides::Types::NumberType* rhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(rhstype)) { \
@@ -35,9 +37,15 @@ namespace {
         throw Ides::Diagnostics::CompileError("could not resolve operator " op " for rhs argument of type " + rhstype->ToString(), rhs->exprloc); \
     }
     
-    MAKE_INT_ARITHMETIC_OPERATOR_VALUE(Plus, "+", CreateAdd);
-    MAKE_INT_ARITHMETIC_OPERATOR_VALUE(Sub, "-", CreateSub);
-    MAKE_INT_ARITHMETIC_OPERATOR_VALUE(Mul, "*", CreateMul);
+    MAKE_NUM_ARITHMETIC_OPERATOR_VALUE(IntPlus, "+", CreateAdd);
+    MAKE_NUM_ARITHMETIC_OPERATOR_VALUE(IntSub, "-", CreateSub);
+    MAKE_NUM_ARITHMETIC_OPERATOR_VALUE(IntMul, "*", CreateMul);
+    
+    MAKE_NUM_ARITHMETIC_OPERATOR_VALUE(FltPlus, "+", CreateFAdd);
+    MAKE_NUM_ARITHMETIC_OPERATOR_VALUE(FltSub, "-", CreateFSub);
+    MAKE_NUM_ARITHMETIC_OPERATOR_VALUE(FltMul, "*", CreateFMul);
+    MAKE_NUM_ARITHMETIC_OPERATOR_VALUE(FltDiv, "/", CreateFDiv);
+    MAKE_NUM_ARITHMETIC_OPERATOR_VALUE(FltMod, "*", CreateFRem);
     
     llvm::Value* IntDivideValue(ParseContext& ctx, Ides::AST::AST* lhs, Ides::AST::AST* rhs) {
         const Ides::Types::Type* rhstype = rhs->GetType(ctx);
@@ -92,22 +100,38 @@ namespace {
     Integer64Type::GetSingletonPtr()->operators.insert(std::make_pair(op, pair)); \
     UInteger64Type::GetSingletonPtr()->operators.insert(std::make_pair(op, pair)); \
 
+#define MAKE_FLT_ARITHMETIC_OPERATOR(op, pair) \
+    Float32Type::GetSingletonPtr()->operators.insert(std::make_pair(op, pair)); \
+    Float64Type::GetSingletonPtr()->operators.insert(std::make_pair(op, pair)); \
+
 
 namespace Ides {
 namespace Types {
     
     void VoidType::InitAllBaseTypeMembers() {
-        auto int_add = std::make_pair(IntArithmeticType<'+'>, IntPlusValue);
-        auto int_subtract = std::make_pair(IntArithmeticType<'-'>, IntSubValue);
-        auto int_times = std::make_pair(IntArithmeticType<'*'>, IntMulValue);
-        auto int_divide = std::make_pair(IntArithmeticType<'/'>, IntDivideValue);
-        auto int_mod = std::make_pair(IntArithmeticType<'%'>, IntModValue);
+        auto int_add = std::make_pair(NumericArithmeticType<'+'>, IntPlusValue);
+        auto int_subtract = std::make_pair(NumericArithmeticType<'-'>, IntSubValue);
+        auto int_times = std::make_pair(NumericArithmeticType<'*'>, IntMulValue);
+        auto int_divide = std::make_pair(NumericArithmeticType<'/'>, IntDivideValue);
+        auto int_mod = std::make_pair(NumericArithmeticType<'%'>, IntModValue);
+        
+        auto flt_add = std::make_pair(NumericArithmeticType<'+'>, FltPlusValue);
+        auto flt_subtract = std::make_pair(NumericArithmeticType<'-'>, FltSubValue);
+        auto flt_times = std::make_pair(NumericArithmeticType<'*'>, FltMulValue);
+        auto flt_divide = std::make_pair(NumericArithmeticType<'/'>, FltDivValue);
+        auto flt_mod = std::make_pair(NumericArithmeticType<'%'>, FltModValue);
         
         MAKE_INT_ARITHMETIC_OPERATOR("+", int_add)
         MAKE_INT_ARITHMETIC_OPERATOR("-", int_subtract)
         MAKE_INT_ARITHMETIC_OPERATOR("*", int_times)
         MAKE_INT_ARITHMETIC_OPERATOR("/", int_divide)
         MAKE_INT_ARITHMETIC_OPERATOR("%", int_mod)
+        
+        MAKE_FLT_ARITHMETIC_OPERATOR("+", flt_add)
+        MAKE_FLT_ARITHMETIC_OPERATOR("-", flt_subtract)
+        MAKE_FLT_ARITHMETIC_OPERATOR("*", flt_times)
+        MAKE_FLT_ARITHMETIC_OPERATOR("/", flt_divide)
+        MAKE_FLT_ARITHMETIC_OPERATOR("%", flt_mod)
     }
     
 }

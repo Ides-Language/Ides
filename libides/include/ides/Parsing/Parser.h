@@ -74,6 +74,10 @@ namespace Ides {
             }
             void PopLocalScope() { localSymbols.pop(); }
             
+            void PushFunction(Ides::AST::ASTFunction* func) { functionEval.push(func); }
+            void PopFunction() { functionEval.pop(); }
+            Ides::AST::ASTFunction* GetEvaluatingFunction() const { return functionEval.top(); }
+            
             const Ides::SourceIterator& GetSourceIterator() const { return this->src_iter; }
         protected:
             void InitParser();
@@ -89,6 +93,7 @@ namespace Ides {
             SymbolTable::Ptr internalSymbols;
             SymbolTable::Ptr privateSymbols;
             std::stack<SymbolTable::Ptr> localSymbols;
+            std::stack<Ides::AST::ASTFunction*> functionEval;
             
             
             llvm::Module* mod;

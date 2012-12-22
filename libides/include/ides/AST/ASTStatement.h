@@ -22,6 +22,8 @@ namespace AST {
     public:
         ASTCompoundStatement() { }
         virtual ~ASTCompoundStatement() { }
+        
+        virtual llvm::Value* GetValue(ParseContext& ctx);
     };
     
     class ASTIfStatement : public ASTStatement {

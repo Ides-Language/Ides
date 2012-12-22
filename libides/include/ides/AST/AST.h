@@ -22,6 +22,8 @@ namespace AST {
     
     typedef Ides::Parsing::ParseContext ParseContext;
     
+    class UnitValueException : public std::exception { };
+    
     class AST {
     public:
         
@@ -59,6 +61,16 @@ namespace AST {
     public:
     };
     
+    class ASTVoidType : public ASTType {
+    public:
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx) { return Ides::Types::VoidType::GetSingletonPtr(); }
+    };
+    
+    class ASTUnitType : public ASTType {
+    public:
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx) { return Ides::Types::UnitType::GetSingletonPtr(); }
+    };
+    
 #define ASTINTTYPE(size) class ASTInteger##size##Type : public ASTType { \
     public: \
         virtual const Ides::Types::Type* GetType(ParseContext& ctx) { return Ides::Types::Integer##size##Type::GetSingletonPtr(); } \
@@ -68,6 +80,7 @@ namespace AST {
         virtual const Ides::Types::Type* GetType(ParseContext& ctx) { return Ides::Types::UInteger##size##Type::GetSingletonPtr(); } \
     }
     
+    ASTINTTYPE(1);
     ASTINTTYPE(8);
     ASTUINTTYPE(8);
     ASTINTTYPE(16);

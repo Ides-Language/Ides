@@ -82,6 +82,7 @@ namespace Parsing {
         }
         
         assert(this->localSymbols.empty());
+        assert(this->functionEval.empty());
     }
     
     Parser::~Parser() {

@@ -6,6 +6,7 @@ namespace Util {
 #define SINGLETON(type) template<> type* Singleton<type>::msSingleton = new type()
     
     
+    SINGLETON(Ides::Types::Integer1Type);
     SINGLETON(Ides::Types::Integer8Type);
     SINGLETON(Ides::Types::UInteger8Type);
     SINGLETON(Ides::Types::Integer16Type);
@@ -96,10 +97,10 @@ namespace Types {
     bool Float32Type::HasImplicitConversionTo(const Ides::Types::Type *other) const { return other->IsEquivalentType(Float64Type::GetSingletonPtr()); }
     
     bool UInteger64Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
-        return false;
+        return Float32Type::GetSingletonPtr()->IsEquivalentType(other) || Float32Type::GetSingletonPtr()->HasImplicitConversionTo(other);
     }
     bool Integer64Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
-        return false;
+        return Float32Type::GetSingletonPtr()->IsEquivalentType(other) || Float32Type::GetSingletonPtr()->HasImplicitConversionTo(other);
     }
     
     bool UInteger32Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
@@ -122,6 +123,11 @@ namespace Types {
     }
     bool Integer8Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
         return Integer16Type::GetSingletonPtr()->IsEquivalentType(other) || Integer16Type::GetSingletonPtr()->HasImplicitConversionTo(other);
+    }
+    
+    bool Integer1Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
+        return UInteger8Type::GetSingletonPtr()->IsEquivalentType(other) || UInteger8Type::GetSingletonPtr()->HasImplicitConversionTo(other) ||
+                Integer8Type::GetSingletonPtr()->IsEquivalentType(other) ||  Integer8Type::GetSingletonPtr()->HasImplicitConversionTo(other);
     }
     
 }
