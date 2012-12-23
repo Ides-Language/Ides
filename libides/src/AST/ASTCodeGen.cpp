@@ -122,22 +122,27 @@ namespace AST {
         ParseContext::ScopedLocalScope localScope(ctx);
         ParseContext::ScopedFunction thisFunction(ctx, this);
         
+        llvm::BasicBlock* entryblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "entry", this->func);
+        //this->retblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "return", this->func);
+        
+        ctx.GetIRBuilder()->SetInsertPoint(entryblock);
+        
         if (args) {
             auto i = args->begin();
             llvm::Function::arg_iterator ai = func->arg_begin();
             for (; i != args->end() && ai != func->arg_end(); ++ai, ++i) {
                 ASTDeclaration* decl = dynamic_cast<ASTDeclaration*>(*i);
-                decl->val = ai;
+                if (decl->vartype == ASTDeclaration::DECL_VAL) {
+                    decl->val = ai;
+                } else {
+                    decl->GetValue(ctx);
+                    ctx.GetIRBuilder()->CreateStore(ai, decl->val);
+                }
                 ai->setName(decl->name->name);
                 ctx.GetLocalSymbols()->insert(std::make_pair(decl->name->name, decl));
             }
             assert (i == args->end() && ai == func->arg_end());
         }
-        
-        llvm::BasicBlock* entryblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "entry", this->func);
-        //this->retblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "return", this->func);
-        
-        ctx.GetIRBuilder()->SetInsertPoint(entryblock);
         try {
             if (this->val) {
                 if (this->functype->retType->IsEquivalentType(Ides::Types::VoidType::GetSingletonPtr())
@@ -335,6 +340,7 @@ namespace AST {
             AST* variable = ctx.GetLocalSymbols()->LookupRecursive(ident->name);
             if (variable == NULL) throw Ides::Diagnostics::CompileError("no such identifier " + ident->name, this->exprloc);
             if (ASTDeclaration* decl = dynamic_cast<ASTDeclaration*>(variable)) {
+                if (decl->vartype == ASTDeclaration::DECL_VAL) throw Ides::Diagnostics::CompileError("cannot reassign val", this->exprloc);
                 llvm::Value* newval = rhs->GetType(ctx)->Convert(ctx, rhs->GetValue(ctx), lhs->GetType(ctx));
                 ctx.GetIRBuilder()->CreateStore(newval, decl->val);
                 return newval;
