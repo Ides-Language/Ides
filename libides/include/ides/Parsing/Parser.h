@@ -3,7 +3,7 @@
 
 #include <string>
 #include <boost/unordered_map.hpp>
-#include <ostream>
+#include <iostream>
 #include <stack>
 #include <list>
 #include <ides/common.h>
