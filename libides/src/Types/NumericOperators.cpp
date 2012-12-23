@@ -33,7 +33,7 @@ namespace {
             else if (rhsnumtype->HasImplicitConversionTo(lhsnumtype)) return ctx.GetIRBuilder()->method(lhs->GetValue(ctx), rhsnumtype->Convert(ctx, rhs->GetValue(ctx), lhsnumtype)); \
             else if (lhsnumtype->HasImplicitConversionTo(rhsnumtype)) return ctx.GetIRBuilder()->method(lhsnumtype->Convert(ctx, lhs->GetValue(ctx), rhsnumtype), rhs->GetValue(ctx)); \
         } \
-        throw Ides::Diagnostics::CompileError("could not resolve operator " op " for rhs argument of type " + rhstype->ToString(), rhs->exprloc); \
+        throw Ides::Diagnostics::CompileError("could not resolve operator " op " for rhs argument of type " + rhstype->ToString(), lhs->exprloc + rhs->exprloc); \
     }
     
     MAKE_NUM_ARITHMETIC_OPERATOR_VALUE(IntPlus, "+", CreateAdd);
@@ -64,7 +64,7 @@ namespace {
                     ctx.GetIRBuilder()->CreateSDiv(lhsnumtype->Convert(ctx, lhs->GetValue(ctx), rhsnumtype), rhs->GetValue(ctx)) :
                     ctx.GetIRBuilder()->CreateUDiv(lhsnumtype->Convert(ctx, lhs->GetValue(ctx), rhsnumtype), rhs->GetValue(ctx));
         }
-        throw Ides::Diagnostics::CompileError("could not resolve operator / for rhs argument of type " + rhstype->ToString(), rhs->exprloc);
+        throw Ides::Diagnostics::CompileError("could not resolve operator / for rhs argument of type " + rhstype->ToString(), lhs->exprloc + rhs->exprloc);
     }
     
     llvm::Value* IntModValue(ParseContext& ctx, Ides::AST::AST* lhs, Ides::AST::AST* rhs) {
@@ -85,7 +85,7 @@ namespace {
                 ctx.GetIRBuilder()->CreateSRem(lhsnumtype->Convert(ctx, lhs->GetValue(ctx), rhsnumtype), rhs->GetValue(ctx)) :
                 ctx.GetIRBuilder()->CreateURem(lhsnumtype->Convert(ctx, lhs->GetValue(ctx), rhsnumtype), rhs->GetValue(ctx));
         }
-        throw Ides::Diagnostics::CompileError("could not resolve operator % for rhs argument of type " + rhstype->ToString(), rhs->exprloc);
+        throw Ides::Diagnostics::CompileError("could not resolve operator % for rhs argument of type " + rhstype->ToString(), lhs->exprloc + rhs->exprloc);
     }
     
     template<int Pred>
@@ -101,7 +101,7 @@ namespace {
             else if (lhsnumtype->HasImplicitConversionTo(rhsnumtype))
                 return ctx.GetIRBuilder()->CreateICmp((llvm::CmpInst::Predicate)Pred,lhsnumtype->Convert(ctx, lhs->GetValue(ctx), rhsnumtype), rhs->GetValue(ctx));
         }
-        throw Ides::Diagnostics::CompileError("could not resolve operator for rhs argument of type " + rhstype->ToString(), rhs->exprloc);
+        throw Ides::Diagnostics::CompileError("could not resolve operator for rhs argument of type " + rhstype->ToString(), lhs->exprloc + rhs->exprloc);
     }
 }
 

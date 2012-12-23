@@ -43,6 +43,7 @@
     Ides::AST::ASTCompoundStatement* ast_block;
     Ides::AST::ASTIfStatement* ast_if;
     Ides::AST::ASTWhileStatement* ast_while;
+    Ides::AST::ASTForStatement* ast_for;
     
     Ides::AST::ASTDeclaration* ast_decl;
     Ides::AST::ASTFunction* ast_fn;
@@ -74,7 +75,8 @@
 %token KW_PUBLIC KW_PROTECTED KW_INTERNAL KW_PRIVATE KW_EXTERN
 
 // Keywords
-%token KW_DEF KW_FN KW_VAR KW_VAL KW_IF KW_ELSE KW_WHILE KW_NULL
+%token KW_DEF KW_FN KW_VAR KW_VAL KW_NULL
+%token KW_IF KW_ELSE KW_DO KW_WHILE KW_FOR
 // Keyword operators
 %token KW_THROW KW_NEW KW_RETURN
 
@@ -103,6 +105,8 @@
 %type <ast_block> stmt_list
 %type <ast_if> if_stmt
 %type <ast_while> while_stmt
+%type <ast_for> for_stmt
+%type <ast_base> for_start
 
 %type <ast_prog> root
 
@@ -278,11 +282,18 @@ if_stmt : KW_IF '(' expression ')' stmt KW_ELSE stmt { $$ = new Ides::AST::ASTIf
 
 while_stmt : KW_WHILE '(' expression ')' stmt { $$ = new Ides::AST::ASTWhileStatement($3, $5); SET_EXPRLOC($$, @$); }
 
+for_stmt : KW_FOR '(' for_start ';' expression ';' expression ')' stmt { $$ = new Ides::AST::ASTForStatement($3, $5, $7, $9); SET_EXPRLOC($$, @$); }
+
+for_start : expression
+          | var_decl
+;
+
 stmt : var_decl ';' { SET_EXPRLOC($$, @$); }
      | val_decl ';' { SET_EXPRLOC($$, @$); }
      | expression ';' { SET_EXPRLOC($$, @$); }
      | if_stmt { SET_EXPRLOC($$, @$); }
      | while_stmt { SET_EXPRLOC($$, @$); }
+     | for_stmt { SET_EXPRLOC($$, @$); }
      | '{' stmt_list '}' { $$ = (Ides::AST::ASTStatement*)$2; SET_EXPRLOC($$, @$); }
 ;
 

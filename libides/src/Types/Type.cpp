@@ -99,7 +99,7 @@ namespace Types {
         const Ides::Types::NumberType* lhstype = static_cast<const Ides::Types::NumberType*>(lhs->GetType(ctx));
         auto oper = lhstype->operators.find(opname);
         if (oper == lhstype->operators.end()) {
-            throw Ides::Diagnostics::CompileError("no such operator exists on type " + lhstype->ToString(), lhs->exprloc);
+            throw Ides::Diagnostics::CompileError("no such operator exists on type " + lhstype->ToString(), lhs->exprloc + rhs->exprloc);
         }
         return oper->second.first(ctx, lhs, rhs);
     }
@@ -109,7 +109,7 @@ namespace Types {
         const Ides::Types::NumberType* lhstype = static_cast<const Ides::Types::NumberType*>(lhs->GetType(ctx));
         auto oper = lhstype->operators.find(opname);
         if (oper == lhstype->operators.end()) {
-            throw Ides::Diagnostics::CompileError("no such operator exists on type " + lhstype->ToString(), lhs->exprloc);
+            throw Ides::Diagnostics::CompileError("no such operator exists on type " + lhstype->ToString(), lhs->exprloc + rhs->exprloc);
         }
         return oper->second.second(ctx, lhs, rhs);
     }

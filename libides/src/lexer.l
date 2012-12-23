@@ -69,6 +69,8 @@
 "if"                    SET_YYLLOC; return KW_IF;
 "else"                  SET_YYLLOC; return KW_ELSE;
 "while"                 SET_YYLLOC; return KW_WHILE;
+"for"                   SET_YYLLOC; return KW_FOR;
+"do"                    SET_YYLLOC; return KW_DO;
 
 "void"                  SET_YYLLOC; return KW_VOID;
 "unit"                  SET_YYLLOC; return KW_UNIT;

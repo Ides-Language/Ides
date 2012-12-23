@@ -58,6 +58,25 @@ namespace AST {
         ASTStatement* body;
     };
     
+    class ASTForStatement : public ASTStatement {
+    public:
+        ASTForStatement(AST* startexpr, ASTExpression* endexpr, ASTExpression* eachexpr, ASTStatement* body) :
+            startexpr(startexpr), endexpr(endexpr), eachexpr(eachexpr), body(body) { }
+        virtual ~ASTForStatement() {
+            if (startexpr) delete startexpr;
+            if (endexpr) delete endexpr;
+            if (eachexpr) delete eachexpr;
+            delete body;
+        }
+        
+        virtual llvm::Value* GetValue(ParseContext& ctx);
+        
+        AST* startexpr;
+        ASTExpression* endexpr;
+        ASTExpression* eachexpr;
+        ASTStatement* body;
+    };
+    
     
 }
 }

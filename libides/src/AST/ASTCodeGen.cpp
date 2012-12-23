@@ -238,6 +238,29 @@ namespace AST {
         return NULL;
     }
     
+    llvm::Value* ASTForStatement::GetValue(ParseContext& ctx) {
+        llvm::BasicBlock* forblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "for", (llvm::Function*)ctx.GetEvaluatingFunction()->GetValue(ctx));
+        llvm::BasicBlock* resumeblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "endfor", (llvm::Function*)ctx.GetEvaluatingFunction()->GetValue(ctx));
+        
+        if (this->startexpr) this->startexpr->GetValue(ctx);
+        
+        llvm::Value* endcond = this->endexpr->GetType(ctx)->Convert(ctx, this->endexpr->GetValue(ctx), Ides::Types::Integer1Type::GetSingletonPtr());
+        ctx.GetIRBuilder()->CreateCondBr(endcond, forblock, resumeblock);
+        
+        ctx.GetIRBuilder()->SetInsertPoint(forblock);
+        try {
+            body->GetValue(ctx);
+            if (this->eachexpr) this->eachexpr->GetValue(ctx);
+            endcond = this->endexpr->GetType(ctx)->Convert(ctx, this->endexpr->GetValue(ctx), Ides::Types::Integer1Type::GetSingletonPtr());
+            ctx.GetIRBuilder()->CreateCondBr(endcond, forblock, resumeblock);
+        } catch (const Ides::AST::UnitValueException& ex) {
+            // Block early-exits function.
+        }
+        
+        ctx.GetIRBuilder()->SetInsertPoint(resumeblock);
+        return NULL;
+    }
+    
     llvm::Value* ASTCompoundStatement::GetValue(ParseContext &ctx) {
         
         ParseContext::ScopedLocalScope localScope(ctx);
@@ -364,11 +387,7 @@ namespace AST {
     const Ides::Types::Type* ASTInfixExpression::GetType(ParseContext& ctx) {
         // Handle numeric types
         if (const Ides::Types::NumberType* lhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(this->lhs->GetType(ctx))) {
-            try {
-                return lhsnumtype->GetOperatorType(this->func->name, ctx, lhs, rhs);
-            } catch (const Ides::Diagnostics::CompileError& e) {
-                throw Ides::Diagnostics::CompileError(e.message(), this->exprloc, e);
-            }
+            return lhsnumtype->GetOperatorType(this->func->name, ctx, lhs, rhs);
         }
         return ASTExpression::GetType(ctx);
         
@@ -377,11 +396,7 @@ namespace AST {
     llvm::Value* ASTInfixExpression::GetValue(ParseContext& ctx) {
         // Handle numeric types
         if (const Ides::Types::NumberType* lhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(this->lhs->GetType(ctx))) {
-            try {
-                return lhsnumtype->GetOperatorValue(this->func->name, ctx, lhs, rhs);
-            } catch (const Ides::Diagnostics::CompileError& e) {
-                throw Ides::Diagnostics::CompileError(e.message(), this->exprloc, e);
-            }
+            return lhsnumtype->GetOperatorValue(this->func->name, ctx, lhs, rhs);
         }
         return ASTExpression::GetValue(ctx);
     }
