@@ -8,7 +8,7 @@ if exists("b:current_syntax")
 endif
 
 " A bunch of useful keywords
-syn keyword	cStatement	return def var val throw new extern
+syn keyword	cStatement	return def var val throw new extern as or
 syn keyword	cLabel		case default
 syn keyword	cConditional	if else switch
 syn keyword	cRepeat		while for do
@@ -127,7 +127,7 @@ endif
 syntax match	cCommentError	display "\*/"
 syntax match	cCommentStartError display "/\*"me=e-1 contained
 
-syn keyword	cType		void uint bool int8 uint8 int16 uint16 int32 uint32 int64 uint64 float32 float64 function
+syn keyword	cType		void unit bool int8 uint8 int16 uint16 int32 uint32 int64 uint64 float32 float64 function
 
 syn keyword cConstant true false null
 

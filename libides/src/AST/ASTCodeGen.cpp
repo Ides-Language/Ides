@@ -110,7 +110,7 @@ namespace AST {
             llvm::FunctionType *FT = static_cast<llvm::FunctionType*>(this->GetType(ctx)->GetLLVMType(ctx));
             //func = (llvm::Function*)ctx.GetModule()->getOrInsertFunction(this->GetMangledName(), FT);
             func = llvm::Function::Create(FT, llvm::GlobalValue::ExternalLinkage, this->GetMangledName(), ctx.GetModule());
-            //func->setGC("refcount");
+            func->setGC("shadow-stack");
         }
         return func;
     }
@@ -185,101 +185,7 @@ namespace AST {
         }
     }
     
-    llvm::Value* ASTIfStatement::GetValue(ParseContext& ctx) {
-        llvm::BasicBlock* ifblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "if", (llvm::Function*)ctx.GetEvaluatingFunction()->GetValue(ctx));
-        llvm::BasicBlock* elseblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "else", (llvm::Function*)ctx.GetEvaluatingFunction()->GetValue(ctx));
-        llvm::BasicBlock* resumeBlock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "endif", (llvm::Function*)ctx.GetEvaluatingFunction()->GetValue(ctx));
-        
-        llvm::Value* cond = this->condition->GetType(ctx)->Convert(ctx, this->condition->GetValue(ctx), Ides::Types::Integer1Type::GetSingletonPtr());
-        ctx.GetIRBuilder()->CreateCondBr(cond, ifblock, elseblock);
-        
-        ctx.GetIRBuilder()->SetInsertPoint(ifblock);
-        try {
-            this->iftrue->GetValue(ctx);
-            ctx.GetIRBuilder()->CreateBr(resumeBlock);
-        } catch (const Ides::AST::UnitValueException& ex) {
-            // Block early-exits function.
-        }
-        
-        ctx.GetIRBuilder()->SetInsertPoint(elseblock);
-        if (this->iffalse) {
-            try {
-                this->iffalse->GetValue(ctx);
-                ctx.GetIRBuilder()->CreateBr(resumeBlock);
-            } catch (const Ides::AST::UnitValueException& ex) {
-                // Block early-exits function.
-            }
-        } else {
-            ctx.GetIRBuilder()->CreateBr(resumeBlock);
-        }
-        
-        ctx.GetIRBuilder()->SetInsertPoint(resumeBlock);
-        return NULL;
-    }
-    
-    llvm::Value* ASTWhileStatement::GetValue(ParseContext& ctx) {
-        llvm::BasicBlock* whileblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "while", (llvm::Function*)ctx.GetEvaluatingFunction()->GetValue(ctx));
-        llvm::BasicBlock* resumeblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "endwhile", (llvm::Function*)ctx.GetEvaluatingFunction()->GetValue(ctx));
-        
-        llvm::Value* cond = this->condition->GetType(ctx)->Convert(ctx, this->condition->GetValue(ctx), Ides::Types::Integer1Type::GetSingletonPtr());
-        ctx.GetIRBuilder()->CreateCondBr(cond, whileblock, resumeblock);
-        
-        ctx.GetIRBuilder()->SetInsertPoint(whileblock);
-        try {
-            body->GetValue(ctx);
-            cond = this->condition->GetType(ctx)->Convert(ctx, this->condition->GetValue(ctx), Ides::Types::Integer1Type::GetSingletonPtr());
-            ctx.GetIRBuilder()->CreateCondBr(cond, whileblock, resumeblock);
-        } catch (const Ides::AST::UnitValueException& ex) {
-            // Block early-exits function.
-        }
-        
-        ctx.GetIRBuilder()->SetInsertPoint(resumeblock);
-        return NULL;
-    }
-    
-    llvm::Value* ASTForStatement::GetValue(ParseContext& ctx) {
-        llvm::BasicBlock* forblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "for", (llvm::Function*)ctx.GetEvaluatingFunction()->GetValue(ctx));
-        llvm::BasicBlock* resumeblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "endfor", (llvm::Function*)ctx.GetEvaluatingFunction()->GetValue(ctx));
-        
-        if (this->startexpr) this->startexpr->GetValue(ctx);
-        
-        llvm::Value* endcond = this->endexpr->GetType(ctx)->Convert(ctx, this->endexpr->GetValue(ctx), Ides::Types::Integer1Type::GetSingletonPtr());
-        ctx.GetIRBuilder()->CreateCondBr(endcond, forblock, resumeblock);
-        
-        ctx.GetIRBuilder()->SetInsertPoint(forblock);
-        try {
-            body->GetValue(ctx);
-            if (this->eachexpr) this->eachexpr->GetValue(ctx);
-            endcond = this->endexpr->GetType(ctx)->Convert(ctx, this->endexpr->GetValue(ctx), Ides::Types::Integer1Type::GetSingletonPtr());
-            ctx.GetIRBuilder()->CreateCondBr(endcond, forblock, resumeblock);
-        } catch (const Ides::AST::UnitValueException& ex) {
-            // Block early-exits function.
-        }
-        
-        ctx.GetIRBuilder()->SetInsertPoint(resumeblock);
-        return NULL;
-    }
-    
-    llvm::Value* ASTCompoundStatement::GetValue(ParseContext &ctx) {
-        
-        ParseContext::ScopedLocalScope localScope(ctx);
-        
-        llvm::BasicBlock* scope = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "scope", (llvm::Function*)ctx.GetEvaluatingFunction()->GetValue(ctx));
-        ctx.GetIRBuilder()->CreateBr(scope);
-        ctx.GetIRBuilder()->SetInsertPoint(scope);
-        for (auto i = this->begin(); i != this->end(); ++i) {
-            try {
-                (*i)->GetValue(ctx);
-            } catch (const Ides::AST::UnitValueException& ex) {
-                if (++i != this->end()) {
-                    ctx.Issue(Ides::Diagnostics::CompileWarning("unreachable code", (*i)->exprloc));
-                }
-                throw ex;
-            }
-        }
-        
-        return NULL;
-    }
+
     
     const Ides::Types::Type* ASTFunctionCall::GetType(ParseContext& ctx) {
         const Ides::Types::FunctionType* fntype = dynamic_cast<const Ides::Types::FunctionType*>(fn->GetType(ctx));
@@ -337,37 +243,6 @@ namespace AST {
         return ret->GetType(ctx);
     }
     
-    llvm::Value* ASTReturnExpression::GetValue(ParseContext& ctx) {
-        const Ides::Types::Type* exprtype = this->retval ? this->retval->GetType(ctx) : Ides::Types::VoidType::GetSingletonPtr();
-        const Ides::Types::Type* funcrettype = ctx.GetEvaluatingFunction()->GetReturnType(ctx);
-        if (funcrettype == Ides::Types::VoidType::GetSingletonPtr()) {
-            if (this->retval != NULL)
-                throw Ides::Diagnostics::CompileError("returning an expression from a function with void return type", this->exprloc);
-            ctx.GetIRBuilder()->CreateRetVoid();
-        }
-        else if (funcrettype == Ides::Types::UnitType::GetSingletonPtr()) {
-            throw Ides::Diagnostics::CompileError("functions with unit return type cannot return", this->exprloc);
-        }
-        else if (this->retval == NULL && funcrettype == Ides::Types::VoidType::GetSingletonPtr()) {
-            throw Ides::Diagnostics::CompileError("expected expression", this->exprloc);
-        }
-        else if (exprtype->IsEquivalentType(funcrettype)) {
-            ctx.GetIRBuilder()->CreateRet(this->retval->GetValue(ctx));
-        }
-        else {
-            try {
-                ctx.GetIRBuilder()->CreateRet(this->retval->GetType(ctx)->Convert(ctx, this->retval->GetValue(ctx), funcrettype));
-            } catch (const std::exception& ex) {
-                throw Ides::Diagnostics::CompileError(ex.what(), this->exprloc);
-            }
-        }
-        throw Ides::AST::UnitValueException();
-    }
-    
-    const Ides::Types::Type* ASTReturnExpression::GetType(ParseContext& ctx) {
-        return Ides::Types::UnitType::GetSingletonPtr();
-    }
-    
     const Ides::Types::Type* ASTFunctionType::GetType(ParseContext &ctx) {
         std::vector<const Ides::Types::Type*> argTypes;
         const Ides::Types::Type* rtype = this->rettype ? this->rettype->GetType(ctx) : Ides::Types::VoidType::GetSingletonPtr();
@@ -383,89 +258,6 @@ namespace AST {
         throw Ides::Diagnostics::CompileError("no such type " + this->name->name, this->exprloc);
     }
     
-    const Ides::Types::Type* ASTCastExpression::GetType(ParseContext &ctx) {
-        return this->rhs->GetType(ctx);
-    }
-    
-    llvm::Value* ASTCastExpression::GetValue(ParseContext &ctx) {
-        const Ides::Types::Type* rhstype = rhs->GetType(ctx);
-        const Ides::Types::Type* lhstype = lhs->GetType(ctx);
-        if (const Ides::Types::NumberType* lhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(lhstype)) {
-            const Ides::Types::NumberType* rhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(rhstype);
-            switch (lhsnumtype->GetNumberClass()) {
-                case Ides::Types::NumberType::N_SINT:
-                    switch (rhsnumtype->GetNumberClass()) {
-                        case Ides::Types::NumberType::N_SINT:
-                        case Ides::Types::NumberType::N_UINT:
-                            return ctx.GetIRBuilder()->CreateIntCast(lhs->GetValue(ctx), rhsnumtype->GetLLVMType(ctx), rhsnumtype->GetNumberClass() == Ides::Types::NumberType::N_SINT);
-                        case Ides::Types::NumberType::N_FLOAT:
-                            return ctx.GetIRBuilder()->CreateSIToFP(lhs->GetValue(ctx), rhsnumtype->GetLLVMType(ctx));
-                    }
-                case Ides::Types::NumberType::N_UINT:
-                    switch (rhsnumtype->GetNumberClass()) {
-                        case Ides::Types::NumberType::N_SINT:
-                        case Ides::Types::NumberType::N_UINT:
-                            return ctx.GetIRBuilder()->CreateIntCast(lhs->GetValue(ctx), rhsnumtype->GetLLVMType(ctx), rhsnumtype->GetNumberClass() == Ides::Types::NumberType::N_SINT);
-                        case Ides::Types::NumberType::N_FLOAT:
-                            return ctx.GetIRBuilder()->CreateUIToFP(lhs->GetValue(ctx), rhsnumtype->GetLLVMType(ctx));
-                    }
-                case Ides::Types::NumberType::N_FLOAT:
-                    switch (rhsnumtype->GetNumberClass()) {
-                        case Ides::Types::NumberType::N_SINT:
-                            return ctx.GetIRBuilder()->CreateFPToSI(lhs->GetValue(ctx), rhsnumtype->GetLLVMType(ctx));
-                        case Ides::Types::NumberType::N_UINT:
-                            return ctx.GetIRBuilder()->CreateFPToUI(lhs->GetValue(ctx), rhsnumtype->GetLLVMType(ctx));
-                        case Ides::Types::NumberType::N_FLOAT:
-                            return ctx.GetIRBuilder()->CreateFPCast(lhs->GetValue(ctx), rhsnumtype->GetLLVMType(ctx));
-                    }
-            }
-        }
-        throw Ides::Diagnostics::CompileError("could not cast expression to type " + rhstype->ToString(), lhs->exprloc + rhs->exprloc);
-    }
-    
-    const Ides::Types::Type* ASTInfixExpression::GetType(ParseContext& ctx) {
-        // Handle numeric types
-        if (const Ides::Types::NumberType* lhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(this->lhs->GetType(ctx))) {
-            return lhsnumtype->GetOperatorType(this->func->name, ctx, lhs, rhs);
-        }
-        return ASTExpression::GetType(ctx);
-        
-    }
-    
-    llvm::Value* ASTInfixExpression::GetValue(ParseContext& ctx) {
-        // Handle numeric types
-        if (const Ides::Types::NumberType* lhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(this->lhs->GetType(ctx))) {
-            return lhsnumtype->GetOperatorValue(this->func->name, ctx, lhs, rhs);
-        }
-        return ASTExpression::GetValue(ctx);
-    }
-    
-    const Ides::Types::Type* ASTAssignmentExpression::GetType(ParseContext& ctx) {
-        if (ASTIdentifier* ident = dynamic_cast<ASTIdentifier*>(this->lhs)) {
-            AST* variable = ctx.GetLocalSymbols()->LookupRecursive(ident->name);
-            if (variable == NULL) throw Ides::Diagnostics::CompileError("no such identifier " + ident->name, this->exprloc);
-            if (ASTDeclaration* decl = dynamic_cast<ASTDeclaration*>(variable)) {
-                return decl->GetType(ctx);
-            }
-            throw Ides::Diagnostics::CompileError("variable required in lhs argument of assignment", this->exprloc);
-        }
-        throw Ides::Diagnostics::CompileError("lhs of assignment must be an identifier", this->exprloc);
-    }
-    
-    llvm::Value* ASTAssignmentExpression::GetValue(ParseContext& ctx) {
-        if (ASTIdentifier* ident = dynamic_cast<ASTIdentifier*>(this->lhs)) {
-            AST* variable = ctx.GetLocalSymbols()->LookupRecursive(ident->name);
-            if (variable == NULL) throw Ides::Diagnostics::CompileError("no such identifier " + ident->name, this->exprloc);
-            if (ASTDeclaration* decl = dynamic_cast<ASTDeclaration*>(variable)) {
-                if (decl->vartype == ASTDeclaration::DECL_VAL) throw Ides::Diagnostics::CompileError("cannot reassign val", this->exprloc);
-                llvm::Value* newval = rhs->GetType(ctx)->Convert(ctx, rhs->GetValue(ctx), lhs->GetType(ctx));
-                ctx.GetIRBuilder()->CreateStore(newval, decl->val);
-                return newval;
-            }
-            throw Ides::Diagnostics::CompileError("variable required in lhs argument of assignment", this->exprloc);
-        }
-        throw Ides::Diagnostics::CompileError("lhs of assignment must be an identifier", this->exprloc);
-    }
     
 }
 }

@@ -178,6 +178,7 @@ postfix_expression : primary_expression
 
 prefix_expression : postfix_expression
                   | '*' prefix_expression { $$ = NEW_PREFIX("*", $2); SET_EXPRLOC($$, @$); }
+                  | '&' prefix_expression { $$ = NEW_PREFIX("&", $2); SET_EXPRLOC($$, @$); }
                   | '!' prefix_expression { $$ = NEW_PREFIX("!", $2); SET_EXPRLOC($$, @$); }
                   | '~' prefix_expression { $$ = NEW_PREFIX("~", $2); SET_EXPRLOC($$, @$); }
                   | '-' prefix_expression { $$ = NEW_PREFIX("-", $2); SET_EXPRLOC($$, @$); }
