@@ -123,7 +123,6 @@ namespace AST {
         ParseContext::ScopedFunction thisFunction(ctx, this);
         
         llvm::BasicBlock* entryblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "entry", this->func);
-        //this->retblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "return", this->func);
         
         ctx.GetIRBuilder()->SetInsertPoint(entryblock);
         
@@ -382,6 +381,46 @@ namespace AST {
     
     const Ides::Types::Type* ASTTypeName::GetType(ParseContext& ctx) {
         throw Ides::Diagnostics::CompileError("no such type " + this->name->name, this->exprloc);
+    }
+    
+    const Ides::Types::Type* ASTCastExpression::GetType(ParseContext &ctx) {
+        return this->rhs->GetType(ctx);
+    }
+    
+    llvm::Value* ASTCastExpression::GetValue(ParseContext &ctx) {
+        const Ides::Types::Type* rhstype = rhs->GetType(ctx);
+        const Ides::Types::Type* lhstype = lhs->GetType(ctx);
+        if (const Ides::Types::NumberType* lhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(lhstype)) {
+            const Ides::Types::NumberType* rhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(rhstype);
+            switch (lhsnumtype->GetNumberClass()) {
+                case Ides::Types::NumberType::N_SINT:
+                    switch (rhsnumtype->GetNumberClass()) {
+                        case Ides::Types::NumberType::N_SINT:
+                        case Ides::Types::NumberType::N_UINT:
+                            return ctx.GetIRBuilder()->CreateIntCast(lhs->GetValue(ctx), rhsnumtype->GetLLVMType(ctx), rhsnumtype->GetNumberClass() == Ides::Types::NumberType::N_SINT);
+                        case Ides::Types::NumberType::N_FLOAT:
+                            return ctx.GetIRBuilder()->CreateSIToFP(lhs->GetValue(ctx), rhsnumtype->GetLLVMType(ctx));
+                    }
+                case Ides::Types::NumberType::N_UINT:
+                    switch (rhsnumtype->GetNumberClass()) {
+                        case Ides::Types::NumberType::N_SINT:
+                        case Ides::Types::NumberType::N_UINT:
+                            return ctx.GetIRBuilder()->CreateIntCast(lhs->GetValue(ctx), rhsnumtype->GetLLVMType(ctx), rhsnumtype->GetNumberClass() == Ides::Types::NumberType::N_SINT);
+                        case Ides::Types::NumberType::N_FLOAT:
+                            return ctx.GetIRBuilder()->CreateUIToFP(lhs->GetValue(ctx), rhsnumtype->GetLLVMType(ctx));
+                    }
+                case Ides::Types::NumberType::N_FLOAT:
+                    switch (rhsnumtype->GetNumberClass()) {
+                        case Ides::Types::NumberType::N_SINT:
+                            return ctx.GetIRBuilder()->CreateFPToSI(lhs->GetValue(ctx), rhsnumtype->GetLLVMType(ctx));
+                        case Ides::Types::NumberType::N_UINT:
+                            return ctx.GetIRBuilder()->CreateFPToUI(lhs->GetValue(ctx), rhsnumtype->GetLLVMType(ctx));
+                        case Ides::Types::NumberType::N_FLOAT:
+                            return ctx.GetIRBuilder()->CreateFPCast(lhs->GetValue(ctx), rhsnumtype->GetLLVMType(ctx));
+                    }
+            }
+        }
+        throw Ides::Diagnostics::CompileError("could not cast expression to type " + rhstype->ToString(), lhs->exprloc + rhs->exprloc);
     }
     
     const Ides::Types::Type* ASTInfixExpression::GetType(ParseContext& ctx) {

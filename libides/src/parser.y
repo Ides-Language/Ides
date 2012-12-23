@@ -112,10 +112,14 @@
 
 
 /* Operator precedence for mathematical operators */
+%nonassoc KW_THROW KW_RETURN
 %left '='
-%left OP_COALESCE OP_CAST
+%left OP_COALESCE
+%left OP_EQ OP_NE
+%left OP_LT OP_LE OP_GT OP_GE
 %left '+' '-'
 %left '*' '/' '%'
+%right OP_CAST KW_NEW 
 
 %start root
 
@@ -199,6 +203,8 @@ infix_expression : prefix_expression
                  | infix_expression OP_LE infix_expression { $$ = NEW_INFIX("<=", $1, $3); SET_EXPRLOC($$, @$); }
                  | infix_expression OP_GT infix_expression { $$ = NEW_INFIX(">", $1, $3); SET_EXPRLOC($$, @$); }
                  | infix_expression OP_GE infix_expression { $$ = NEW_INFIX(">=", $1, $3); SET_EXPRLOC($$, @$); }
+                 
+                 | infix_expression OP_CAST var_type { $$ = new Ides::AST::ASTCastExpression($1, $3); SET_EXPRLOC($$, @$); }
 ;
 
 expression : infix_expression

@@ -123,6 +123,21 @@ namespace AST {
         ASTExpression* retval;
     };
     
+    class ASTCastExpression : public ASTExpression {
+    public:
+        ASTCastExpression(ASTExpression* lhs, ASTType* rhs) : lhs(lhs), rhs(rhs) { }
+        virtual ~ASTCastExpression() {
+            delete lhs;
+            delete rhs;
+        }
+        
+        virtual llvm::Value* GetValue(ParseContext& ctx);
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx);
+        
+        ASTExpression* lhs;
+        ASTType* rhs;
+    };
+    
     
     class ASTUnaryExpression : public ASTExpression {
     public:
