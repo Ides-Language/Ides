@@ -155,7 +155,7 @@ namespace AST {
                         ctx.GetIRBuilder()->CreateRet(this->val->GetValue(ctx));
                     } else if (valtype->HasImplicitConversionTo(rettype)) {
                         try {
-                            ctx.GetIRBuilder()->CreateRet(valtype->Convert(ctx, this->val->GetValue(ctx), rettype));
+                            ctx.GetIRBuilder()->CreateRet(val->GetConvertedValue(ctx, rettype));
 
                         } catch (const std::runtime_error& ex) {
                             throw Ides::Diagnostics::CompileError(ex.what(), this->val->exprloc);
@@ -218,29 +218,33 @@ namespace AST {
             
             this->val = ctx.GetIRBuilder()->CreateAlloca(this->GetType(ctx)->GetLLVMType(ctx), 0, this->name->name);
             if (this->initval != NULL) {
-                llvm::Value* iv = this->initval->GetType(ctx)->Convert(ctx, this->initval->GetValue(ctx), this->GetType(ctx));
+                llvm::Value* iv = this->initval->GetValue(ctx);
                 ctx.GetIRBuilder()->CreateStore(iv, this->val);
                 return iv;
             }
         }
+        return this->val;
+    }
+    
+    llvm::Value* ASTDeclaration::GetConvertedValue(ParseContext& ctx, const Ides::Types::Type* to)
+    {
+        return this->GetType(ctx)->Convert(ctx, ctx.GetIRBuilder()->CreateLoad(this->val, this->name->name + "_res"), to);
+    }
+    
+    llvm::Value* ASTDeclaration::GetConvertedValue(ParseContext& ctx)
+    {
         return ctx.GetIRBuilder()->CreateLoad(this->val, this->name->name + "_res");
     }
     
     const Ides::Types::Type* ASTDeclaration::GetType(ParseContext &ctx) {
-        if (this->type != NULL) return this->type->GetType(ctx);
-        return this->initval->GetType(ctx);
+        const Ides::Types::Type* ret = this->type ? this->type->GetType(ctx) : this->initval->GetType(ctx);
+        return ret;
     }
     
-    llvm::Value* ASTIdentifier::GetValue(ParseContext& ctx) {
+    AST* ASTIdentifier::GetDeclaration(ParseContext& ctx) {
         AST* ret = ctx.GetLocalSymbols()->LookupRecursive(this->name);
         if (ret == NULL) throw Ides::Diagnostics::CompileError("no such identifier " + this->name, this->exprloc);
-        return ret->GetValue(ctx);
-    }
-    
-    const Ides::Types::Type* ASTIdentifier::GetType(ParseContext& ctx) {
-        AST* ret = ctx.GetLocalSymbols()->LookupRecursive(this->name);
-        if (ret == NULL) throw Ides::Diagnostics::CompileError("no such identifier " + this->name, this->exprloc);
-        return ret->GetType(ctx);
+        return ret;
     }
     
     const Ides::Types::Type* ASTFunctionType::GetType(ParseContext &ctx) {

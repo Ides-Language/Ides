@@ -27,6 +27,8 @@ namespace Types {
     PointerType::PointerTypeMap PointerType::types;
     FunctionType::FunctionTypeSet FunctionType::types;
     
+    const Ides::Types::PointerType* Type::PtrType() const { return PointerType::Get(this); }
+    
     const PointerType* PointerType::Get(const Ides::Types::Type* target) {
         auto i = types.find(target);
         if (i == types.end()) {

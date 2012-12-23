@@ -36,6 +36,12 @@ namespace AST {
         virtual const Ides::Types::Type* GetType(ParseContext& ctx) {
             throw Ides::Diagnostics::CompileError("AST node not yet implemented.", this->exprloc);
         }
+        virtual llvm::Value* GetConvertedValue(ParseContext& ctx, const Ides::Types::Type* to) {
+            return this->GetType(ctx)->Convert(ctx, this->GetValue(ctx), to);
+        }
+        virtual llvm::Value* GetConvertedValue(ParseContext& ctx) {
+            return this->GetValue(ctx);
+        }
         
         const boost::uuids::uuid& GetUUID() const { return this->uuid; }
         
@@ -56,8 +62,16 @@ namespace AST {
         ASTIdentifier (const Ides::String& name) : name(name) {}
         virtual ~ASTIdentifier() { }
         
-        virtual llvm::Value* GetValue(ParseContext& ctx);
-        virtual const Ides::Types::Type* GetType(ParseContext& ctx);
+        virtual llvm::Value* GetValue(ParseContext& ctx) { return GetDeclaration(ctx)->GetValue(ctx); }
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx) { return GetDeclaration(ctx)->GetType(ctx); }
+        virtual llvm::Value* GetConvertedValue(ParseContext& ctx, const Ides::Types::Type* to) {
+            return GetDeclaration(ctx)->GetConvertedValue(ctx, to);
+        }
+        virtual llvm::Value* GetConvertedValue(ParseContext& ctx) {
+            return GetDeclaration(ctx)->GetConvertedValue(ctx);
+        }
+        
+        AST* GetDeclaration(ParseContext& ctx);
         
         const Ides::String name;
     };

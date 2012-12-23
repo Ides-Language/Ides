@@ -13,6 +13,8 @@ namespace Types {
 
     typedef Ides::Parsing::Parser ParseContext;
     
+    class PointerType;
+    
     class Type {
     public:
         Type(const Ides::String& type_name, Type* supertype) : type_name(type_name), supertype(supertype) {
@@ -23,6 +25,8 @@ namespace Types {
         }
         
         virtual llvm::Type* GetLLVMType(ParseContext& ctx) const { assert(0); throw std::runtime_error("LLVM type not yet implemented."); }
+        
+        const Ides::Types::PointerType* PtrType() const;
         
         virtual bool IsSupertypeOf(const Type* other) const {
             if (this->IsEquivalentType(other)) return true;
@@ -120,6 +124,8 @@ namespace Types {
         virtual llvm::Type* GetLLVMType(ParseContext& ctx) const {
             return llvm::PointerType::get(targetType->GetLLVMType(ctx), 0);
         }
+        
+        const Ides::Types::Type* GetTargetType() const { return this->targetType; }
     private:
         const Ides::Types::Type* targetType;
         static PointerTypeMap types;

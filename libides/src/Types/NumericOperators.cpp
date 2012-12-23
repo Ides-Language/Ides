@@ -29,9 +29,9 @@ namespace {
         const Ides::Types::Type* lhstype = lhs->GetType(ctx); \
         if (const Ides::Types::NumberType* rhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(rhstype)) { \
             const Ides::Types::NumberType* lhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(lhstype); \
-            if (rhsnumtype->IsEquivalentType(lhsnumtype)) return ctx.GetIRBuilder()->method(lhs->GetValue(ctx), rhs->GetValue(ctx)); \
-            else if (rhsnumtype->HasImplicitConversionTo(lhsnumtype)) return ctx.GetIRBuilder()->method(lhs->GetValue(ctx), rhsnumtype->Convert(ctx, rhs->GetValue(ctx), lhsnumtype)); \
-            else if (lhsnumtype->HasImplicitConversionTo(rhsnumtype)) return ctx.GetIRBuilder()->method(lhsnumtype->Convert(ctx, lhs->GetValue(ctx), rhsnumtype), rhs->GetValue(ctx)); \
+            if (rhsnumtype->IsEquivalentType(lhsnumtype)) return ctx.GetIRBuilder()->method(lhs->GetConvertedValue(ctx, lhsnumtype), rhs->GetConvertedValue(ctx, lhsnumtype)); \
+            else if (rhsnumtype->HasImplicitConversionTo(lhsnumtype)) return ctx.GetIRBuilder()->method(lhs->GetConvertedValue(ctx, lhsnumtype), rhs->GetConvertedValue(ctx, lhsnumtype)); \
+            else if (lhsnumtype->HasImplicitConversionTo(rhsnumtype)) return ctx.GetIRBuilder()->method(lhs->GetConvertedValue(ctx, rhsnumtype), rhs->GetConvertedValue(ctx, rhsnumtype)); \
         } \
         throw Ides::Diagnostics::CompileError("could not resolve operator " op " for rhs argument of type " + rhstype->ToString(), lhs->exprloc + rhs->exprloc); \
     }
@@ -53,16 +53,16 @@ namespace {
             const Ides::Types::NumberType* lhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(lhstype);
             if (rhsnumtype->IsEquivalentType(lhsnumtype))
                 return rhsnumtype->IsSigned() ?
-                    ctx.GetIRBuilder()->CreateSDiv(lhs->GetValue(ctx), rhs->GetValue(ctx)) :
-                    ctx.GetIRBuilder()->CreateUDiv(lhs->GetValue(ctx), rhs->GetValue(ctx));
+                    ctx.GetIRBuilder()->CreateSDiv(lhs->GetConvertedValue(ctx), rhs->GetConvertedValue(ctx)) :
+                    ctx.GetIRBuilder()->CreateUDiv(lhs->GetConvertedValue(ctx), rhs->GetConvertedValue(ctx));
             else if (rhsnumtype->HasImplicitConversionTo(lhsnumtype))
                 return lhsnumtype->IsSigned() ?
-                ctx.GetIRBuilder()->CreateSDiv(lhs->GetValue(ctx), rhsnumtype->Convert(ctx, rhs->GetValue(ctx), lhsnumtype)) :
-                ctx.GetIRBuilder()->CreateUDiv(lhs->GetValue(ctx), rhsnumtype->Convert(ctx, rhs->GetValue(ctx), lhsnumtype));
+                ctx.GetIRBuilder()->CreateSDiv(lhs->GetConvertedValue(ctx), rhs->GetConvertedValue(ctx, lhsnumtype)) :
+                ctx.GetIRBuilder()->CreateUDiv(lhs->GetConvertedValue(ctx), rhs->GetConvertedValue(ctx, lhsnumtype));
             else if (lhsnumtype->HasImplicitConversionTo(rhsnumtype))
                 return lhsnumtype->IsSigned() ?
-                    ctx.GetIRBuilder()->CreateSDiv(lhsnumtype->Convert(ctx, lhs->GetValue(ctx), rhsnumtype), rhs->GetValue(ctx)) :
-                    ctx.GetIRBuilder()->CreateUDiv(lhsnumtype->Convert(ctx, lhs->GetValue(ctx), rhsnumtype), rhs->GetValue(ctx));
+                    ctx.GetIRBuilder()->CreateSDiv(lhs->GetConvertedValue(ctx, rhsnumtype), rhs->GetConvertedValue(ctx)) :
+                    ctx.GetIRBuilder()->CreateUDiv(lhs->GetConvertedValue(ctx, rhsnumtype), rhs->GetConvertedValue(ctx));
         }
         throw Ides::Diagnostics::CompileError("could not resolve operator / for rhs argument of type " + rhstype->ToString(), lhs->exprloc + rhs->exprloc);
     }
@@ -74,16 +74,16 @@ namespace {
             const Ides::Types::NumberType* lhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(lhstype);
             if (rhsnumtype->IsEquivalentType(lhsnumtype))
                 return rhsnumtype->IsSigned() ?
-                ctx.GetIRBuilder()->CreateSRem(lhs->GetValue(ctx), rhs->GetValue(ctx)) :
-                ctx.GetIRBuilder()->CreateURem(lhs->GetValue(ctx), rhs->GetValue(ctx));
+                ctx.GetIRBuilder()->CreateSRem(lhs->GetConvertedValue(ctx), rhs->GetConvertedValue(ctx)) :
+                ctx.GetIRBuilder()->CreateURem(lhs->GetConvertedValue(ctx), rhs->GetConvertedValue(ctx));
             else if (rhsnumtype->HasImplicitConversionTo(lhsnumtype))
                 return lhsnumtype->IsSigned() ?
-                ctx.GetIRBuilder()->CreateSRem(lhs->GetValue(ctx), rhsnumtype->Convert(ctx, rhs->GetValue(ctx), lhsnumtype)) :
-                ctx.GetIRBuilder()->CreateURem(lhs->GetValue(ctx), rhsnumtype->Convert(ctx, rhs->GetValue(ctx), lhsnumtype));
+                ctx.GetIRBuilder()->CreateSRem(lhs->GetConvertedValue(ctx), rhs->GetConvertedValue(ctx, lhsnumtype)) :
+                ctx.GetIRBuilder()->CreateURem(lhs->GetConvertedValue(ctx), rhs->GetConvertedValue(ctx, lhsnumtype));
             else if (lhsnumtype->HasImplicitConversionTo(rhsnumtype))
                 return lhsnumtype->IsSigned() ?
-                ctx.GetIRBuilder()->CreateSRem(lhsnumtype->Convert(ctx, lhs->GetValue(ctx), rhsnumtype), rhs->GetValue(ctx)) :
-                ctx.GetIRBuilder()->CreateURem(lhsnumtype->Convert(ctx, lhs->GetValue(ctx), rhsnumtype), rhs->GetValue(ctx));
+                ctx.GetIRBuilder()->CreateSRem(lhs->GetConvertedValue(ctx, rhsnumtype), rhs->GetConvertedValue(ctx)) :
+                ctx.GetIRBuilder()->CreateURem(lhs->GetConvertedValue(ctx, rhsnumtype), rhs->GetConvertedValue(ctx));
         }
         throw Ides::Diagnostics::CompileError("could not resolve operator % for rhs argument of type " + rhstype->ToString(), lhs->exprloc + rhs->exprloc);
     }
@@ -95,11 +95,11 @@ namespace {
         if (const Ides::Types::NumberType* rhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(rhstype)) {
             const Ides::Types::NumberType* lhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(lhstype);
             if (rhsnumtype->IsEquivalentType(lhsnumtype))
-                return ctx.GetIRBuilder()->CreateICmp((llvm::CmpInst::Predicate)Pred, lhs->GetValue(ctx), rhs->GetValue(ctx));
+                return ctx.GetIRBuilder()->CreateICmp((llvm::CmpInst::Predicate)Pred, lhs->GetConvertedValue(ctx), rhs->GetConvertedValue(ctx));
             else if (rhsnumtype->HasImplicitConversionTo(lhsnumtype))
-                return ctx.GetIRBuilder()->CreateICmp((llvm::CmpInst::Predicate)Pred,lhs->GetValue(ctx), rhsnumtype->Convert(ctx, rhs->GetValue(ctx), lhsnumtype));
+                return ctx.GetIRBuilder()->CreateICmp((llvm::CmpInst::Predicate)Pred,lhs->GetConvertedValue(ctx), rhs->GetConvertedValue(ctx, lhsnumtype));
             else if (lhsnumtype->HasImplicitConversionTo(rhsnumtype))
-                return ctx.GetIRBuilder()->CreateICmp((llvm::CmpInst::Predicate)Pred,lhsnumtype->Convert(ctx, lhs->GetValue(ctx), rhsnumtype), rhs->GetValue(ctx));
+                return ctx.GetIRBuilder()->CreateICmp((llvm::CmpInst::Predicate)Pred,lhs->GetConvertedValue(ctx, rhsnumtype), rhs->GetConvertedValue(ctx));
         }
         throw Ides::Diagnostics::CompileError("could not resolve operator for rhs argument of type " + rhstype->ToString(), lhs->exprloc + rhs->exprloc);
     }

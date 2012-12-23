@@ -49,6 +49,9 @@ namespace AST {
         virtual llvm::Value* GetValue(ParseContext& ctx);
         virtual const Ides::Types::Type* GetType(ParseContext& ctx);
         
+        virtual llvm::Value* GetConvertedValue(ParseContext& ctx, const Ides::Types::Type* to);
+        virtual llvm::Value* GetConvertedValue(ParseContext& ctx);
+        
         llvm::Value* val;
         
         VarType vartype;
@@ -138,6 +141,27 @@ namespace AST {
         ASTType* rhs;
     };
     
+    class ASTAddressOfExpression : public ASTExpression {
+    public:
+        ASTAddressOfExpression(ASTExpression* arg) : arg(arg) { }
+        ~ASTAddressOfExpression() { }
+        
+        virtual llvm::Value* GetValue(ParseContext& ctx);
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx);
+        
+        ASTExpression* arg;
+    };
+    
+    class ASTDereferenceExpression : public ASTExpression {
+    public:
+        ASTDereferenceExpression(ASTExpression* arg) : arg(arg) { }
+        ~ASTDereferenceExpression() { }
+        
+        virtual llvm::Value* GetValue(ParseContext& ctx);
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx);
+        
+        ASTExpression* arg;
+    };
     
     class ASTUnaryExpression : public ASTExpression {
     public:

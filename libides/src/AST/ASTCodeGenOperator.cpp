@@ -39,7 +39,7 @@ namespace AST {
         }
         else {
             try {
-                ctx.GetIRBuilder()->CreateRet(this->retval->GetType(ctx)->Convert(ctx, this->retval->GetValue(ctx), funcrettype));
+                ctx.GetIRBuilder()->CreateRet(this->retval->GetConvertedValue(ctx, funcrettype));
             } catch (const std::exception& ex) {
                 throw Ides::Diagnostics::CompileError(ex.what(), this->exprloc);
             }
@@ -111,32 +111,35 @@ namespace AST {
     
     
     const Ides::Types::Type* ASTAssignmentExpression::GetType(ParseContext& ctx) {
-        if (ASTIdentifier* ident = dynamic_cast<ASTIdentifier*>(this->lhs)) {
-            AST* variable = ctx.GetLocalSymbols()->LookupRecursive(ident->name);
-            if (variable == NULL) throw Ides::Diagnostics::CompileError("no such identifier " + ident->name, this->exprloc);
-            if (ASTDeclaration* decl = dynamic_cast<ASTDeclaration*>(variable)) {
-                return decl->GetType(ctx);
-            }
-            throw Ides::Diagnostics::CompileError("variable required in lhs argument of assignment", this->exprloc);
-        }
-        throw Ides::Diagnostics::CompileError("lhs of assignment must be an identifier", this->exprloc);
+        return this->lhs->GetType(ctx);
     }
     
     llvm::Value* ASTAssignmentExpression::GetValue(ParseContext& ctx) {
-        if (ASTIdentifier* ident = dynamic_cast<ASTIdentifier*>(this->lhs)) {
-            AST* variable = ctx.GetLocalSymbols()->LookupRecursive(ident->name);
-            if (variable == NULL) throw Ides::Diagnostics::CompileError("no such identifier " + ident->name, this->exprloc);
-            if (ASTDeclaration* decl = dynamic_cast<ASTDeclaration*>(variable)) {
-                if (decl->vartype == ASTDeclaration::DECL_VAL) throw Ides::Diagnostics::CompileError("cannot reassign val", this->exprloc);
-                llvm::Value* newval = rhs->GetType(ctx)->Convert(ctx, rhs->GetValue(ctx), lhs->GetType(ctx));
-                ctx.GetIRBuilder()->CreateStore(newval, decl->val);
-                return newval;
-            }
-            throw Ides::Diagnostics::CompileError("variable required in lhs argument of assignment", this->exprloc);
-        }
-        throw Ides::Diagnostics::CompileError("lhs of assignment must be an identifier", this->exprloc);
+        llvm::Value* newval = rhs->GetValue(ctx); //rhs->GetType(ctx)->Convert(ctx, rhs->GetValue(ctx), this->lhs->GetType(ctx));
+        llvm::Value* target = lhs->GetValue(ctx);
+        ctx.GetIRBuilder()->CreateStore(newval, target);
+        return target;
     }
 
+    const Ides::Types::Type* ASTAddressOfExpression::GetType(ParseContext &ctx) {
+        return arg->GetType(ctx)->PtrType();
+    }
     
+    llvm::Value* ASTAddressOfExpression::GetValue(ParseContext &ctx) {
+        llvm::Value* argval = arg->GetValue(ctx);
+        llvm::Value* ptrval = ctx.GetIRBuilder()->CreateAlloca(this->GetType(ctx)->GetLLVMType(ctx));
+        ctx.GetIRBuilder()->CreateStore(argval, ptrval);
+        return argval;
+    }
+    
+    const Ides::Types::Type* ASTDereferenceExpression::GetType(ParseContext &ctx) {
+        const Ides::Types::PointerType* ptr = dynamic_cast<const Ides::Types::PointerType*>(arg->GetType(ctx));
+        if (ptr == NULL) throw Ides::Diagnostics::CompileError("cannot dereference non-pointer type", this->exprloc);
+        return ptr->GetTargetType();
+    }
+    
+    llvm::Value* ASTDereferenceExpression::GetValue(ParseContext &ctx) {
+        return ctx.GetIRBuilder()->CreateLoad(arg->GetValue(ctx), "deref");
+    }
 }
 }

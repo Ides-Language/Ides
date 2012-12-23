@@ -20,7 +20,7 @@ namespace AST {
         llvm::BasicBlock* elseblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "else", (llvm::Function*)ctx.GetEvaluatingFunction()->GetValue(ctx));
         llvm::BasicBlock* resumeBlock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "endif", (llvm::Function*)ctx.GetEvaluatingFunction()->GetValue(ctx));
         
-        llvm::Value* cond = this->condition->GetType(ctx)->Convert(ctx, this->condition->GetValue(ctx), Ides::Types::Integer1Type::GetSingletonPtr());
+        llvm::Value* cond = this->condition->GetConvertedValue(ctx, Ides::Types::Integer1Type::GetSingletonPtr());
         ctx.GetIRBuilder()->CreateCondBr(cond, ifblock, elseblock);
         
         ctx.GetIRBuilder()->SetInsertPoint(ifblock);
@@ -54,13 +54,13 @@ namespace AST {
         llvm::BasicBlock* whileblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "while", (llvm::Function*)ctx.GetEvaluatingFunction()->GetValue(ctx));
         llvm::BasicBlock* resumeblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "endwhile", (llvm::Function*)ctx.GetEvaluatingFunction()->GetValue(ctx));
         
-        llvm::Value* cond = this->condition->GetType(ctx)->Convert(ctx, this->condition->GetValue(ctx), Ides::Types::Integer1Type::GetSingletonPtr());
+        llvm::Value* cond = this->condition->GetConvertedValue(ctx, Ides::Types::Integer1Type::GetSingletonPtr());
         ctx.GetIRBuilder()->CreateCondBr(cond, whileblock, resumeblock);
         
         ctx.GetIRBuilder()->SetInsertPoint(whileblock);
         try {
             body->GetValue(ctx);
-            cond = this->condition->GetType(ctx)->Convert(ctx, this->condition->GetValue(ctx), Ides::Types::Integer1Type::GetSingletonPtr());
+            cond = this->condition->GetConvertedValue(ctx, Ides::Types::Integer1Type::GetSingletonPtr());
             ctx.GetIRBuilder()->CreateCondBr(cond, whileblock, resumeblock);
         } catch (const Ides::AST::UnitValueException& ex) {
             // Block early-exits function.
@@ -80,14 +80,14 @@ namespace AST {
         
         if (this->startexpr) this->startexpr->GetValue(ctx);
         
-        llvm::Value* endcond = this->endexpr->GetType(ctx)->Convert(ctx, this->endexpr->GetValue(ctx), Ides::Types::Integer1Type::GetSingletonPtr());
+        llvm::Value* endcond = this->endexpr->GetConvertedValue(ctx, Ides::Types::Integer1Type::GetSingletonPtr());
         ctx.GetIRBuilder()->CreateCondBr(endcond, forblock, resumeblock);
         
         ctx.GetIRBuilder()->SetInsertPoint(forblock);
         try {
             body->GetValue(ctx);
             if (this->eachexpr) this->eachexpr->GetValue(ctx);
-            endcond = this->endexpr->GetType(ctx)->Convert(ctx, this->endexpr->GetValue(ctx), Ides::Types::Integer1Type::GetSingletonPtr());
+            endcond = this->endexpr->GetConvertedValue(ctx, Ides::Types::Integer1Type::GetSingletonPtr());
             ctx.GetIRBuilder()->CreateCondBr(endcond, forblock, resumeblock);
         } catch (const Ides::AST::UnitValueException& ex) {
             // Block early-exits function.
