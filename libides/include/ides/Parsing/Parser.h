@@ -54,7 +54,7 @@ namespace Ides {
             
             void* GetScanner() const { return this->scanner; }
             
-            int ReadInput(char *buffer, size_t* numBytesRead, int maxBytesToRead);
+            int ReadInput(char *buffer, int* numBytesRead, int maxBytesToRead);
             
             const Ides::String& GetSource() const { return this->src; }
             const Ides::String& GetSourceName() const { return this->src_name; }

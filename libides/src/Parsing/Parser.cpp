@@ -107,7 +107,7 @@ namespace Parsing {
         this->DestroyParser();
     }
     
-    int Parser::ReadInput(char *buffer, size_t* numBytesRead, int maxBytesToRead) {
+    int Parser::ReadInput(char *buffer, int* numBytesRead, int maxBytesToRead) {
         if (src_iter == src_end) {
             *numBytesRead = 0;
             return 0; // EOF

@@ -24,6 +24,9 @@ extern "C" {
 #define YYLTYPE Ides::Diagnostics::SourceLocation
 #define YY_EXTRA_TYPE Ides::Parsing::Parser*
 
+#define YY_TYPEDEF_YY_SIZE_T
+typedef int yy_size_t;
+
 
 #define YY_USER_INIT yylloc->line_start = yylloc->first; yylloc->source_name = yyextra->GetSourceName();
 
