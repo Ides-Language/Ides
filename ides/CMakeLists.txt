@@ -14,3 +14,9 @@ target_link_libraries(idesc
 	)
 
 
+INSTALL(TARGETS idesc
+	RUNTIME DESTINATION bin
+	LIBRARY DESTINATION lib
+	ARCHIVE DESTINATION lib
+)
+
