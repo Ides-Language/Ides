@@ -16,7 +16,8 @@
 #include <llvm/Support/IRBuilder.h>
 #include <llvm/Value.h>
 #include <llvm/Type.h>
-#include <llvm/Module.H>
+#include <llvm/Module.h>
+#include <llvm/LLVMContext.h>
 #include <boost/unordered_map.hpp>
 #include <boost/unordered_set.hpp>
 

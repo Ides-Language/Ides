@@ -10,7 +10,7 @@
 #define ides_ASTExpression_h
 
 #include <ides/AST/AST.h>
-#include <ides/AST/ASTSTatement.h>
+#include <ides/AST/ASTStatement.h>
 
 namespace Ides {
 namespace AST {
