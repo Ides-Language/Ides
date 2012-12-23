@@ -39,7 +39,7 @@ namespace AST {
         }
         else {
             try {
-                ctx.GetIRBuilder()->CreateRet(this->retval->GetConvertedValue(ctx, funcrettype));
+                ctx.GetIRBuilder()->CreateRet(this->retval->GetValue(ctx, funcrettype));
             } catch (const std::exception& ex) {
                 throw Ides::Diagnostics::CompileError(ex.what(), this->exprloc);
             }
@@ -116,7 +116,7 @@ namespace AST {
     
     llvm::Value* ASTAssignmentExpression::GetValue(ParseContext& ctx) {
         llvm::Value* newval = rhs->GetValue(ctx); //rhs->GetType(ctx)->Convert(ctx, rhs->GetValue(ctx), this->lhs->GetType(ctx));
-        llvm::Value* target = lhs->GetValue(ctx);
+        llvm::Value* target = lhs->GetPointerValue(ctx);
         ctx.GetIRBuilder()->CreateStore(newval, target);
         return target;
     }
@@ -126,10 +126,14 @@ namespace AST {
     }
     
     llvm::Value* ASTAddressOfExpression::GetValue(ParseContext &ctx) {
-        llvm::Value* argval = arg->GetValue(ctx);
+        return ctx.GetIRBuilder()->CreateLoad(this->GetPointerValue(ctx));
+    }
+    
+    llvm::Value* ASTAddressOfExpression::GetPointerValue(ParseContext &ctx) {
+        llvm::Value* argval = arg->GetPointerValue(ctx);
         llvm::Value* ptrval = ctx.GetIRBuilder()->CreateAlloca(this->GetType(ctx)->GetLLVMType(ctx));
         ctx.GetIRBuilder()->CreateStore(argval, ptrval);
-        return argval;
+        return ptrval;
     }
     
     const Ides::Types::Type* ASTDereferenceExpression::GetType(ParseContext &ctx) {
@@ -139,7 +143,11 @@ namespace AST {
     }
     
     llvm::Value* ASTDereferenceExpression::GetValue(ParseContext &ctx) {
-        return ctx.GetIRBuilder()->CreateLoad(arg->GetValue(ctx), "deref");
+        return ctx.GetIRBuilder()->CreateLoad(this->GetPointerValue(ctx), "deref");
+    }
+    
+    llvm::Value* ASTDereferenceExpression::GetPointerValue(ParseContext &ctx) {
+        return ctx.GetIRBuilder()->CreateLoad(arg->GetPointerValue(ctx), "deref");
     }
 }
 }

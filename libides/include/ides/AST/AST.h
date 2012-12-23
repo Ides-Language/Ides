@@ -30,18 +30,14 @@ namespace AST {
         AST();
         virtual ~AST() { }
         
-        virtual llvm::Value* GetValue(ParseContext& ctx) {
-            throw Ides::Diagnostics::CompileError("AST node not yet implemented.", this->exprloc);
-        }
-        virtual const Ides::Types::Type* GetType(ParseContext& ctx) {
-            throw Ides::Diagnostics::CompileError("AST node not yet implemented.", this->exprloc);
-        }
-        virtual llvm::Value* GetConvertedValue(ParseContext& ctx, const Ides::Types::Type* to) {
+        virtual llvm::Value* GetValue(ParseContext& ctx) { assert(0); }
+        virtual llvm::Value* GetValue(ParseContext& ctx, const Ides::Types::Type* to) {
             return this->GetType(ctx)->Convert(ctx, this->GetValue(ctx), to);
         }
-        virtual llvm::Value* GetConvertedValue(ParseContext& ctx) {
-            return this->GetValue(ctx);
+        virtual llvm::Value* GetPointerValue(ParseContext& ctx) {
+            throw Ides::Diagnostics::CompileError("expression is not a pointer", this->exprloc);
         }
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx) { assert(0); }
         
         const boost::uuids::uuid& GetUUID() const { return this->uuid; }
         
@@ -64,12 +60,8 @@ namespace AST {
         
         virtual llvm::Value* GetValue(ParseContext& ctx) { return GetDeclaration(ctx)->GetValue(ctx); }
         virtual const Ides::Types::Type* GetType(ParseContext& ctx) { return GetDeclaration(ctx)->GetType(ctx); }
-        virtual llvm::Value* GetConvertedValue(ParseContext& ctx, const Ides::Types::Type* to) {
-            return GetDeclaration(ctx)->GetConvertedValue(ctx, to);
-        }
-        virtual llvm::Value* GetConvertedValue(ParseContext& ctx) {
-            return GetDeclaration(ctx)->GetConvertedValue(ctx);
-        }
+        virtual llvm::Value* GetValue(ParseContext& ctx, const Ides::Types::Type* to) { return GetDeclaration(ctx)->GetValue(ctx, to); }
+        virtual llvm::Value* GetPointerValue(ParseContext& ctx) { return GetDeclaration(ctx)->GetPointerValue(ctx); }
         
         AST* GetDeclaration(ParseContext& ctx);
         

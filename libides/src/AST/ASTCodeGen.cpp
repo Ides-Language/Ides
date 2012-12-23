@@ -131,12 +131,8 @@ namespace AST {
             llvm::Function::arg_iterator ai = func->arg_begin();
             for (; i != args->end() && ai != func->arg_end(); ++ai, ++i) {
                 ASTDeclaration* decl = dynamic_cast<ASTDeclaration*>(*i);
-                if (decl->vartype == ASTDeclaration::DECL_VAL) {
-                    decl->val = ai;
-                } else {
-                    decl->GetValue(ctx);
-                    ctx.GetIRBuilder()->CreateStore(ai, decl->val);
-                }
+                decl->GetValue(ctx);
+                ctx.GetIRBuilder()->CreateStore(ai, decl->val);
                 ai->setName(decl->name->name);
                 ctx.GetLocalSymbols()->insert(std::make_pair(decl->name->name, decl));
             }
@@ -155,7 +151,7 @@ namespace AST {
                         ctx.GetIRBuilder()->CreateRet(this->val->GetValue(ctx));
                     } else if (valtype->HasImplicitConversionTo(rettype)) {
                         try {
-                            ctx.GetIRBuilder()->CreateRet(val->GetConvertedValue(ctx, rettype));
+                            ctx.GetIRBuilder()->CreateRet(val->GetValue(ctx, rettype));
 
                         } catch (const std::runtime_error& ex) {
                             throw Ides::Diagnostics::CompileError(ex.what(), this->val->exprloc);
@@ -212,7 +208,7 @@ namespace AST {
         return ctx.GetIRBuilder()->CreateCall(func, fnargs);
     }
     
-    llvm::Value* ASTDeclaration::GetValue(ParseContext& ctx) {
+    llvm::Value* ASTDeclaration::GetPointerValue(ParseContext& ctx) {
         if (this->val == NULL) {
             ctx.GetLocalSymbols()->insert(std::make_pair(this->name->name, this));
             
@@ -220,20 +216,19 @@ namespace AST {
             if (this->initval != NULL) {
                 llvm::Value* iv = this->initval->GetValue(ctx);
                 ctx.GetIRBuilder()->CreateStore(iv, this->val);
-                return iv;
             }
         }
         return this->val;
     }
     
-    llvm::Value* ASTDeclaration::GetConvertedValue(ParseContext& ctx, const Ides::Types::Type* to)
+    llvm::Value* ASTDeclaration::GetValue(ParseContext& ctx, const Ides::Types::Type* to)
     {
-        return this->GetType(ctx)->Convert(ctx, ctx.GetIRBuilder()->CreateLoad(this->val, this->name->name + "_res"), to);
+        return this->GetType(ctx)->Convert(ctx, this->GetValue(ctx), to);
     }
     
-    llvm::Value* ASTDeclaration::GetConvertedValue(ParseContext& ctx)
+    llvm::Value* ASTDeclaration::GetValue(ParseContext& ctx)
     {
-        return ctx.GetIRBuilder()->CreateLoad(this->val, this->name->name + "_res");
+        return ctx.GetIRBuilder()->CreateLoad(this->GetPointerValue(ctx), this->name->name + "_res");
     }
     
     const Ides::Types::Type* ASTDeclaration::GetType(ParseContext &ctx) {

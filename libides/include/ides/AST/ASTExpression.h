@@ -49,8 +49,8 @@ namespace AST {
         virtual llvm::Value* GetValue(ParseContext& ctx);
         virtual const Ides::Types::Type* GetType(ParseContext& ctx);
         
-        virtual llvm::Value* GetConvertedValue(ParseContext& ctx, const Ides::Types::Type* to);
-        virtual llvm::Value* GetConvertedValue(ParseContext& ctx);
+        virtual llvm::Value* GetValue(ParseContext& ctx, const Ides::Types::Type* to);
+        virtual llvm::Value* GetPointerValue(ParseContext& ctx);
         
         llvm::Value* val;
         
@@ -149,6 +149,8 @@ namespace AST {
         virtual llvm::Value* GetValue(ParseContext& ctx);
         virtual const Ides::Types::Type* GetType(ParseContext& ctx);
         
+        virtual llvm::Value* GetPointerValue(ParseContext& ctx);
+        
         ASTExpression* arg;
     };
     
@@ -159,6 +161,8 @@ namespace AST {
         
         virtual llvm::Value* GetValue(ParseContext& ctx);
         virtual const Ides::Types::Type* GetType(ParseContext& ctx);
+        
+        virtual llvm::Value* GetPointerValue(ParseContext& ctx);
         
         ASTExpression* arg;
     };
