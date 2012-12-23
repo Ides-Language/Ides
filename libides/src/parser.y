@@ -68,8 +68,11 @@
 %token KW_VOID KW_UNIT KW_BOOL KW_INT8 KW_UINT8 KW_INT16 KW_UINT16 KW_INT32 KW_UINT32 KW_INT64 KW_UINT64 KW_FLOAT32 KW_FLOAT64
 %token KW_TRUE KW_FALSE
 
+// Visibility specifiers
+%token KW_PUBLIC KW_PROTECTED KW_INTERNAL KW_PRIVATE KW_EXTERN
+
 // Keywords
-%token KW_DEF KW_FN KW_VAR KW_VAL KW_THROW KW_NEW KW_IF KW_EXTERN KW_NULL KW_RETURN
+%token KW_DEF KW_FN KW_VAR KW_VAL KW_THROW KW_NEW KW_IF KW_NULL KW_RETURN
 // Operators
 %token OP_INC OP_DEC OP_EQ OP_COALESCE OP_CAST
 
@@ -167,7 +170,7 @@ prefix_expression : postfix_expression
 ;
 
 infix_expression : prefix_expression
-                 | infix_expression '=' infix_expression { $$ = NEW_INFIX("=", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression '=' infix_expression { $$ = new Ides::AST::ASTAssignmentExpression($1, $3); SET_EXPRLOC($$, @$); }
                  | infix_expression '+' infix_expression { $$ = NEW_INFIX("+", $1, $3); SET_EXPRLOC($$, @$); }
                  | infix_expression '-' infix_expression { $$ = NEW_INFIX("-", $1, $3); SET_EXPRLOC($$, @$); }
                  | infix_expression '*' infix_expression { $$ = NEW_INFIX("*", $1, $3); SET_EXPRLOC($$, @$); }

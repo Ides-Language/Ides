@@ -42,6 +42,8 @@ namespace Types {
         }
         
         virtual llvm::Value* Convert(Ides::Parsing::Parser& ctx, llvm::Value* val, const Type* to) const {
+            if (this->IsEquivalentType(to)) return val;
+            
             std::stringstream err;
             err << "no conversion from type " + this->ToString() + " to type " << to->ToString() << " exists";
             throw std::runtime_error(err.str());
@@ -178,6 +180,7 @@ namespace Types {
         virtual uint8_t GetSize() const { return size; } \
         virtual bool HasImplicitConversionTo(const Type* other) const; \
         virtual llvm::Value* Convert(Ides::Parsing::Parser& ctx, llvm::Value* val, const Type* to) const { \
+            if (this->IsEquivalentType(to)) return val; \
             const NumberType* t = dynamic_cast<const NumberType*>(to); assert(t); \
             if (t->GetNumberClass() == NumberType::N_FLOAT) \
                 return ctx.GetIRBuilder()->CreateSIToFP(val, t->GetLLVMType(ctx)); \
@@ -197,6 +200,7 @@ namespace Types {
         virtual uint8_t GetSize() const { return size; } \
         virtual bool HasImplicitConversionTo(const Type* other) const; \
         virtual llvm::Value* Convert(Ides::Parsing::Parser& ctx, llvm::Value* val, const Type* to) const { \
+            if (this->IsEquivalentType(to)) return val; \
             const NumberType* t = dynamic_cast<const NumberType*>(to); assert(t); \
             if (t->GetNumberClass() == NumberType::N_FLOAT) \
                 return ctx.GetIRBuilder()->CreateUIToFP(val, t->GetLLVMType(ctx)); \

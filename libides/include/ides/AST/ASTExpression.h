@@ -46,10 +46,8 @@ namespace AST {
         
         virtual ~ASTDeclaration();
         
-        virtual llvm::Value* GetValue(ParseContext& ctx) { return this->val; }
-        virtual const Ides::Types::Type* GetType(ParseContext& ctx) {
-            return type->GetType(ctx);
-        }
+        virtual llvm::Value* GetValue(ParseContext& ctx);
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx);
         
         llvm::Value* val;
         
@@ -63,7 +61,7 @@ namespace AST {
     public:
         ASTFunction(ASTIdentifier* name, ASTList* args, ASTType* rettype) :
             func(NULL), retblock(NULL), returnvalue(NULL), functype(NULL),
-            name(name), returntype(rettype), args(args), val(NULL), body(NULL), evaluatingtype(false)
+            name(name), args(args), val(NULL), body(NULL), returntype(rettype), evaluatingtype(false)
         { }
         virtual ~ASTFunction();
         
@@ -145,7 +143,7 @@ namespace AST {
     public:
         ASTInfixExpression(ASTIdentifier* op, ASTExpression* lhs, ASTExpression* rhs) : func(op), lhs(lhs), rhs(rhs) { }
         virtual ~ASTInfixExpression() {
-            delete func;
+            if (func) delete func;
             delete lhs;
             delete rhs;
         }
@@ -156,6 +154,15 @@ namespace AST {
         ASTIdentifier* func;
         ASTExpression* lhs;
         ASTExpression* rhs;
+    };
+    
+    class ASTAssignmentExpression : public ASTInfixExpression {
+    public:
+        ASTAssignmentExpression(ASTExpression* lhs, ASTExpression* rhs) : ASTInfixExpression(NULL, lhs, rhs) { }
+        virtual ~ASTAssignmentExpression() { }
+        
+        virtual llvm::Value* GetValue(ParseContext& ctx);
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx);
     };
     
     class ASTDictExpression : public ASTList {

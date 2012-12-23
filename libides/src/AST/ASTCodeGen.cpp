@@ -216,6 +216,25 @@ namespace AST {
         return ctx.GetIRBuilder()->CreateCall(func, fnargs);
     }
     
+    llvm::Value* ASTDeclaration::GetValue(ParseContext& ctx) {
+        if (this->val == NULL) {
+            ctx.GetLocalSymbols()->insert(std::make_pair(this->name->name, this));
+            
+            this->val = ctx.GetIRBuilder()->CreateAlloca(this->GetType(ctx)->GetLLVMType(ctx), 0, this->name->name);
+            if (this->initval != NULL) {
+                llvm::Value* iv = this->initval->GetType(ctx)->Convert(ctx, this->initval->GetValue(ctx), this->GetType(ctx));
+                ctx.GetIRBuilder()->CreateStore(iv, this->val);
+                return iv;
+            }
+        }
+        return ctx.GetIRBuilder()->CreateLoad(this->val, this->name->name + "_res");
+    }
+    
+    const Ides::Types::Type* ASTDeclaration::GetType(ParseContext &ctx) {
+        if (this->type != NULL) return this->type->GetType(ctx);
+        return this->initval->GetType(ctx);
+    }
+    
     llvm::Value* ASTIdentifier::GetValue(ParseContext& ctx) {
         AST* ret = ctx.GetLocalSymbols()->LookupRecursive(this->name);
         if (ret == NULL) throw Ides::Diagnostics::CompileError("no such identifier " + this->name, this->exprloc);
@@ -259,19 +278,6 @@ namespace AST {
         return Ides::Types::UnitType::GetSingletonPtr();
     }
     
-    const Ides::Types::Type* ASTInfixExpression::GetType(ParseContext& ctx) {
-        // Handle numeric types
-        if (const Ides::Types::NumberType* lhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(this->lhs->GetType(ctx))) {
-            try {
-                return lhsnumtype->GetOperatorType(this->func->name, ctx, lhs, rhs);
-            } catch (const Ides::Diagnostics::CompileError& e) {
-                throw Ides::Diagnostics::CompileError(e.message(), this->exprloc, e);
-            }
-        }
-        return ASTExpression::GetType(ctx);
-        
-    }
-    
     const Ides::Types::Type* ASTFunctionType::GetType(ParseContext &ctx) {
         std::vector<const Ides::Types::Type*> argTypes;
         const Ides::Types::Type* rtype = this->rettype ? this->rettype->GetType(ctx) : Ides::Types::VoidType::GetSingletonPtr();
@@ -287,6 +293,19 @@ namespace AST {
         throw Ides::Diagnostics::CompileError("no such type " + this->name->name, this->exprloc);
     }
     
+    const Ides::Types::Type* ASTInfixExpression::GetType(ParseContext& ctx) {
+        // Handle numeric types
+        if (const Ides::Types::NumberType* lhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(this->lhs->GetType(ctx))) {
+            try {
+                return lhsnumtype->GetOperatorType(this->func->name, ctx, lhs, rhs);
+            } catch (const Ides::Diagnostics::CompileError& e) {
+                throw Ides::Diagnostics::CompileError(e.message(), this->exprloc, e);
+            }
+        }
+        return ASTExpression::GetType(ctx);
+        
+    }
+    
     llvm::Value* ASTInfixExpression::GetValue(ParseContext& ctx) {
         // Handle numeric types
         if (const Ides::Types::NumberType* lhsnumtype = dynamic_cast<const Ides::Types::NumberType*>(this->lhs->GetType(ctx))) {
@@ -297,6 +316,32 @@ namespace AST {
             }
         }
         return ASTExpression::GetValue(ctx);
+    }
+    
+    const Ides::Types::Type* ASTAssignmentExpression::GetType(ParseContext& ctx) {
+        if (ASTIdentifier* ident = dynamic_cast<ASTIdentifier*>(this->lhs)) {
+            AST* variable = ctx.GetLocalSymbols()->LookupRecursive(ident->name);
+            if (variable == NULL) throw Ides::Diagnostics::CompileError("no such identifier " + ident->name, this->exprloc);
+            if (ASTDeclaration* decl = dynamic_cast<ASTDeclaration*>(variable)) {
+                return decl->GetType(ctx);
+            }
+            throw Ides::Diagnostics::CompileError("variable required in lhs argument of assignment", this->exprloc);
+        }
+        throw Ides::Diagnostics::CompileError("lhs of assignment must be an identifier", this->exprloc);
+    }
+    
+    llvm::Value* ASTAssignmentExpression::GetValue(ParseContext& ctx) {
+        if (ASTIdentifier* ident = dynamic_cast<ASTIdentifier*>(this->lhs)) {
+            AST* variable = ctx.GetLocalSymbols()->LookupRecursive(ident->name);
+            if (variable == NULL) throw Ides::Diagnostics::CompileError("no such identifier " + ident->name, this->exprloc);
+            if (ASTDeclaration* decl = dynamic_cast<ASTDeclaration*>(variable)) {
+                llvm::Value* newval = rhs->GetType(ctx)->Convert(ctx, rhs->GetValue(ctx), lhs->GetType(ctx));
+                ctx.GetIRBuilder()->CreateStore(newval, decl->val);
+                return newval;
+            }
+            throw Ides::Diagnostics::CompileError("variable required in lhs argument of assignment", this->exprloc);
+        }
+        throw Ides::Diagnostics::CompileError("lhs of assignment must be an identifier", this->exprloc);
     }
     
 }
