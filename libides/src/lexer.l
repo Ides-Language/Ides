@@ -59,11 +59,16 @@
 "function"              SET_YYLLOC; return KW_FN;
 "var"                   SET_YYLLOC; return KW_VAR;
 "val"                   SET_YYLLOC; return KW_VAL;
-"throw"                 SET_YYLLOC; return KW_THROW;
-"new"                   SET_YYLLOC; return KW_NEW;
 "extern"                SET_YYLLOC; return KW_EXTERN;
 "null"                  SET_YYLLOC; return KW_NULL;
+
+"throw"                 SET_YYLLOC; return KW_THROW;
+"new"                   SET_YYLLOC; return KW_NEW;
 "return"                SET_YYLLOC; return KW_RETURN;
+
+"if"                    SET_YYLLOC; return KW_IF;
+"else"                  SET_YYLLOC; return KW_ELSE;
+"while"                 SET_YYLLOC; return KW_WHILE;
 
 "void"                  SET_YYLLOC; return KW_VOID;
 "unit"                  SET_YYLLOC; return KW_UNIT;
@@ -87,7 +92,13 @@
 "as"                    SET_YYLLOC; return OP_CAST;
 "++"                    SET_YYLLOC; return OP_INC;
 "--"                    SET_YYLLOC; return OP_DEC;
+
 "=="                    SET_YYLLOC; return OP_EQ;
+"!="                    SET_YYLLOC; return OP_NE;
+"<"                     SET_YYLLOC; return OP_LT;
+">"                     SET_YYLLOC; return OP_GT;
+"<="                    SET_YYLLOC; return OP_LE;
+">="                    SET_YYLLOC; return OP_GE;
 
 
 <INITIAL>"/*"           SET_YYLSTART; BEGIN(IN_BLOCKCOMMENT);

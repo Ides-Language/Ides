@@ -71,6 +71,8 @@ namespace Parsing {
         
         try {
             yyparse(this, &program);
+        } catch (const Ides::Diagnostics::CompileError& ex) {
+            this->Issue(ex);
         } catch (const std::exception& ex) {
             while (!localSymbols.empty()) localSymbols.pop();
             throw ex;

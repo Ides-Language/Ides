@@ -41,6 +41,8 @@
     Ides::AST::ASTStatement* ast_stmt;
     
     Ides::AST::ASTCompoundStatement* ast_block;
+    Ides::AST::ASTIfStatement* ast_if;
+    Ides::AST::ASTWhileStatement* ast_while;
     
     Ides::AST::ASTDeclaration* ast_decl;
     Ides::AST::ASTFunction* ast_fn;
@@ -72,9 +74,13 @@
 %token KW_PUBLIC KW_PROTECTED KW_INTERNAL KW_PRIVATE KW_EXTERN
 
 // Keywords
-%token KW_DEF KW_FN KW_VAR KW_VAL KW_THROW KW_NEW KW_IF KW_NULL KW_RETURN
+%token KW_DEF KW_FN KW_VAR KW_VAL KW_IF KW_ELSE KW_WHILE KW_NULL
+// Keyword operators
+%token KW_THROW KW_NEW KW_RETURN
+
 // Operators
-%token OP_INC OP_DEC OP_EQ OP_COALESCE OP_CAST
+%token OP_INC OP_DEC OP_COALESCE OP_CAST
+%token OP_EQ OP_NE OP_LT OP_LE OP_GT OP_GE
 
 %token <ast_int> TINTEGER
 %token <ast_ident> TIDENTIFIER
@@ -95,6 +101,8 @@
 %type <ast_expr> expression infix_expression prefix_expression postfix_expression primary_expression
 %type <ast_stmt> stmt
 %type <ast_block> stmt_list
+%type <ast_if> if_stmt
+%type <ast_while> while_stmt
 
 %type <ast_prog> root
 
@@ -180,6 +188,13 @@ infix_expression : prefix_expression
                  | infix_expression '&' infix_expression { $$ = NEW_INFIX("&", $1, $3); SET_EXPRLOC($$, @$); }
                  | infix_expression '|' infix_expression { $$ = NEW_INFIX("|", $1, $3); SET_EXPRLOC($$, @$); }
                  | infix_expression '^' infix_expression { $$ = NEW_INFIX("^", $1, $3); SET_EXPRLOC($$, @$); }
+                 
+                 | infix_expression OP_EQ infix_expression { $$ = NEW_INFIX("==", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_NE infix_expression { $$ = NEW_INFIX("!=", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_LT infix_expression { $$ = NEW_INFIX("<", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_LE infix_expression { $$ = NEW_INFIX("<=", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_GT infix_expression { $$ = NEW_INFIX(">", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_GE infix_expression { $$ = NEW_INFIX(">=", $1, $3); SET_EXPRLOC($$, @$); }
 ;
 
 expression : infix_expression
@@ -257,12 +272,17 @@ fn_def  : fn_decl '{' stmt_list '}' { $$ = $1; $$->body = $3; }
 extern_def : KW_EXTERN fn_decl ';' { $$ = $2; }
 ;
 
-if_stmt : KW_IF '(' expression ')' stmt
+if_stmt : KW_IF '(' expression ')' stmt KW_ELSE stmt { $$ = new Ides::AST::ASTIfStatement($3, $5, $7); SET_EXPRLOC($$, @$); }
+        | KW_IF '(' expression ')' stmt { $$ = new Ides::AST::ASTIfStatement($3, $5, NULL); SET_EXPRLOC($$, @$); }
 ;
+
+while_stmt : KW_WHILE '(' expression ')' stmt { $$ = new Ides::AST::ASTWhileStatement($3, $5); SET_EXPRLOC($$, @$); }
 
 stmt : var_decl ';' { SET_EXPRLOC($$, @$); }
      | val_decl ';' { SET_EXPRLOC($$, @$); }
      | expression ';' { SET_EXPRLOC($$, @$); }
+     | if_stmt { SET_EXPRLOC($$, @$); }
+     | while_stmt { SET_EXPRLOC($$, @$); }
      | '{' stmt_list '}' { $$ = (Ides::AST::ASTStatement*)$2; SET_EXPRLOC($$, @$); }
 ;
 

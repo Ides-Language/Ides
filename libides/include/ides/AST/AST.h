@@ -22,7 +22,7 @@ namespace AST {
     
     typedef Ides::Parsing::ParseContext ParseContext;
     
-    class UnitValueException : public std::exception { };
+    class UnitValueException { };
     
     class AST {
     public:

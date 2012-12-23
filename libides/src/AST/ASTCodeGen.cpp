@@ -157,6 +157,7 @@ namespace AST {
                     } else if (valtype->HasImplicitConversionTo(rettype)) {
                         try {
                             ctx.GetIRBuilder()->CreateRet(valtype->Convert(ctx, this->val->GetValue(ctx), rettype));
+
                         } catch (const std::runtime_error& ex) {
                             throw Ides::Diagnostics::CompileError(ex.what(), this->val->exprloc);
                         }
@@ -166,13 +167,75 @@ namespace AST {
                 }
             }
             else if (this->body) {
-                this->body->GetValue(ctx);
+                try {
+                    this->body->GetValue(ctx);
+                    if (this->GetReturnType(ctx)->IsEquivalentType(Ides::Types::VoidType::GetSingletonPtr())) {
+                        // Function didn't return, but it's void, so NBD.
+                        ctx.GetIRBuilder()->CreateRetVoid();
+                    } else {
+                        throw Ides::Diagnostics::CompileError("control reaches end of non-void function", this->exprloc);
+                    }
+                } catch (const Ides::AST::UnitValueException& ex) {
+                    // Function returned.
+                }
             }
             llvm::verifyFunction(*func);
             //func->dump();
         } catch (const Ides::Diagnostics::CompileError& ex) {
             throw Ides::Diagnostics::CompileError(ex.message(), this->exprloc, ex);
         }
+    }
+    
+    llvm::Value* ASTIfStatement::GetValue(ParseContext& ctx) {
+        llvm::BasicBlock* ifblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "if", (llvm::Function*)ctx.GetEvaluatingFunction()->GetValue(ctx));
+        llvm::BasicBlock* elseblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "else", (llvm::Function*)ctx.GetEvaluatingFunction()->GetValue(ctx));
+        llvm::BasicBlock* resumeBlock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "endif", (llvm::Function*)ctx.GetEvaluatingFunction()->GetValue(ctx));
+        
+        llvm::Value* cond = this->condition->GetType(ctx)->Convert(ctx, this->condition->GetValue(ctx), Ides::Types::Integer1Type::GetSingletonPtr());
+        ctx.GetIRBuilder()->CreateCondBr(cond, ifblock, elseblock);
+        
+        ctx.GetIRBuilder()->SetInsertPoint(ifblock);
+        try {
+            this->iftrue->GetValue(ctx);
+            ctx.GetIRBuilder()->CreateBr(resumeBlock);
+        } catch (const Ides::AST::UnitValueException& ex) {
+            // Block early-exits function.
+        }
+        
+        ctx.GetIRBuilder()->SetInsertPoint(elseblock);
+        if (this->iffalse) {
+            try {
+                this->iffalse->GetValue(ctx);
+                ctx.GetIRBuilder()->CreateBr(resumeBlock);
+            } catch (const Ides::AST::UnitValueException& ex) {
+                // Block early-exits function.
+            }
+        } else {
+            ctx.GetIRBuilder()->CreateBr(resumeBlock);
+        }
+        
+        ctx.GetIRBuilder()->SetInsertPoint(resumeBlock);
+        return NULL;
+    }
+    
+    llvm::Value* ASTWhileStatement::GetValue(ParseContext& ctx) {
+        llvm::BasicBlock* whileblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "while", (llvm::Function*)ctx.GetEvaluatingFunction()->GetValue(ctx));
+        llvm::BasicBlock* resumeblock = llvm::BasicBlock::Create(ctx.GetIRBuilder()->getContext(), "endwhile", (llvm::Function*)ctx.GetEvaluatingFunction()->GetValue(ctx));
+        
+        llvm::Value* cond = this->condition->GetType(ctx)->Convert(ctx, this->condition->GetValue(ctx), Ides::Types::Integer1Type::GetSingletonPtr());
+        ctx.GetIRBuilder()->CreateCondBr(cond, whileblock, resumeblock);
+        
+        ctx.GetIRBuilder()->SetInsertPoint(whileblock);
+        try {
+            body->GetValue(ctx);
+            cond = this->condition->GetType(ctx)->Convert(ctx, this->condition->GetValue(ctx), Ides::Types::Integer1Type::GetSingletonPtr());
+            ctx.GetIRBuilder()->CreateCondBr(cond, whileblock, resumeblock);
+        } catch (const Ides::AST::UnitValueException& ex) {
+            // Block early-exits function.
+        }
+        
+        ctx.GetIRBuilder()->SetInsertPoint(resumeblock);
+        return NULL;
     }
     
     llvm::Value* ASTCompoundStatement::GetValue(ParseContext &ctx) {
@@ -189,7 +252,7 @@ namespace AST {
                 if (++i != this->end()) {
                     ctx.Issue(Ides::Diagnostics::CompileWarning("unreachable code", (*i)->exprloc));
                 }
-                break;
+                throw ex;
             }
         }
         
