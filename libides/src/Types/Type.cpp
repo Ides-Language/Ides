@@ -2,6 +2,10 @@
 #include <ides/AST/AST.h>
 
 namespace Ides {
+namespace Types {
+    llvm::StringMap<const Ides::Types::Type*> Type::typenames;
+}
+    
 namespace Util {
 #define SINGLETON(type) template<> type* Singleton<type>::msSingleton = new type()
     
@@ -26,6 +30,20 @@ namespace Util {
 namespace Types {
     PointerType::PointerTypeMap PointerType::types;
     FunctionType::FunctionTypeSet FunctionType::types;
+    
+    
+    const Ides::Types::Type* Type::GetFromMDNode(const llvm::Value* node) {
+        if (llvm::isa<llvm::MDNode>(node)) {
+            const llvm::MDNode* mdnode = llvm::cast<llvm::MDNode>(node);
+            const llvm::MDString* tname = llvm::cast<llvm::MDString>(mdnode->getOperand(0));
+            if (tname->getString() == "ptr") return PointerType::Get(Type::GetFromMDNode(mdnode->getOperand(1)));
+        } else if (llvm::isa<llvm::MDString>(node)) {
+            const llvm::MDString* mdstr = llvm::cast<llvm::MDString>(node);
+            auto i = typenames.find(mdstr->getString());
+            if (i != typenames.end()) return i->second;
+        }
+        return NULL;
+    }
     
     const Ides::Types::PointerType* Type::PtrType() const { return PointerType::Get(this); }
     

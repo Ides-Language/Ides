@@ -59,8 +59,18 @@
 "function"              SET_YYLLOC; return KW_FN;
 "var"                   SET_YYLLOC; return KW_VAR;
 "val"                   SET_YYLLOC; return KW_VAL;
-"extern"                SET_YYLLOC; return KW_EXTERN;
+"struct"                SET_YYLLOC; return KW_STRUCT;
+"class"                 SET_YYLLOC; return KW_CLASS;
+
 "null"                  SET_YYLLOC; return KW_NULL;
+"namespace"             SET_YYLLOC; return KW_NAMESPACE;
+
+"public"                SET_YYLLOC; return KW_PUBLIC;
+"protected"             SET_YYLLOC; return KW_PROTECTED;
+"internal"              SET_YYLLOC; return KW_INTERNAL;
+"provate"               SET_YYLLOC; return KW_PRIVATE;
+"extern"                SET_YYLLOC; return KW_EXTERN;
+"const"                 SET_YYLLOC; return KW_CONST;
 
 "throw"                 SET_YYLLOC; return KW_THROW;
 "new"                   SET_YYLLOC; return KW_NEW;

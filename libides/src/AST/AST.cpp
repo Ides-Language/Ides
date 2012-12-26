@@ -14,7 +14,7 @@ namespace AST {
     ASTCompilationUnit::ASTCompilationUnit() {
     }
     
-    AST::AST() : uuid(boost::uuids::random_generator()()) {}
+    AST::AST() : mdnode(NULL) {}
     
     ASTList::~ASTList() {
         while (!this->empty()) {

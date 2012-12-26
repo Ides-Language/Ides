@@ -27,7 +27,7 @@ int main(int argc, const char* argv[])
 	po::options_description genericdesc("Options");
 	genericdesc.add_options()
 		("help,h", "Show help message")
-		("output-file,o", po::value<fs::path>(), "Output file")
+		("output,o", po::value<fs::path>(), "Output path")
 		("interactive,i", "Run in interactive mode")
         ("name", po::value<std::string>()->default_value("Ides Module"), "Module name")
 		;
@@ -37,12 +37,10 @@ int main(int argc, const char* argv[])
 		("include-path,I", po::value<std::vector<std::string> >()->
 			//default_value(std::vector<fs::path>())->
 			composing(), "Additional include paths")
-		("preprocess,E", "Preprocess, but don't compile, assemble, or link (outputs .pp.ic file")
-		("compile-only,S", "Preprocess and compile, but don't assemble or link (outputs LLVM .ll file)")
-		("compile,c", "Preprocess, compile, and assemble, but don't link (outputs LLVM .bc file)")
+		("compile,c", "Compile source file, but don't link.")
 		("optimization-level,O", po::value<unsigned int>(0), "Optimization level.")
 		//("define,D", po::value<std::map<std::string, std::string> >()->composing(), "Add preprocessor definition")
-		("no-gc", "Disable garbage collection support")
+		//("no-gc", "Disable garbage collection support")
 		;
 
 	po::options_description linkerdesc("Linker Options");
@@ -56,12 +54,6 @@ int main(int argc, const char* argv[])
 		("no-extlib", "Disable extended standard library (disables garbage collection and class support)")
 		("use-gc", po::value<std::string>()->default_value("shadow-stack"), "The GC algorithm to use")
 		;
-	po::options_description devdesc("Developer Options");
-	devdesc.add_options()
-        ("show-lex", "Dump the token sequence from the lexer.")
-		("show-ast", "Print the full AST of the compiled source.")
-		("show-mod", "Dump the full LLVM module assembly code.")
-		;
 
 	po::options_description hiddendesc("Hidden Options");
 	hiddendesc.add_options()
@@ -72,7 +64,7 @@ int main(int argc, const char* argv[])
 	visibledesc.add(genericdesc).add(compilerdesc).add(linkerdesc);
 
 	po::options_description alldesc("All Options");
-	alldesc.add(visibledesc).add(hiddendesc).add(devdesc);
+	alldesc.add(visibledesc).add(hiddendesc);
 
 	po::positional_options_description p;
 	p.add("input-file", -1);
@@ -97,7 +89,7 @@ int main(int argc, const char* argv[])
 	}
     std::string output_name = args["name"].as<std::string>();
 
-	std::string output_file = output_name + ".ll";
+	std::string output_file = output_name + ".ilib";
 	if (args.count("output-file")) {
 		output_file = args["output-file"].as<std::string>();
 	}
@@ -125,8 +117,6 @@ int main(int argc, const char* argv[])
 		current_file = i->string();
 
 		fs::ifstream srcfile(*i);
-        fs::path outpath = *i;
-        outpath.replace_extension(".s");
         
         
         Ides::Parsing::Parser::ParseTree t = parser.Parse(srcfile, current_file);
@@ -135,8 +125,19 @@ int main(int argc, const char* argv[])
         llvm::Module* mod = parser.Compile(t);
         if (mod == NULL) return 1;
         
-        modules.push_back(mod);
+        
+        fs::path outpath = *i;
+        outpath.replace_extension(".ilib");
+        fs::ofstream outfile(outpath);
+        llvm::raw_os_ostream llvm_outfile(outfile);
+        llvm::WriteBitcodeToFile(mod, llvm_outfile);
+        
+        if (!args.count("compile")) {
+            modules.push_back(mod);
+        }
 	}
+    
+    if (args.count("compile")) return 0;
     
     llvm::Linker linker(output_name, output_name, llvm::getGlobalContext());
     
@@ -159,8 +160,9 @@ int main(int argc, const char* argv[])
             std::cerr << linker.getLastError() << std::endl;
         }
     }
+    llvm::Module* linkermod = linker.getModule();
     
-    linker.getModule()->dump();
+    linkermod->dump();
     
     fs::ofstream outfile(output_file);
     llvm::raw_os_ostream llvm_outfile(outfile);

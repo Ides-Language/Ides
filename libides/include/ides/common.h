@@ -18,6 +18,8 @@
 #include <llvm/Type.h>
 #include <llvm/Module.h>
 #include <llvm/LLVMContext.h>
+#include <llvm/Metadata.h>
+#include <llvm/ADT/StringMap.h>
 #include <boost/unordered_map.hpp>
 #include <boost/unordered_set.hpp>
 

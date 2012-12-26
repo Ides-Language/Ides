@@ -52,7 +52,11 @@ namespace AST {
         virtual llvm::Value* GetValue(ParseContext& ctx, const Ides::Types::Type* to);
         virtual llvm::Value* GetPointerValue(ParseContext& ctx);
         
+        virtual llvm::Value* CreateMDNode(ParseContext& ctx);
+        
         llvm::Value* val;
+        
+        Ides::AST::Specifier spec;
         
         VarType vartype;
         ASTIdentifier* name;
@@ -73,6 +77,8 @@ namespace AST {
         virtual llvm::Value* GetValue(ParseContext& ctx);
         virtual const Ides::Types::Type* GetType(ParseContext& ctx);
         
+        virtual llvm::Value* CreateMDNode(ParseContext& ctx);
+        
         const Ides::Types::Type* GetReturnType(ParseContext& ctx);
         
         void GenBody(ParseContext& ctx);
@@ -80,6 +86,8 @@ namespace AST {
         llvm::Function* func;
         llvm::BasicBlock* retblock;
         llvm::Value* returnvalue;
+        
+        Ides::AST::Specifier spec;
         
         const Ides::Types::FunctionType* functype;
         

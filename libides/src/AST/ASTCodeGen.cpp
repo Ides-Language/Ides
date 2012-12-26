@@ -16,6 +16,8 @@ namespace Ides {
 namespace AST {
         
     void ASTCompilationUnit::Compile(ParseContext& ctx) {
+        llvm::NamedMDNode* node = ctx.GetModule()->getOrInsertNamedMetadata("ides._G");
+        
         for (auto i = this->begin(); i != this->end(); ++i) {
             if (ASTFunction* f = dynamic_cast<ASTFunction*>(*i)) {
                 ctx.GetPublicSymbols()->insert(std::make_pair(f->GetMangledName(), f));
@@ -38,6 +40,7 @@ namespace AST {
         
         while (!functions.empty()) {
             try {
+                node->addOperand((llvm::MDNode*)functions.front()->GetMDNode(ctx));
                 functions.front()->GenBody(ctx);
             } catch (const Ides::Diagnostics::CompileIssue& ex) {
                 ctx.Issue(ex);
@@ -110,7 +113,11 @@ namespace AST {
             llvm::FunctionType *FT = static_cast<llvm::FunctionType*>(this->GetType(ctx)->GetLLVMType(ctx));
             //func = (llvm::Function*)ctx.GetModule()->getOrInsertFunction(this->GetMangledName(), FT);
             func = llvm::Function::Create(FT, llvm::GlobalValue::ExternalLinkage, this->GetMangledName(), ctx.GetModule());
-            func->setGC("shadow-stack");
+            //func->setGC("shadow-stack");
+            
+            if (this->GetType(ctx)->IsEquivalentType(Ides::Types::UnitType::GetSingletonPtr())) {
+                func->addFnAttr(llvm::Attribute::NoReturn);
+            }
         }
         return func;
     }

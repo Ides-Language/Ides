@@ -48,6 +48,9 @@
     Ides::AST::ASTDeclaration* ast_decl;
     Ides::AST::ASTFunction* ast_fn;
     
+    //Ides::AST::ASTStruct* ast_struct;
+    //Ides::AST::ASTClass* ast_class;
+    
     Ides::AST::ASTConstantExpression* ast_const;
     Ides::AST::ASTConstantIntExpression* ast_int;
     Ides::AST::ASTConstantStringExpression* ast_istr;
@@ -57,6 +60,8 @@
     
     /***** Type Elements *****/
     Ides::Types::Type* type_base;
+    
+    Ides::AST::Specifier spec;
 }
 
 %{
@@ -71,11 +76,11 @@
 %token KW_VOID KW_UNIT KW_BOOL KW_INT8 KW_UINT8 KW_INT16 KW_UINT16 KW_INT32 KW_UINT32 KW_INT64 KW_UINT64 KW_FLOAT32 KW_FLOAT64
 %token KW_TRUE KW_FALSE
 
-// Visibility specifiers
-%token KW_PUBLIC KW_PROTECTED KW_INTERNAL KW_PRIVATE KW_EXTERN
+// Specifiers
+%token KW_PUBLIC KW_PROTECTED KW_INTERNAL KW_PRIVATE KW_EXTERN KW_CONST
 
 // Keywords
-%token KW_DEF KW_FN KW_VAR KW_VAL KW_NULL
+%token KW_DEF KW_FN KW_STRUCT KW_CLASS KW_VAR KW_VAL KW_NULL KW_NAMESPACE
 %token KW_IF KW_ELSE KW_DO KW_WHILE KW_FOR
 // Keyword operators
 %token KW_THROW KW_NEW KW_RETURN
@@ -100,6 +105,12 @@
 %type <ast_type> var_type
 %type <ast_list> var_type_list
 
+//%type <ast_struct> struct_def
+//%type <ast_class> class_def
+
+%type <ast_base> member_decl
+%type <ast_list> member_decl_list
+
 %type <ast_expr> expression infix_expression prefix_expression postfix_expression primary_expression
 %type <ast_stmt> stmt
 %type <ast_block> stmt_list
@@ -109,6 +120,8 @@
 %type <ast_base> for_start
 
 %type <ast_prog> root
+
+%type <spec> specifier
 
 
 /* Operator precedence for mathematical operators */
@@ -131,13 +144,7 @@ root : program { *output = $1; }
 program : program_decl_list
 ;
 
-program_decl : fn_def
-            // | class_def
-            // | struct_def
-            // | import_stmt
-             | var_decl ';'
-             | val_decl ';'
-             | extern_def
+program_decl : member_decl
 ;
 
 program_decl_list : program_decl { $$ = new Ides::AST::ASTCompilationUnit(); $$->push_back($1); }
@@ -214,6 +221,12 @@ expression : infix_expression
            | KW_RETURN infix_expression { $$ = new Ides::AST::ASTReturnExpression($2); SET_EXPRLOC($$, @$); }
 ;
 
+specifier : KW_PUBLIC { $$ = Ides::AST::PUBLIC; }
+          | KW_PROTECTED { $$ = Ides::AST::PROTECTED; }
+          | KW_INTERNAL { $$ = Ides::AST::INTERNAL; }
+          | KW_PRIVATE { $$ = Ides::AST::PRIVATE; }
+;
+
 var_type : '(' var_type ')' { $$ = $2; SET_EXPRLOC($$, @$); }
          | TIDENTIFIER { $$ = new Ides::AST::ASTTypeName($1); SET_EXPRLOC($$, @$); }
 
@@ -239,6 +252,8 @@ var_type : '(' var_type ')' { $$ = $2; SET_EXPRLOC($$, @$); }
          | KW_FN '(' var_type_list ')' { $$ = new Ides::AST::ASTFunctionType($3, NULL); SET_EXPRLOC($$, @$); }
          
          | var_type '*' { $$ = new Ides::AST::ASTPtrType($1); SET_EXPRLOC($$, @$); }
+         
+         | KW_CONST var_type { $$ = $2; $$->SetConst(true); }
 ;
 
 var_type_list : var_type { $$ = new Ides::AST::ASTList(); $$->push_back($1); SET_EXPRLOC($$, @$); }
@@ -279,6 +294,26 @@ fn_def  : fn_decl '{' stmt_list '}' { $$ = $1; $$->body = $3; }
         | fn_decl '{' '}'
         | fn_decl '=' expression ';' { $$ = $1; $$->val = $3; }
 ;
+
+member_decl : fn_def
+            | extern_def
+            //| class_def
+            //| struct_def
+            | var_decl ';'
+            | val_decl ';'
+;
+
+member_decl_list : member_decl { $$ = new Ides::AST::ASTList(); $$->push_back($1); SET_EXPRLOC($$, @$); }
+                 | member_decl_list member_decl { $$ = $1; $$->push_back($2); SET_EXPRLOC($$, @$); }
+;
+/*
+struct_def : KW_STRUCT TIDENTIFIER '{' member_decl_list '}' { $$ = new Ides::AST::ASTStruct($4); SET_EXPRLOC($$, @$); }
+           | KW_STRUCT TIDENTIFIER '{' '}' { $$ = new Ides::AST::ASTStruct(NULL); SET_EXPRLOC($$, @$); }
+;
+
+class_def : KW_CLASS TIDENTIFIER '{' member_decl_list '}' { $$ = new Ides::AST::ASTClass($4); SET_EXPRLOC($$, @$); }
+          | KW_CLASS TIDENTIFIER '{' '}' { $$ = new Ides::AST::ASTClass(NULL); SET_EXPRLOC($$, @$); }
+;*/
 
 extern_def : KW_EXTERN fn_decl ';' { $$ = $2; }
 ;

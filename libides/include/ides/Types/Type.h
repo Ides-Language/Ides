@@ -18,6 +18,7 @@ namespace Types {
     class Type {
     public:
         Type(const Ides::String& type_name, Type* supertype) : type_name(type_name), supertype(supertype) {
+            typenames.GetOrCreateValue(type_name, this);
             if (supertype)
                 this->symbols.reset(new Ides::Parsing::SymbolTable(supertype->symbols));
             else
@@ -25,6 +26,13 @@ namespace Types {
         }
         
         virtual llvm::Type* GetLLVMType(ParseContext& ctx) const { assert(0); throw std::runtime_error("LLVM type not yet implemented."); }
+        
+        llvm::Value* GetMDNode(ParseContext& ctx) const { return CreateMDNode(ctx); }
+        virtual llvm::Value* CreateMDNode(ParseContext& ctx) const {
+            return llvm::MDString::get(ctx.GetContext(), this->ToString());
+        }
+        
+        static const Ides::Types::Type* GetFromMDNode(const llvm::Value* node);
         
         const Ides::Types::PointerType* PtrType() const;
         
@@ -59,6 +67,8 @@ namespace Types {
         Ides::Parsing::SymbolTable::Ptr symbols;
         const Ides::String type_name;
         const Type* supertype;
+        
+        static llvm::StringMap<const Ides::Types::Type*> typenames;
     };
     
     class VoidType : public Type, public Ides::Util::Singleton<VoidType> {
@@ -123,6 +133,12 @@ namespace Types {
         
         virtual llvm::Type* GetLLVMType(ParseContext& ctx) const {
             return llvm::PointerType::get(targetType->GetLLVMType(ctx), 0);
+        }
+        virtual llvm::Value* CreateMDNode(ParseContext& ctx) const {
+            std::vector<llvm::Value*> args;
+            args.push_back(llvm::MDString::get(ctx.GetContext(), "ptr"));
+            args.push_back(targetType->GetMDNode(ctx));
+            return llvm::MDNode::get(ctx.GetContext(), args);
         }
         
         const Ides::Types::Type* GetTargetType() const { return this->targetType; }

@@ -24,6 +24,19 @@ namespace AST {
     
     class UnitValueException { };
     
+    enum Specifier {
+        // Low order bits = visibility
+        PUBLIC = 0,
+        PROTECTED = 1,
+        INTERNAL = 2,
+        PRIVATE = 3,
+        
+        MASK_VISIBILITY = 7,
+        
+        EXTERN = 8,
+        CONST = 16,
+    };
+    
     class AST {
     public:
         
@@ -37,21 +50,21 @@ namespace AST {
         virtual llvm::Value* GetPointerValue(ParseContext& ctx) {
             throw Ides::Diagnostics::CompileError("expression is not a pointer", this->exprloc);
         }
+        llvm::Value* GetMDNode(ParseContext& ctx) { return mdnode ? mdnode : (mdnode = CreateMDNode(ctx)); }
+        virtual llvm::Value* CreateMDNode(ParseContext& ctx) { assert(0); }
         virtual const Ides::Types::Type* GetType(ParseContext& ctx) { assert(0); }
-        
-        const boost::uuids::uuid& GetUUID() const { return this->uuid; }
         
         Diagnostics::SourceLocation exprloc;
     private:
-        const boost::uuids::uuid uuid;
+        llvm::Value* mdnode;
     };
     
     class ASTList : public AST, public std::list<AST*> {
     public:
         ~ASTList();
+        
+        virtual llvm::Value* CreateMDNode(ParseContext& ctx);
     };
-    
-    
     
     class ASTIdentifier : public AST {
     public:
@@ -70,6 +83,11 @@ namespace AST {
     
     class ASTType : public AST {
     public:
+        ASTType() : isConst(false) { }
+        virtual ~ASTType() { }
+        
+        void SetConst(bool constness) { isConst = constness; }
+        bool isConst;
     };
     
     class ASTVoidType : public ASTType {
