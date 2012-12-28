@@ -48,7 +48,7 @@
     Ides::AST::ASTDeclaration* ast_decl;
     Ides::AST::ASTFunction* ast_fn;
     
-    //Ides::AST::ASTStruct* ast_struct;
+    Ides::AST::ASTStruct* ast_struct;
     //Ides::AST::ASTClass* ast_class;
     
     Ides::AST::ASTConstantExpression* ast_const;
@@ -105,7 +105,7 @@
 %type <ast_type> var_type
 %type <ast_list> var_type_list
 
-//%type <ast_struct> struct_def
+%type <ast_struct> struct_def
 //%type <ast_class> class_def
 
 %type <ast_base> member_decl
@@ -180,7 +180,7 @@ postfix_expression : primary_expression
                    | postfix_expression '(' ')' { $$ = new Ides::AST::ASTFunctionCall($1, NULL); SET_EXPRLOC($$, @$); }
                    | postfix_expression '(' arg_val_list ')' { $$ = new Ides::AST::ASTFunctionCall($1, $3); SET_EXPRLOC($$, @$); }
                    | postfix_expression '[' arg_val_list ']' { $$ = new Ides::AST::ASTBracketCall($1, $3); SET_EXPRLOC($$, @$); }
-                   | postfix_expression '.' TIDENTIFIER
+                   | postfix_expression '.' TIDENTIFIER { $$ = new Ides::AST::ASTDotExpression($1, $3); SET_EXPRLOC($$, @$); }
 ;
 
 prefix_expression : postfix_expression
@@ -298,7 +298,7 @@ fn_def  : fn_decl '{' stmt_list '}' { $$ = $1; $$->body = $3; }
 member_decl : fn_def
             | extern_def
             //| class_def
-            //| struct_def
+            | struct_def
             | var_decl ';'
             | val_decl ';'
 ;
@@ -306,11 +306,11 @@ member_decl : fn_def
 member_decl_list : member_decl { $$ = new Ides::AST::ASTList(); $$->push_back($1); SET_EXPRLOC($$, @$); }
                  | member_decl_list member_decl { $$ = $1; $$->push_back($2); SET_EXPRLOC($$, @$); }
 ;
-/*
-struct_def : KW_STRUCT TIDENTIFIER '{' member_decl_list '}' { $$ = new Ides::AST::ASTStruct($4); SET_EXPRLOC($$, @$); }
-           | KW_STRUCT TIDENTIFIER '{' '}' { $$ = new Ides::AST::ASTStruct(NULL); SET_EXPRLOC($$, @$); }
-;
 
+struct_def : KW_STRUCT TIDENTIFIER '{' member_decl_list '}' { $$ = new Ides::AST::ASTStruct($2, $4); SET_EXPRLOC($$, @$); }
+           | KW_STRUCT TIDENTIFIER '{' '}' { $$ = new Ides::AST::ASTStruct($2, NULL); SET_EXPRLOC($$, @$); }
+;
+/*
 class_def : KW_CLASS TIDENTIFIER '{' member_decl_list '}' { $$ = new Ides::AST::ASTClass($4); SET_EXPRLOC($$, @$); }
           | KW_CLASS TIDENTIFIER '{' '}' { $$ = new Ides::AST::ASTClass(NULL); SET_EXPRLOC($$, @$); }
 ;*/

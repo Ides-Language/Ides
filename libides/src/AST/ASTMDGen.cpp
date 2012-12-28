@@ -33,5 +33,15 @@ namespace AST {
         return llvm::MDNode::get(ctx.GetContext(), args);
     }
     
+    llvm::Value* ASTStruct::CreateMDNode(ParseContext &ctx) {
+        std::vector<llvm::Value*> args;
+        args.push_back(llvm::MDString::get(ctx.GetContext(), "struct"));
+        args.push_back(llvm::MDString::get(ctx.GetContext(), this->GetName()));
+        if (this->members != NULL) {
+            args.push_back(this->members->GetMDNode(ctx));
+        }
+        return llvm::MDNode::get(ctx.GetContext(), args);
+    }
+    
 }
 }

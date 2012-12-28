@@ -147,6 +147,26 @@ namespace Types {
         static PointerTypeMap types;
     };
     
+    class StructType : public Type {
+    public:
+        StructType(const Ides::String& name) :
+            Type("struct " + name, VoidType::GetSingletonPtr()), name(name) { }
+        virtual ~StructType() { }
+        
+        static StructType* GetOrCreate(ParseContext& ctx, const Ides::String& name);
+        
+        virtual llvm::Type* GetLLVMType(ParseContext& ctx) const { return type; }
+        const Ides::Types::Type* GetMemberType(const Ides::String& str) const;
+        int GetMemberIndex(const Ides::String& str) const;
+        
+        void SetMembers(ParseContext& ctx, const std::vector<std::pair<Ides::String, const Type*> >& members);
+    private:
+        llvm::StructType* type;
+        Ides::String name;
+        std::vector<std::pair<Ides::String, const Type*> > members;
+        static llvm::StringMap<StructType*> types;
+    };
+    
     
     class ClassType : public Type {
     public:

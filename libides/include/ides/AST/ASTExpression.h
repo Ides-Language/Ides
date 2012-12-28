@@ -18,6 +18,8 @@ namespace AST {
     
     
     class ASTExpression : public ASTStatement {
+    public:
+        virtual llvm::Value* GetPointerValue(ParseContext& ctx);
         
     };
     
@@ -149,10 +151,23 @@ namespace AST {
         ASTType* rhs;
     };
     
+    class ASTDotExpression : public ASTExpression {
+    public:
+        ASTDotExpression(ASTExpression* lhs, ASTIdentifier* member) : lhs(lhs), member(member) { }
+        virtual ~ASTDotExpression() { delete lhs; delete member; }
+        
+        virtual llvm::Value* GetValue(ParseContext& ctx);
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx);
+        virtual llvm::Value* GetPointerValue(ParseContext& ctx);
+        
+        ASTExpression* lhs;
+        ASTIdentifier* member;
+    };
+    
     class ASTAddressOfExpression : public ASTExpression {
     public:
         ASTAddressOfExpression(ASTExpression* arg) : arg(arg) { }
-        ~ASTAddressOfExpression() { }
+        virtual ~ASTAddressOfExpression() { }
         
         virtual llvm::Value* GetValue(ParseContext& ctx);
         virtual const Ides::Types::Type* GetType(ParseContext& ctx);
@@ -165,7 +180,7 @@ namespace AST {
     class ASTDereferenceExpression : public ASTExpression {
     public:
         ASTDereferenceExpression(ASTExpression* arg) : arg(arg) { }
-        ~ASTDereferenceExpression() { }
+        virtual ~ASTDereferenceExpression() { }
         
         virtual llvm::Value* GetValue(ParseContext& ctx);
         virtual const Ides::Types::Type* GetType(ParseContext& ctx);

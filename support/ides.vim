@@ -8,7 +8,7 @@ if exists("b:current_syntax")
 endif
 
 " A bunch of useful keywords
-syn keyword	cStatement	return def var val throw new extern as or
+syn keyword	cStatement	return def var val throw new extern as or class struct
 syn keyword	cLabel		case default
 syn keyword	cConditional	if else switch
 syn keyword	cRepeat		while for do

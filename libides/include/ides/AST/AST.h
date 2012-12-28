@@ -166,6 +166,24 @@ namespace AST {
         
     };
     
+    class ASTStruct : public AST {
+    public:
+        ASTStruct(ASTIdentifier* name, ASTList* members) : name(name), members(members) { }
+        
+        virtual llvm::Value* GetValue(ParseContext& ctx);
+        virtual const Ides::Types::Type* GetType(ParseContext& ctx) { return this->type; }
+        virtual llvm::Value* CreateMDNode(ParseContext& ctx);
+        
+        void GenType(ParseContext& ctx);
+        
+        const Ides::String& GetName() { return this->name->name; }
+        
+        Ides::Types::StructType* type;
+        
+        ASTIdentifier* name;
+        ASTList* members;
+    };
+    
     
     class ASTCompilationUnit : public ASTList {
     public:

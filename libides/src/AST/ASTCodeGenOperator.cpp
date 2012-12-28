@@ -115,6 +115,13 @@ namespace AST {
     }
     
     llvm::Value* ASTAssignmentExpression::GetValue(ParseContext& ctx) {
+        if (ASTIdentifier* ident = dynamic_cast<ASTIdentifier*>(lhs)) {
+            if (ASTDeclaration* decl = dynamic_cast<ASTDeclaration*>(ident->GetDeclaration(ctx))) {
+                if (decl->vartype == ASTDeclaration::DECL_VAL) {
+                    throw Ides::Diagnostics::CompileError("cannot reassign val", this->exprloc);
+                }
+            }
+        }
         llvm::Value* newval = rhs->GetValue(ctx); //rhs->GetType(ctx)->Convert(ctx, rhs->GetValue(ctx), this->lhs->GetType(ctx));
         llvm::Value* target = lhs->GetPointerValue(ctx);
         ctx.GetIRBuilder()->CreateStore(newval, target);
@@ -148,6 +155,26 @@ namespace AST {
     
     llvm::Value* ASTDereferenceExpression::GetPointerValue(ParseContext &ctx) {
         return ctx.GetIRBuilder()->CreateLoad(arg->GetPointerValue(ctx), "deref");
+    }
+    
+    const Ides::Types::Type* ASTDotExpression::GetType(ParseContext &ctx) {
+        const Ides::Types::StructType* st = dynamic_cast<const Ides::Types::StructType*>(this->lhs->GetType(ctx));
+        if (st == NULL) throw Ides::Diagnostics::CompileError("invalid use of operator . on non-struct type", this->exprloc);
+        
+        const Ides::Types::Type* mt = st->GetMemberType(this->member->name);
+        if (mt == NULL) throw Ides::Diagnostics::CompileError("no member " + this->member->name + " in struct of type " + st->ToString(), this->exprloc);
+        
+        return mt;
+    }
+    
+    llvm::Value* ASTDotExpression::GetValue(ParseContext &ctx) {
+        return ctx.GetIRBuilder()->CreateLoad(this->GetPointerValue(ctx), "deref");
+    }
+    
+    llvm::Value* ASTDotExpression::GetPointerValue(ParseContext &ctx) {
+        //return ctx.GetIRBuilder()->CreateLoad(arg->GetPointerValue(ctx), "deref");
+        const Ides::Types::StructType* st = static_cast<const Ides::Types::StructType*>(this->lhs->GetType(ctx));
+        return ctx.GetIRBuilder()->CreateStructGEP(lhs->GetPointerValue(ctx), st->GetMemberIndex(this->member->name));
     }
 }
 }

@@ -4,6 +4,7 @@
 namespace Ides {
 namespace Types {
     llvm::StringMap<const Ides::Types::Type*> Type::typenames;
+    llvm::StringMap<Ides::Types::StructType*> StructType::types;
 }
     
 namespace Util {
@@ -77,6 +78,41 @@ namespace Types {
         FunctionType* f = new FunctionType(retType, argTypes);
         types.insert(f);
         return f;
+    }
+    
+    StructType* StructType::GetOrCreate(ParseContext& ctx, const Ides::String& name) {
+        auto i = StructType::types.find(name);
+        if (i != StructType::types.end()) return i->second;
+        
+        StructType* t = new StructType(name);
+        t->type = llvm::StructType::create(ctx.GetContext(), name);
+        return t;
+    }
+    
+    void StructType::SetMembers(ParseContext& ctx, const std::vector<std::pair<Ides::String, const Type*> >& members) {
+        this->members = members;
+        
+        std::vector<llvm::Type*> membertypes;
+        for (auto i = members.begin(); i != members.end(); ++i) {
+            membertypes.push_back(i->second->GetLLVMType(ctx));
+        }
+        this->type->setBody(membertypes, false);
+    }
+    
+    const Ides::Types::Type* StructType::GetMemberType(const Ides::String& str) const {
+        for (auto i = this->members.begin(); i != this->members.end(); ++i) {
+            if (i->first == str) return i->second;
+        }
+        return NULL;
+    }
+    
+    int StructType::GetMemberIndex(const Ides::String& str) const {
+        int ret = 0;
+        for (auto i = this->members.begin(); i != this->members.end(); ++i) {
+            if (i->first == str) return ret;
+            ++ret;
+        }
+        return -1;
     }
     
     llvm::Type* FunctionType::GetLLVMType(ParseContext& ctx) const

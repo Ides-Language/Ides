@@ -14,17 +14,27 @@
 
 namespace Ides {
 namespace AST {
-        
+    
+    
+    llvm::Value* ASTExpression::GetPointerValue(ParseContext& ctx) {
+        llvm::Value* ptr = ctx.GetIRBuilder()->CreateAlloca(this->GetType(ctx)->GetLLVMType(ctx));
+        ctx.GetIRBuilder()->CreateStore(this->GetValue(ctx), ptr);
+        return ptr;
+    }
+    
     void ASTCompilationUnit::Compile(ParseContext& ctx) {
         llvm::NamedMDNode* node = ctx.GetModule()->getOrInsertNamedMetadata("ides._G");
         
         for (auto i = this->begin(); i != this->end(); ++i) {
             if (ASTFunction* f = dynamic_cast<ASTFunction*>(*i)) {
                 ctx.GetPublicSymbols()->insert(std::make_pair(f->GetMangledName(), f));
+            } else if (ASTStruct* s = dynamic_cast<ASTStruct*>(*i)) {
+                ctx.GetPublicSymbols()->insert(std::make_pair(s->GetName(), s));
             }
         }
         
         std::queue<ASTFunction*> functions;
+        std::queue<ASTStruct*> structs;
         for (auto i = this->begin(); i != this->end(); ++i) {
             try {
                 (*i)->GetValue(ctx);
@@ -32,10 +42,22 @@ namespace AST {
                 if (ASTFunction* func = dynamic_cast<ASTFunction*>(*i)) {
                     if (func->body || func->val)
                         functions.push(func);
+                } else if (ASTStruct* str = dynamic_cast<ASTStruct*>(*i)) {
+                    structs.push(str);
                 }
             } catch (const Ides::Diagnostics::CompileIssue& ex) {
                 ctx.Issue(ex);
             }
+        }
+        
+        while (!structs.empty()) {
+            try {
+                node->addOperand((llvm::MDNode*)structs.front()->GetMDNode(ctx));
+                structs.front()->GenType(ctx);
+            } catch (const Ides::Diagnostics::CompileIssue& ex) {
+                ctx.Issue(ex);
+            }
+            structs.pop();
         }
         
         while (!functions.empty()) {
@@ -113,7 +135,7 @@ namespace AST {
             llvm::FunctionType *FT = static_cast<llvm::FunctionType*>(this->GetType(ctx)->GetLLVMType(ctx));
             //func = (llvm::Function*)ctx.GetModule()->getOrInsertFunction(this->GetMangledName(), FT);
             func = llvm::Function::Create(FT, llvm::GlobalValue::ExternalLinkage, this->GetMangledName(), ctx.GetModule());
-            //func->setGC("shadow-stack");
+            func->setGC("shadow-stack");
             
             if (this->GetType(ctx)->IsEquivalentType(Ides::Types::UnitType::GetSingletonPtr())) {
                 func->addFnAttr(llvm::Attribute::NoReturn);
@@ -138,8 +160,10 @@ namespace AST {
             llvm::Function::arg_iterator ai = func->arg_begin();
             for (; i != args->end() && ai != func->arg_end(); ++ai, ++i) {
                 ASTDeclaration* decl = dynamic_cast<ASTDeclaration*>(*i);
-                decl->GetValue(ctx);
-                ctx.GetIRBuilder()->CreateStore(ai, decl->val);
+                if (decl->vartype == ASTDeclaration::DECL_VAR) {
+                    decl->GetValue(ctx);
+                    ctx.GetIRBuilder()->CreateStore(ai, decl->val);
+                }
                 ai->setName(decl->name->name);
                 ctx.GetLocalSymbols()->insert(std::make_pair(decl->name->name, decl));
             }
@@ -261,6 +285,8 @@ namespace AST {
     }
     
     const Ides::Types::Type* ASTTypeName::GetType(ParseContext& ctx) {
+        AST* t = ctx.GetLocalSymbols()->LookupRecursive(this->name->name);
+        if (t != NULL) return t->GetType(ctx);
         throw Ides::Diagnostics::CompileError("no such type " + this->name->name, this->exprloc);
     }
     
