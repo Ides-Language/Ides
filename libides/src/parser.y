@@ -227,8 +227,7 @@ specifier : KW_PUBLIC { $$ = Ides::AST::PUBLIC; }
           | KW_PRIVATE { $$ = Ides::AST::PRIVATE; }
 ;
 
-var_type : '(' var_type ')' { $$ = $2; SET_EXPRLOC($$, @$); }
-         | TIDENTIFIER { $$ = new Ides::AST::ASTTypeName($1); SET_EXPRLOC($$, @$); }
+var_type : var_type '*' { $$ = new Ides::AST::ASTPtrType($1); SET_EXPRLOC($$, @$); }
 
          | KW_VOID   { $$ = new Ides::AST::ASTVoidType(); SET_EXPRLOC($$, @$); }
          | KW_UNIT   { $$ = new Ides::AST::ASTUnitType(); SET_EXPRLOC($$, @$); }
@@ -251,9 +250,9 @@ var_type : '(' var_type ')' { $$ = $2; SET_EXPRLOC($$, @$); }
          | KW_FN '(' ')' { $$ = new Ides::AST::ASTFunctionType(NULL, NULL); SET_EXPRLOC($$, @$); }
          | KW_FN '(' var_type_list ')' { $$ = new Ides::AST::ASTFunctionType($3, NULL); SET_EXPRLOC($$, @$); }
          
-         | var_type '*' { $$ = new Ides::AST::ASTPtrType($1); SET_EXPRLOC($$, @$); }
-         
-         | KW_CONST var_type { $$ = $2; $$->SetConst(true); }
+         | TIDENTIFIER { $$ = new Ides::AST::ASTTypeName($1); SET_EXPRLOC($$, @$); }
+
+         //| KW_CONST var_type { $$ = $2; $$->SetConst(true); }
 ;
 
 var_type_list : var_type { $$ = new Ides::AST::ASTList(); $$->push_back($1); SET_EXPRLOC($$, @$); }

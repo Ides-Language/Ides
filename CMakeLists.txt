@@ -36,6 +36,7 @@ include_directories("libides/include")
 
 add_subdirectory(libides)
 add_subdirectory(ides)
+add_subdirectory(ides-headergen)
 
 find_package(Doxygen)
 
