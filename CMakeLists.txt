@@ -32,10 +32,10 @@ set(CMAKE_CXX_FLAGS ${LLVM_CFLAGS})
 
 #add_definitions("-std=c++11" "-stdlib=libc++")
 
-include_directories("libides/include")
+include_directories(${CMAKE_SOURCE_DIR})
 
-add_subdirectory(libides)
 add_subdirectory(ides)
+add_subdirectory(idesc)
 add_subdirectory(ides-headergen)
 
 find_package(Doxygen)

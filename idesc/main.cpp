@@ -13,6 +13,8 @@
 #include <ides/AST/AST.h>
 
 #include <llvm/Support/raw_os_ostream.h>
+#include <llvm/Support/PrettyStackTrace.h>
+#include "llvm/Support/Signals.h"
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/Linker.h>
 
@@ -24,6 +26,9 @@ std::string current_file;
 
 int main(int argc, const char* argv[])
 {
+    llvm::sys::PrintStackTraceOnErrorSignal();
+    llvm::PrettyStackTraceProgram X(argc, argv);
+    
 	po::options_description genericdesc("Options");
 	genericdesc.add_options()
 		("help,h", "Show help message")

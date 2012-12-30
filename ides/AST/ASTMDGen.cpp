@@ -10,7 +10,8 @@ namespace AST {
         args.push_back(llvm::MDString::get(ctx.GetContext(), "function"));
         args.push_back(llvm::MDString::get(ctx.GetContext(), this->name->name));
         args.push_back(this->GetReturnType(ctx)->GetMDNode(ctx));
-        args.push_back(this->args->GetMDNode(ctx));
+        if (this->args != NULL)
+            args.push_back(this->args->GetMDNode(ctx));
         args.push_back(this->func);
         return llvm::MDNode::get(ctx.GetContext(), args);
     }

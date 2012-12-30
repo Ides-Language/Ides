@@ -15,6 +15,6 @@ deps/*
 !deps/cmake/
 
 # FLEX/BISON generated files
-libides/lexer.cpp
-libides/parser.cpp
-libides/parser.hpp
+ides/lexer.cpp
+ides/parser.cpp
+ides/parser.hpp

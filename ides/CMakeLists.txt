@@ -1,20 +1,49 @@
 
-# Let's suppose we want to build a JIT compiler with support for
-# binary code (no interpreter):
+add_definitions(-DLIBIDES_EXPORTS)
 
-add_executable(idesc
-	main.cpp
+file(GLOB MODULES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*")
+
+foreach (DIR ${MODULES})
+	if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${DIR}/")
+		file(GLOB_RECURSE MODULE_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/${DIR}/*.h")
+		file(GLOB_RECURSE MODULE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/${DIR}/*.cpp")
+
+		set(LIBIDES_HEADERS ${LIBIDES_HEADERS} ${MODULE_HEADERS})
+		set(LIBIDES_SOURCES ${LIBIDES_SOURCES} ${MODULE_SOURCES})
+		source_group("${DIR}" FILES ${MODULE_HEADERS})
+		source_group("${DIR}" FILES ${MODULE_SOURCES})
+	else()
+		set(HEADER "${CMAKE_CURRENT_SOURCE_DIR}/${DIR}")
+		set(LIBIDES_HEADERS ${LIBIDES_HEADERS} ${HEADER})
+		source_group("" FILES ${HEADER})
+	endif()
+endforeach(DIR ${MODULES})
+
+find_package(BISON)
+find_package(FLEX)
+
+FLEX_TARGET(IdesScanner lexer.l  ${CMAKE_CURRENT_BINARY_DIR}/lexer.cpp)
+BISON_TARGET(IdesParser parser.y ${CMAKE_CURRENT_BINARY_DIR}/parser.cpp)
+ADD_FLEX_BISON_DEPENDENCY(IdesScanner IdesParser)
+
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
+source_group("Generated" FILES ${FLEX_IdesScanner_OUTPUTS} ${BISON_IdesParser_OUTPUTS})
+
+add_library(ides STATIC
+	${LIBIDES_SOURCES}
+	${LIBIDES_HEADERS}
+	${FLEX_IdesScanner_OUTPUTS}
+	${BISON_IdesParser_OUTPUTS}
+	${CMAKE_CURRENT_SOURCE_DIR}/lexer.l
+	${CMAKE_CURRENT_SOURCE_DIR}/parser.y
 	)
 
-# Finally, we link the LLVM libraries to our executable:
-target_link_libraries(idesc
-	ides
-	${Boost_LIBRARIES}
-	${LLVM_MODULE_LIBS}
+target_link_libraries(ides
+	xerces-c
 	)
 
-
-INSTALL(TARGETS idesc
+INSTALL(TARGETS ides
 	RUNTIME DESTINATION bin
 	LIBRARY DESTINATION lib
 	ARCHIVE DESTINATION lib

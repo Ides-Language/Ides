@@ -23,7 +23,10 @@ namespace AST {
     }
     
     void ASTCompilationUnit::Compile(ParseContext& ctx) {
-        llvm::NamedMDNode* node = ctx.GetModule()->getOrInsertNamedMetadata("ides._G");
+        
+        ParseContext::ScopedLocalScope localScope(ctx);
+        
+        llvm::NamedMDNode* node = ctx.GetModule()->getOrInsertNamedMetadata("ides");
         
         for (auto i = this->begin(); i != this->end(); ++i) {
             if (ASTFunction* f = dynamic_cast<ASTFunction*>(*i)) {
@@ -40,8 +43,7 @@ namespace AST {
                 (*i)->GetValue(ctx);
                 
                 if (ASTFunction* func = dynamic_cast<ASTFunction*>(*i)) {
-                    if (func->body || func->val)
-                        functions.push(func);
+                    functions.push(func);
                 } else if (ASTStruct* str = dynamic_cast<ASTStruct*>(*i)) {
                     structs.push(str);
                 }
@@ -63,7 +65,8 @@ namespace AST {
         while (!functions.empty()) {
             try {
                 node->addOperand((llvm::MDNode*)functions.front()->GetMDNode(ctx));
-                functions.front()->GenBody(ctx);
+                if (functions.front()->body || functions.front()->val)
+                    functions.front()->GenBody(ctx);
             } catch (const Ides::Diagnostics::CompileIssue& ex) {
                 ctx.Issue(ex);
             }

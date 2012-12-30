@@ -5,6 +5,7 @@
 
 #include "llvm/Support/Host.h"
 #include "llvm/ADT/IntrusiveRefCntPtr.h"
+#include "llvm/Support/PrettyStackTrace.h"
 
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Basic/TargetOptions.h"
@@ -27,7 +28,13 @@ public:
     IdesASTPrinter(std::ostream& os) : os(os), autoarg(0) {
     }
     
-    void HandleQualType(const clang::QualType& t) {
+    virtual void Initialize (clang::ASTContext &Context) {
+        ctx = &Context;
+        ASTConsumer::Initialize(Context);
+    }
+    
+    void HandleQualType(const clang::QualType& ty) {
+        clang::QualType t = ty.getDesugaredType(*this->ctx);
         if (t->isFunctionPointerType()) {
             const clang::FunctionProtoType* ft = t->getPointeeType()->getAs<clang::FunctionProtoType>();
             assert(ft);
@@ -46,7 +53,7 @@ public:
         } else if (t->isPointerType()) {
             HandleQualType(t->getPointeeType());
             os << "*";
-        } else if (t->isStructureType()) {
+        } else if (t->isRecordType()) {
             const clang::RecordType* st = t->getAs<clang::RecordType>();
             os << st->getDecl()->getNameAsString();
         } else if (t->isBuiltinType()) {
@@ -101,8 +108,18 @@ public:
                     os << "???";
                     break;
             }
-        } else {
-            os << "void*;  " << "// " << t.getAsString();
+        } else if (t->isArrayType()) {
+            const clang::ArrayType* at = clang::dyn_cast<clang::ArrayType>(t);
+            os << " /* " << t.getAsString() << " */ " << std::flush;
+            
+            HandleQualType(at->getElementType());
+            os << "*";
+            
+        } else if (t->isEnumeralType()) {
+            os << t.getAsString();
+        }
+        else {
+            os << "void*  " << "/* " << t.getAsString() << " -> " << t.getTypePtr()->getTypeClassName() << " */" << std::flush;
         }
     }
     
@@ -143,7 +160,6 @@ public:
         }
         else if (clang::RecordDecl* rd = llvm::dyn_cast<clang::RecordDecl>(d)) {
             std::string name = rd->getNameAsString();
-            if (name.empty()) name = "anonstruct";
             os << "struct " << name << " {" << std::endl;
             
             for (auto i = rd->field_begin(); i != rd->field_end(); ++i) {
@@ -171,6 +187,8 @@ public:
         }
         return true;
     }
+    
+    clang::ASTContext* ctx;
     std::ostream& os;
     int autoarg;
 };
@@ -179,10 +197,14 @@ public:
 po::variables_map args;
 
 int main(int argc, const char** argv) {
+    llvm::sys::PrintStackTraceOnErrorSignal();
+    llvm::PrettyStackTraceProgram X(argc_, argv_);
+    
     po::options_description genericdesc("Options");
 	genericdesc.add_options()
     ("help,h", "Show help message")
-    ("output,o", po::value<fs::path>(), "Output path")
+    ("output,o", po::value<std::string>(), "Output path")
+    ("include-path,I", po::value<std::vector<std::string> >()->composing(), "Additional include paths")
     ;
     
 	po::options_description hiddendesc("Hidden Options");
@@ -214,6 +236,11 @@ int main(int argc, const char** argv) {
     clang::CompilerInstance ci;
     ci.createDiagnostics(argc, argv);
     
+    const std::vector<std::string>& include_dirs = args["include-path"].as<std::vector<std::string> >();
+    for (auto i = include_dirs.begin(); i != include_dirs.end(); ++i) {
+        ci.getHeaderSearchOpts().AddPath(*i, clang::frontend::Angled, true, false, false);
+    }
+    
     clang::TargetOptions opts;
     opts.Triple = llvm::sys::getDefaultTargetTriple();
     clang::TargetInfo *pti = clang::TargetInfo::CreateTargetInfo(ci.getDiagnostics(), opts);
@@ -224,10 +251,24 @@ int main(int argc, const char** argv) {
     ci.createPreprocessor();
     ci.getPreprocessorOpts().UsePredefines = false;
     
-    IdesASTPrinter *astConsumer = new IdesASTPrinter(std::cout);
-    ci.setASTConsumer(astConsumer);
+    std::fstream os;
+    IdesASTPrinter *astConsumer = NULL;
+    if (args.count("output")) {
+        std::string output_file = args["output"].as<std::string>();
+        os.open(output_file.c_str(), std::ios_base::out | std::ios_base::trunc);
+        
+        astConsumer = new IdesASTPrinter(os);
+        ci.setASTConsumer(astConsumer);
+        
+    }
+    else {
+        astConsumer = new IdesASTPrinter(std::cout);
+        ci.setASTConsumer(astConsumer);
+    }
     
     ci.createASTContext();
+    
+    
     
     const clang::FileEntry *pFile = ci.getFileManager().getFile(args["input-file"].as<std::string>());
     ci.getSourceManager().createMainFileID(pFile);
@@ -235,6 +276,8 @@ int main(int argc, const char** argv) {
                                              &ci.getPreprocessor());
     clang::ParseAST(ci.getPreprocessor(), astConsumer, ci.getASTContext());
     ci.getDiagnosticClient().EndSourceFile();
+    
+    if (os.is_open()) os.close();
     
     return 0;
 }

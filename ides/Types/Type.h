@@ -132,6 +132,8 @@ namespace Types {
         static const PointerType* Get(const Ides::Types::Type* target);
         
         virtual llvm::Type* GetLLVMType(ParseContext& ctx) const {
+            if (targetType->IsEquivalentType(VoidType::GetSingletonPtr()))
+                return llvm::PointerType::getUnqual(llvm::IntegerType::getInt8Ty(ctx.GetContext()));
             return llvm::PointerType::get(targetType->GetLLVMType(ctx), 0);
         }
         virtual llvm::Value* CreateMDNode(ParseContext& ctx) const {
