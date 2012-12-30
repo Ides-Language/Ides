@@ -5,7 +5,8 @@
 
 #include "llvm/Support/Host.h"
 #include "llvm/ADT/IntrusiveRefCntPtr.h"
-#include "llvm/Support/PrettyStackTrace.h"
+#include <llvm/Support/PrettyStackTrace.h>
+#include "llvm/Support/Signals.h"
 
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Basic/TargetOptions.h"
@@ -198,7 +199,7 @@ po::variables_map args;
 
 int main(int argc, const char** argv) {
     llvm::sys::PrintStackTraceOnErrorSignal();
-    llvm::PrettyStackTraceProgram X(argc_, argv_);
+    llvm::PrettyStackTraceProgram X(argc, argv);
     
     po::options_description genericdesc("Options");
 	genericdesc.add_options()

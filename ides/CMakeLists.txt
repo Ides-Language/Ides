@@ -10,12 +10,24 @@ foreach (DIR ${MODULES})
 
 		set(LIBIDES_HEADERS ${LIBIDES_HEADERS} ${MODULE_HEADERS})
 		set(LIBIDES_SOURCES ${LIBIDES_SOURCES} ${MODULE_SOURCES})
+
 		source_group("${DIR}" FILES ${MODULE_HEADERS})
 		source_group("${DIR}" FILES ${MODULE_SOURCES})
+
+		INSTALL(FILES ${MODULE_HEADERS} DESTINATION "include/ides/${DIR}")
 	else()
-		set(HEADER "${CMAKE_CURRENT_SOURCE_DIR}/${DIR}")
-		set(LIBIDES_HEADERS ${LIBIDES_HEADERS} ${HEADER})
-		source_group("" FILES ${HEADER})
+		set(F "${CMAKE_CURRENT_SOURCE_DIR}/${DIR}")
+
+		source_group("" FILES ${F})
+
+		get_filename_component(EXTENSION ${F} EXT)
+		if (${EXTENSION} STREQUAL ".h")
+			set(LIBIDES_HEADERS ${LIBIDES_HEADERS} ${F})
+			INSTALL(FILES ${F} DESTINATION "include/ides")
+		else()
+			set(LIBIDES_SOURCES ${LIBIDES_SOURCES} ${F})
+
+		endif()
 	endif()
 endforeach(DIR ${MODULES})
 
