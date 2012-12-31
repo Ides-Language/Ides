@@ -20,8 +20,26 @@
 #include <llvm/LLVMContext.h>
 #include <llvm/Metadata.h>
 #include <llvm/ADT/StringMap.h>
+#include <llvm/Support/PrettyStackTrace.h>
 #include <boost/unordered_map.hpp>
 #include <boost/unordered_set.hpp>
+
+#include <boost/scoped_ptr.hpp>
+#include <boost/shared_ptr.hpp>
+
+#include <clang/Basic/SourceLocation.h>
+
+#include <clang/Basic/FileManager.h>
+#include <clang/Basic/SourceManager.h>
+
+#include <clang/Basic/Diagnostic.h>
+#include <clang/Basic/DiagnosticIDs.h>
+
+
+#define xppstr(s) #s
+#define ppstr(s) xppstr(s)
+
+#define SETTRACE(str) llvm::PrettyStackTraceString __stack_t(__FILE__ ":" ppstr(__LINE__) " - " str);
 
 namespace Ides {
     typedef std::string String;

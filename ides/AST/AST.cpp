@@ -1,6 +1,6 @@
 #include <ides/AST/AST.h>
-#include <ides/AST/ASTExpression.h>
-#include <ides/AST/ASTConstantExpression.h>
+#include <ides/AST/Expression.h>
+#include <ides/AST/ConstantExpression.h>
 
 #include <boost/uuid/uuid_generators.hpp> // generators
 #include <boost/uuid/uuid_io.hpp>         // streaming operators etc.
@@ -10,32 +10,13 @@
 namespace Ides {
 namespace AST {
     
-
-    ASTCompilationUnit::ASTCompilationUnit() {
-    }
-    
-    AST::AST() : mdnode(NULL) {}
-    
-    ASTList::~ASTList() {
-        while (!this->empty()) {
-            delete *this->begin();
-            this->pop_front();
+    const Ides::Types::Type* FunctionType::GetType(ASTContext& ctx) {
+        std::vector<const Ides::Types::Type*> argTypes;
+        const Ides::Types::Type* rtype = this->rettype ? this->rettype->GetType(ctx) : Ides::Types::VoidType::GetSingletonPtr();
+        for (auto i = this->argtypes.begin(); i != this->argtypes.end(); ++i) {
+            argTypes.push_back((*i)->GetType(ctx));
         }
+        return Ides::Types::FunctionType::Get(rtype, argTypes);
     }
-    
-    ASTDeclaration::~ASTDeclaration() {
-        delete name;
-        if (this->type) delete this->type;
-        if (this->initval) delete this->initval;
-    }
-    
-    ASTFunction::~ASTFunction() {
-        delete name;
-        if (val) delete val;
-        if(body) delete body;
-        if (returntype) delete returntype;
-        if (args) delete args;
-    }
-    
 }
 }

@@ -9,8 +9,6 @@ add_executable(idesc
 # Finally, we link the LLVM libraries to our executable:
 target_link_libraries(idesc
 	ides
-	${Boost_LIBRARIES}
-	${LLVM_MODULE_LIBS}
 	)
 
 

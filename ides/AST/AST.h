@@ -10,19 +10,20 @@
 #include <boost/unordered_map.hpp>
 
 #include <ides/common.h>
-#include <ides/Diagnostics/SourceLocation.h>
 #include <ides/Types/Type.h>
 
-#include <ides/Parsing/Parser.h>
+#include <ides/Parsing/ParseContext.h>
+#include <ides/ASTVisitor/ASTVisitor.h>
+
+#include <ides/AST/ASTContext.h>
 
 namespace Ides {
 namespace AST {
     class AST;
     class ASTIdentifier;
+    class ASTVariableDeclaration;
     
     typedef Ides::Parsing::ParseContext ParseContext;
-    
-    class UnitValueException { };
     
     enum Specifier {
         // Low order bits = visibility
@@ -40,157 +41,110 @@ namespace AST {
     class AST {
     public:
         
-        AST();
+        AST() { }
         virtual ~AST() { }
         
-        virtual llvm::Value* GetValue(ParseContext& ctx) { assert(0); }
-        virtual llvm::Value* GetValue(ParseContext& ctx, const Ides::Types::Type* to) {
-            return this->GetType(ctx)->Convert(ctx, this->GetValue(ctx), to);
-        }
-        virtual llvm::Value* GetPointerValue(ParseContext& ctx) {
-            throw Ides::Diagnostics::CompileError("expression is not a pointer", this->exprloc);
-        }
-        llvm::Value* GetMDNode(ParseContext& ctx) { return mdnode ? mdnode : (mdnode = CreateMDNode(ctx)); }
-        virtual llvm::Value* CreateMDNode(ParseContext& ctx) { assert(0); }
-        virtual const Ides::Types::Type* GetType(ParseContext& ctx) { assert(0); }
+        virtual void Accept(Visitor* v) = 0;
         
-        Diagnostics::SourceLocation exprloc;
+        clang::SourceRange exprloc;
+    };
+    
+    class Token : public AST {
+    public:
+        Token(llvm::StringRef name) : name(name) {}
+        virtual void Accept(Visitor* v) { v->Visit(this); }
+        
+        const Ides::String& operator*() { return name; }
+        
     private:
-        llvm::Value* mdnode;
-    };
-    
-    class ASTList : public AST, public std::list<AST*> {
-    public:
-        ~ASTList();
-        
-        virtual llvm::Value* CreateMDNode(ParseContext& ctx);
-    };
-    
-    class ASTIdentifier : public AST {
-    public:
-        ASTIdentifier (const Ides::String& name) : name(name) {}
-        virtual ~ASTIdentifier() { }
-        
-        virtual llvm::Value* GetValue(ParseContext& ctx) { return GetDeclaration(ctx)->GetValue(ctx); }
-        virtual const Ides::Types::Type* GetType(ParseContext& ctx) { return GetDeclaration(ctx)->GetType(ctx); }
-        virtual llvm::Value* GetValue(ParseContext& ctx, const Ides::Types::Type* to) { return GetDeclaration(ctx)->GetValue(ctx, to); }
-        virtual llvm::Value* GetPointerValue(ParseContext& ctx) { return GetDeclaration(ctx)->GetPointerValue(ctx); }
-        
-        AST* GetDeclaration(ParseContext& ctx);
-        
         const Ides::String name;
     };
     
-    class ASTType : public AST {
+    typedef std::list<AST*> ASTList;
+    
+    class Type : public AST {
     public:
-        ASTType() : isConst(false) { }
-        virtual ~ASTType() { }
+        Type() : isConst(false) { }
+        virtual ~Type() { }
+        virtual void Accept(Visitor* v) { v->Visit(this); }
+        
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) = 0;
         
         void SetConst(bool constness) { isConst = constness; }
         bool isConst;
     };
     
-    class ASTVoidType : public ASTType {
+    template<typename T>
+    class BuiltinType : public Type {
     public:
-        virtual const Ides::Types::Type* GetType(ParseContext& ctx) { return Ides::Types::VoidType::GetSingletonPtr(); }
-    };
-    
-    class ASTUnitType : public ASTType {
-    public:
-        virtual const Ides::Types::Type* GetType(ParseContext& ctx) { return Ides::Types::UnitType::GetSingletonPtr(); }
-    };
-    
-#define ASTINTTYPE(size) class ASTInteger##size##Type : public ASTType { \
-    public: \
-        virtual const Ides::Types::Type* GetType(ParseContext& ctx) { return Ides::Types::Integer##size##Type::GetSingletonPtr(); } \
-    }
-#define ASTUINTTYPE(size) class ASTUInteger##size##Type : public ASTType { \
-    public: \
-        virtual const Ides::Types::Type* GetType(ParseContext& ctx) { return Ides::Types::UInteger##size##Type::GetSingletonPtr(); } \
-    }
-    
-    ASTINTTYPE(1);
-    ASTINTTYPE(8);
-    ASTUINTTYPE(8);
-    ASTINTTYPE(16);
-    ASTUINTTYPE(16);
-    ASTINTTYPE(32);
-    ASTUINTTYPE(32);
-    ASTINTTYPE(64);
-    ASTUINTTYPE(64);
-    
-    class ASTFloat32Type : public ASTType {
-    public:
-        virtual const Ides::Types::Type* GetType(ParseContext& ctx) { return Ides::Types::Float32Type::GetSingletonPtr(); }
-    };
-    
-    class ASTFloat64Type : public ASTType {
-    public:
-        virtual const Ides::Types::Type* GetType(ParseContext& ctx) { return Ides::Types::Float64Type::GetSingletonPtr(); }
-    };
-    
-    class ASTPtrType : public ASTType {
-    public:
-        ASTPtrType(ASTType* type) : basetype(type) { }
-        ~ASTPtrType() { delete basetype; }
-        
-        virtual llvm::Value* GetValue(ParseContext& ctx) {
-            return NULL;
+        virtual void Accept(Visitor* v) { v->Visit(this); }
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) {
+            return T::GetSingletonPtr();
         }
-        virtual const Ides::Types::Type* GetType(ParseContext& ctx) {
+        
+        const Ides::Types::Type& operator*() { return T::GetSingleton(); }
+        const Ides::Types::Type& operator->() { return T::GetSingleton(); }
+    };
+    
+    typedef BuiltinType<Ides::Types::VoidType>       VoidType;
+    typedef BuiltinType<Ides::Types::UnitType>       UnitType;
+    
+    typedef BuiltinType<Ides::Types::Integer1Type>   BoolType;
+    
+    typedef BuiltinType<Ides::Types::Integer8Type>   Integer8Type;
+    typedef BuiltinType<Ides::Types::UInteger8Type>  UInteger8Type;
+    typedef BuiltinType<Ides::Types::Integer16Type>  Integer16Type;
+    typedef BuiltinType<Ides::Types::UInteger16Type> UInteger16Type;
+    typedef BuiltinType<Ides::Types::Integer32Type>  Integer32Type;
+    typedef BuiltinType<Ides::Types::UInteger32Type> UInteger32Type;
+    typedef BuiltinType<Ides::Types::Integer64Type>  Integer64Type;
+    typedef BuiltinType<Ides::Types::UInteger64Type> UInteger64Type;
+    
+    typedef BuiltinType<Ides::Types::Float32Type>    Float32Type;
+    typedef BuiltinType<Ides::Types::Float64Type>    Float64Type;
+    
+    class PtrType : public Type {
+    public:
+        PtrType(Type* type) : basetype(type) { }
+        virtual void Accept(Visitor* v) { v->Visit(this); }
+        
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) {
             return Ides::Types::PointerType::Get(basetype->GetType(ctx));
         }
         
-        ASTType* basetype;
+    private:
+        boost::scoped_ptr<Type> basetype;
     };
     
-    class ASTFunctionType : public ASTType {
+    typedef std::list<boost::shared_ptr<Type> > TypeList;
+    
+    class FunctionType : public Type {
     public:
-        ASTFunctionType(ASTList* argtypes, ASTType* rettype) : rettype(rettype), argtypes(argtypes) { }
-        virtual ~ASTFunctionType() { delete rettype; delete argtypes; }
+        FunctionType(TypeList* argtypes, Type* rettype) : rettype(rettype)
+        {
+            if (argtypes != NULL) {
+                std::copy(argtypes->begin(), argtypes->end(), std::back_inserter(this->argtypes));
+                delete argtypes;
+            }
+            
+        }
+        virtual void Accept(Visitor* v) { v->Visit(this); }
         
-        virtual const Ides::Types::Type* GetType(ParseContext& ctx);
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx);
         
-        ASTType* rettype;
-        ASTList* argtypes;
+        Type* rettype;
+        TypeList argtypes;
     };
     
-    class ASTTypeName : public ASTType {
+    class TypeName : public Type {
     public:
-        ASTTypeName (ASTIdentifier* name) : name(name) { }
-        virtual ~ASTTypeName() { delete name; }
+        TypeName (Token* name) : name(name) { }
+        virtual void Accept(Visitor* v) { v->Visit(this); }
         
-        virtual const Ides::Types::Type* GetType(ParseContext& ctx);
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) { return NULL; }
         
-        ASTIdentifier* name;
+        boost::scoped_ptr<Token> name;
         
-    };
-    
-    class ASTStruct : public AST {
-    public:
-        ASTStruct(ASTIdentifier* name, ASTList* members) : name(name), members(members) { }
-        
-        virtual llvm::Value* GetValue(ParseContext& ctx);
-        virtual const Ides::Types::Type* GetType(ParseContext& ctx) { return this->type; }
-        virtual llvm::Value* CreateMDNode(ParseContext& ctx);
-        
-        void GenType(ParseContext& ctx);
-        
-        const Ides::String& GetName() { return this->name->name; }
-        
-        Ides::Types::StructType* type;
-        
-        ASTIdentifier* name;
-        ASTList* members;
-    };
-    
-    
-    class ASTCompilationUnit : public ASTList {
-    public:
-        ASTCompilationUnit();
-        virtual ~ASTCompilationUnit() { }
-        
-        void Compile(ParseContext& ctx);
     };
     
 } // namespace AST

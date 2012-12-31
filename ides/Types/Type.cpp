@@ -147,28 +147,6 @@ namespace Types {
         fntype << "): " << this->retType->ToString();
         return fntype.str();
     }
-
-    
-    
-    const Ides::Types::Type* NumberType::GetOperatorType(const Ides::String& opname, ParseContext& ctx, Ides::AST::AST* lhs, Ides::AST::AST* rhs)
-    {
-        const Ides::Types::NumberType* lhstype = static_cast<const Ides::Types::NumberType*>(lhs->GetType(ctx));
-        auto oper = lhstype->operators.find(opname);
-        if (oper == lhstype->operators.end()) {
-            throw Ides::Diagnostics::CompileError("no such operator exists on type " + lhstype->ToString(), lhs->exprloc + rhs->exprloc);
-        }
-        return oper->second.first(ctx, lhs, rhs);
-    }
-    
-    llvm::Value* NumberType::GetOperatorValue(const Ides::String& opname, ParseContext& ctx, Ides::AST::AST* lhs, Ides::AST::AST* rhs)
-    {
-        const Ides::Types::NumberType* lhstype = static_cast<const Ides::Types::NumberType*>(lhs->GetType(ctx));
-        auto oper = lhstype->operators.find(opname);
-        if (oper == lhstype->operators.end()) {
-            throw Ides::Diagnostics::CompileError("no such operator exists on type " + lhstype->ToString(), lhs->exprloc + rhs->exprloc);
-        }
-        return oper->second.second(ctx, lhs, rhs);
-    }
     
     /** Numeric implicit conversions **/
     

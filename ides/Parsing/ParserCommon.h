@@ -13,29 +13,29 @@ extern "C" {
 #include <stdint.h>
 }
 
-#include <ides/Parsing/Parser.h>
+#include <ides/Parsing/ParseContext.h>
 
 #include <ides/AST/AST.h>
-#include <ides/AST/ASTExpression.h>
-#include <ides/AST/ASTConstantExpression.h>
+#include <ides/AST/Expression.h>
+#include <ides/AST/Declaration.h>
+#include <ides/AST/Statement.h>
+#include <ides/AST/ConstantExpression.h>
 
 #include <ides/Types/Type.h>
 
-#define YYLTYPE Ides::Diagnostics::SourceLocation
-#define YY_EXTRA_TYPE Ides::Parsing::Parser*
+#include <clang/Basic/SourceLocation.h>
+
+#define YYLTYPE clang::SourceRange
+#define YY_EXTRA_TYPE Ides::Parsing::ParseContext*
 
 #define YY_TYPEDEF_YY_SIZE_T
 typedef int yy_size_t;
 
 
-#define YY_USER_INIT yylloc->line_start = yylloc->first; yylloc->source_name = yyextra->GetSourceName();
+#define YY_USER_INIT *yylloc = yyextra->GetFileStartLocation();
 
-
-#define YYLLOC_DEFAULT(Cur, Rhs, N)                       \
-    do {                                                   \
-    if (N) { (Cur) = YYRHSLOC(Rhs, 1) + YYRHSLOC(Rhs, N); } \
-    else { (Cur) = YYRHSLOC(Rhs, 0);  } \
-    } while (0)
+#define YYLLOC_DEFAULT(Current, Rhs, N)          \
+    Current = clang::SourceRange(Rhs[1].getBegin(), Rhs[N].getEnd());
 
 
 

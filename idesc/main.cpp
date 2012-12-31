@@ -9,14 +9,22 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
-#include <ides/Parsing/Parser.h>
+#include <ides/Project/Project.h>
 #include <ides/AST/AST.h>
+
+#include <ides/CodeGen/CodeGen.h>
 
 #include <llvm/Support/raw_os_ostream.h>
 #include <llvm/Support/PrettyStackTrace.h>
 #include "llvm/Support/Signals.h"
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/Linker.h>
+
+#include <clang/Frontend/TextDiagnosticPrinter.h>
+#include <clang/Basic/DiagnosticOptions.h>
+#include <clang/Basic/LangOptions.h>
+
+#include <ides/Diagnostics/Diagnostics.h>
 
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
@@ -28,6 +36,7 @@ int main(int argc, const char* argv[])
 {
     llvm::sys::PrintStackTraceOnErrorSignal();
     llvm::PrettyStackTraceProgram X(argc, argv);
+    
     
 	po::options_description genericdesc("Options");
 	genericdesc.add_options()
@@ -111,67 +120,37 @@ int main(int argc, const char* argv[])
     
     std::list<llvm::Module*> modules;
     
-    Ides::Parsing::Parser parser;
+    Ides::AST::ASTContext actx;
+    clang::DiagnosticOptions diagOpts;
+    clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> diagIDs= new clang::DiagnosticIDs();
+    clang::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag = new clang::DiagnosticsEngine(diagIDs, &diagOpts, new clang::TextDiagnosticPrinter(llvm::errs(), &diagOpts), false);
+    
+    Ides::Diagnostics::InitAllDiagnostics(*diag);
+    
+    Ides::Project::Project proj(diag, actx);
 	const std::vector<fs::path> files = args["input-file"].as<std::vector<fs::path> >();
 	for (std::vector<fs::path>::const_iterator i = files.begin(); i != files.end(); ++i) {
 		if (!fs::is_regular_file(*i)) {
 			std::cerr << "Could not open " << *i << "." << std::endl;
 			continue;
 		}
+        
+        clang::LangOptions langopts;
+        diag->getClient()->BeginSourceFile(langopts);
 
 		current_file = i->string();
 
 		fs::ifstream srcfile(*i);
         
+        Ides::AST::AST* ast = proj.ParseFile(current_file);
         
-        Ides::Parsing::Parser::ParseTree t = parser.Parse(srcfile, current_file);
-        if (t.get() == NULL) return 1;
+        Ides::CodeGen::CodeGen compiler(diag, llvm::getGlobalContext(), actx);
+        compiler.Compile((Ides::AST::CompilationUnit*)ast);
         
-        llvm::Module* mod = parser.Compile(t);
-        if (mod == NULL) return 1;
-        
-        
-        fs::path outpath = *i;
-        outpath.replace_extension(".ilib");
-        fs::ofstream outfile(outpath);
-        llvm::raw_os_ostream llvm_outfile(outfile);
-        llvm::WriteBitcodeToFile(mod, llvm_outfile);
-        
-        if (!args.count("compile")) {
-            modules.push_back(mod);
-        }
-	}
-    
-    if (args.count("compile")) return 0;
-    
-    llvm::Linker linker(output_name, output_name, llvm::getGlobalContext());
-    
-    linker.addSystemPaths();
-    if (args.count("library-path"))
-        linker.addPaths(args["library-path"].as<std::vector<std::string> >());
-    
-    if (args.count("library")) {
-        if (linker.LinkInLibraries(args["library"].as<std::vector<std::string> >())) {
-            std::cerr << linker.getLastError() << std::endl;
-        }
-    }
-    bool isnative;
-    if (linker.LinkInLibrary("c", isnative)) {
-        std::cerr << linker.getLastError() << std::endl;
+        diag->getClient()->EndSourceFile();
     }
     
-    for (auto modi = modules.begin(); modi != modules.end(); ++modi) {
-        if (linker.LinkInModule(*modi)) {
-            std::cerr << linker.getLastError() << std::endl;
-        }
-    }
-    llvm::Module* linkermod = linker.getModule();
     
-    linkermod->dump();
-    
-    fs::ofstream outfile(output_file);
-    llvm::raw_os_ostream llvm_outfile(outfile);
-    llvm::WriteBitcodeToFile(linker.getModule(), llvm_outfile);
 
 	return 0;
 }
