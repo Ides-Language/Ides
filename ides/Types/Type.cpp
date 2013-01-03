@@ -26,6 +26,8 @@ namespace Util {
     
     SINGLETON(Ides::Types::VoidType);
     SINGLETON(Ides::Types::UnitType);
+    
+    SINGLETON(Ides::Types::OverloadedFunctionType);
 }
     
 namespace Types {
@@ -80,17 +82,18 @@ namespace Types {
         return f;
     }
     
-    StructType* StructType::GetOrCreate(ParseContext& ctx, const Ides::String& name) {
-        auto i = StructType::types.find(name);
-        if (i != StructType::types.end()) return i->second;
-        
-        StructType* t = new StructType(name);
-        t->type = llvm::StructType::create(ctx.GetContext(), name);
-        return t;
+    StructType* StructType::GetOrCreate(ParseContext& ctx, Ides::StringRef name) {
+        llvm::StringMap<Ides::Types::StructType*>::MapEntryTy& i = StructType::types.GetOrCreateValue(name);
+        if (!i.getValue()) {
+            StructType* t = new StructType(name);
+            t->type = llvm::StructType::create(ctx.GetContext(), name);
+            i.setValue(t);
+        }
+        return i.getValue();
     }
     
     void StructType::SetMembers(ParseContext& ctx, const std::vector<std::pair<Ides::String, const Type*> >& members) {
-        this->members = members;
+        this->type_members = members;
         
         std::vector<llvm::Type*> membertypes;
         for (auto i = members.begin(); i != members.end(); ++i) {
@@ -99,16 +102,16 @@ namespace Types {
         this->type->setBody(membertypes, false);
     }
     
-    const Ides::Types::Type* StructType::GetMemberType(const Ides::String& str) const {
-        for (auto i = this->members.begin(); i != this->members.end(); ++i) {
+    const Ides::Types::Type* StructType::GetMemberType(Ides::StringRef str) const {
+        for (auto i = this->type_members.begin(); i != this->type_members.end(); ++i) {
             if (i->first == str) return i->second;
         }
         return NULL;
     }
     
-    int StructType::GetMemberIndex(const Ides::String& str) const {
+    int StructType::GetMemberIndex(Ides::StringRef str) const {
         int ret = 0;
-        for (auto i = this->members.begin(); i != this->members.end(); ++i) {
+        for (auto i = this->type_members.begin(); i != this->type_members.end(); ++i) {
             if (i->first == str) return ret;
             ++ret;
         }

@@ -20,14 +20,14 @@ namespace AST {
         
     };
 
-    class Block : public Statement, public std::list<boost::shared_ptr<Statement> >, public DeclarationContext {
+    class Block : public Statement, public HierarchicalConcreteDeclarationContext {
     public:
         virtual void Accept(Visitor* v) { v->Visit(this); }
         
-        std::list<boost::shared_ptr<Statement> > statements;
+        std::list<Statement*> statements;
     };
     
-    class IfStatement : public Statement {
+    class IfStatement : public Statement, public HierarchicalConcreteDeclarationContext {
     public:
         IfStatement(Expression* expr, Statement* ift, Statement* iff) : condition(expr), iftrue(ift), iffalse(iff) { }
         virtual void Accept(Visitor* v) { v->Visit(this); }
@@ -37,7 +37,7 @@ namespace AST {
         boost::scoped_ptr<Statement> iffalse;
     };
     
-    class WhileStatement : public Statement {
+    class WhileStatement : public Statement, public HierarchicalConcreteDeclarationContext {
     public:
         WhileStatement(Expression* expr, Statement* body) : condition(expr), body(body) { }
         virtual void Accept(Visitor* v) { v->Visit(this); }
@@ -46,7 +46,7 @@ namespace AST {
         boost::scoped_ptr<Statement> body;
     };
     
-    class ForStatement : public Statement {
+    class ForStatement : public Statement, public HierarchicalConcreteDeclarationContext {
     public:
         ForStatement(AST* startexpr, Expression* endexpr, Expression* eachexpr, Statement* body) :
             startexpr(startexpr), endexpr(endexpr), eachexpr(eachexpr), body(body) { }

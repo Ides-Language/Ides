@@ -1,6 +1,7 @@
 #include <ides/AST/AST.h>
 #include <ides/AST/Expression.h>
 #include <ides/AST/ConstantExpression.h>
+#include <ides/AST/Declaration.h>
 
 #include <boost/uuid/uuid_generators.hpp> // generators
 #include <boost/uuid/uuid_io.hpp>         // streaming operators etc.
@@ -17,6 +18,15 @@ namespace AST {
             argTypes.push_back((*i)->GetType(ctx));
         }
         return Ides::Types::FunctionType::Get(rtype, argTypes);
+    }
+    
+    const Ides::Types::Type* TypeName::GetType(Ides::AST::ASTContext &ctx) {
+        Ides::String typen = **this->name;
+        Ides::AST::Declaration* decl = ctx.GetCurrentScope()->GetMember(ctx, typen);
+        if (decl) {
+            return decl->GetType(ctx);
+        }
+        return NULL;
     }
 }
 }

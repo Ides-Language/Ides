@@ -10,20 +10,45 @@
 #define __ides__DeclarationContext__
 
 
-#include <ides/AST/AST.h>
+//#include <ides/AST/AST.h>
+#include <boost/enable_shared_from_this.hpp>
+#include <ides/AST/ASTContext.h>
+#include <map>
 
 namespace Ides {
 namespace AST {
     class Declaration;
+    class NamedDeclaration;
     
-    class DeclarationContext : public std::list<boost::shared_ptr<Declaration> > {
+    typedef std::map<Ides::String, Declaration*> SymbolTable;
+    
+    class DeclarationContext {
     public:
+        virtual Declaration* GetMember(ASTContext& ctx, Ides::StringRef name) const = 0;
+        virtual void AddMember(Ides::StringRef name, Declaration* decl) = 0;
     };
     
-    class CompilationUnit : public AST, public DeclarationContext {
+    class ConcreteDeclarationContext : public DeclarationContext {
     public:
-        virtual void Accept(Visitor* v) { v->Visit(this); }
+        virtual Declaration* GetMember(ASTContext& ctx, Ides::StringRef name) const;
+        virtual void AddMember(Ides::StringRef name, Declaration* decl);
         
+        SymbolTable::const_iterator begin() const { return this->members.begin(); }
+        SymbolTable::const_iterator end() const { return this->members.end(); }
+        
+    private:
+        SymbolTable members;
+        
+    };
+    
+    class HierarchicalConcreteDeclarationContext : public ConcreteDeclarationContext {
+    public:
+        
+        virtual Declaration* GetMember(ASTContext& ctx, Ides::StringRef name) const;
+        DeclarationContext* GetParent() const { return this->parentContext; }
+        void SetParent(DeclarationContext* ctx) { parentContext = ctx; }
+    private:
+        DeclarationContext* parentContext;
     };
     
 }

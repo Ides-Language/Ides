@@ -25,7 +25,7 @@ namespace AST {
         ConstantBuiltinTypeExpression(Vt v) : val(v) { }
         virtual void Accept(Visitor* v) { v->Visit(this); }
         
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) {
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const {
             return Tt::GetSingletonPtr();
         }
         
@@ -46,7 +46,7 @@ namespace AST {
         
         Ides::String GetString() { return buf.str(); }
         
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) {
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const {
             return NULL;
         }
         
@@ -59,7 +59,7 @@ namespace AST {
     public:
         virtual void Accept(Visitor* v) { v->Visit(this); }
         
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) {
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const {
             return Ides::Types::PointerType::Get(Ides::Types::Integer8Type::GetSingletonPtr());
         }
     };
@@ -68,7 +68,7 @@ namespace AST {
     public:
         virtual void Accept(Visitor* v) { v->Visit(this); }
         
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) {
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const {
             return Ides::Types::PointerType::Get(Ides::Types::Integer16Type::GetSingletonPtr());
         }
     };
@@ -77,7 +77,7 @@ namespace AST {
     public:
         virtual void Accept(Visitor* v) { v->Visit(this); }
         
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) {
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const {
             return Ides::Types::PointerType::Get(Ides::Types::Integer32Type::GetSingletonPtr());
         }
     };

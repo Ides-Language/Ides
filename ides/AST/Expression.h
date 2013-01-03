@@ -11,24 +11,44 @@
 
 #include <ides/AST/AST.h>
 #include <ides/AST/Statement.h>
+#include <ides/AST/DeclarationContext.h>
 
 #include <ides/Types/Type.h>
 
 namespace Ides {
 namespace AST {
     
-    class Expression : public Statement {
+    class Expression : public Statement, public DeclarationContext {
     public:
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) = 0;
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const = 0;
+        
+        virtual Declaration* GetMember(ASTContext& ctx, Ides::StringRef name) const {
+            return this->GetType(ctx)->GetMember(ctx, name);
+        }
+        
+        virtual void AddMember(Ides::StringRef name, Declaration* decl) { }
 
     };
     
-    typedef std::list<boost::shared_ptr<Expression> > ExpressionList;
+    class IdentifierExpression : public Expression {
+    public:
+        IdentifierExpression(Token* tok) : tok(tok) { }
+        
+        virtual void Accept(Visitor* v) { v->Visit(this); }
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const;
+        
+        Ides::StringRef GetName() const { return **tok; }
+    private:
+        boost::scoped_ptr<Token> tok;
+        
+    };
+    
+    typedef std::list<Expression*> ExpressionList;
     
     class UnitTypeExpression : public Expression {
     public:
         virtual void Accept(Visitor* v) { v->Visit(this); }
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) {
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const {
             return Ides::Types::UnitType::GetSingletonPtr();
         }
     };
@@ -39,7 +59,7 @@ namespace AST {
         static NullExpression* Create() { return new NullExpression(); }
         virtual void Accept(Visitor* v) { v->Visit(this); }
         
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) { return NULL; }
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const { return NULL; }
     };
     
     class ReturnExpression : public UnitTypeExpression {
@@ -53,7 +73,7 @@ namespace AST {
         
         Expression* GetRetVal() const { return retVal.get(); }
         const Ides::Types::Type* GetRetType(ASTContext& ctx) const {
-            return retVal ? retVal->GetType(ctx) : Ides::Types::VoidType::GetSingletonPtr();
+            return retVal.get() ? retVal->GetType(ctx) : Ides::Types::VoidType::GetSingletonPtr();
         }
     private:
         boost::scoped_ptr<Expression> retVal;
@@ -63,7 +83,7 @@ namespace AST {
         FunctionCallExpression(Expression* fn) : fn(fn) { }
     public:
         virtual void Accept(Visitor* v) { v->Visit(this); }
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) { return NULL; }
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const { return NULL; }
         
         static FunctionCallExpression* Create(Expression* fn, ExpressionList* args){
             FunctionCallExpression* ret = Create(fn);
@@ -81,6 +101,20 @@ namespace AST {
         ExpressionList args;
     };
     
+    class DotExpression : public Expression {
+    public:
+        DotExpression(Expression* lhs, Token* rhs) : lhs(lhs), rhs(rhs) { }
+        virtual void Accept(Visitor* v) { v->Visit(this); }
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const;
+        
+        Expression& GetExpression() const { return *lhs; }
+        Token& GetToken() const { return *rhs; }
+        
+    private:
+        boost::scoped_ptr<Expression> lhs;
+        boost::scoped_ptr<Token> rhs;
+    };
+    
     class UnaryExpression : public Expression {
     public:
         enum UnaryExpressionType {
@@ -91,7 +125,7 @@ namespace AST {
         UnaryExpression(UnaryExpressionType type, Token* func, Expression* arg) : type(type), func(func), arg(arg) { }
         virtual void Accept(Visitor* v) { v->Visit(this); }
         
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) { return NULL; }
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const { return NULL; }
         
         UnaryExpressionType type;
         boost::scoped_ptr<Token> func;
@@ -103,7 +137,7 @@ namespace AST {
         InfixExpression(Token* op, Expression* lhs, Expression* rhs) : func(op), lhs(lhs), rhs(rhs) { }
         virtual void Accept(Visitor* v) { v->Visit(this); }
         
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) { return NULL; }
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const { return NULL; }
         
         boost::scoped_ptr<Token> func;
         boost::scoped_ptr<Expression> lhs;
@@ -115,7 +149,7 @@ namespace AST {
         AssignmentExpression(Expression* lhs, Expression* rhs) : lhs(lhs), rhs(rhs) { }
         virtual void Accept(Visitor* v) { v->Visit(this); }
         
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) { return NULL; }
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const { return NULL; }
         
         boost::scoped_ptr<Expression> lhs;
         boost::scoped_ptr<Expression> rhs;

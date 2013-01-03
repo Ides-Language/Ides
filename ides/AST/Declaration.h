@@ -23,13 +23,13 @@ namespace AST {
         virtual const Ides::Types::Type* GetType(ASTContext& ctx) = 0;
     };
     
-    typedef std::list<boost::shared_ptr<Declaration> > DeclarationList;
+    typedef std::list<Declaration*> DeclarationList;
     
     class NamedDeclaration : public Declaration {
     protected:
         NamedDeclaration(Token* tok) : name(tok) { }
     public:
-        const Ides::String& GetName() const { return **name; }
+        Ides::StringRef GetName() const { return **name; }
     private:
         boost::scoped_ptr<Token> name;
     };
@@ -62,16 +62,20 @@ namespace AST {
         
         virtual void Accept(Visitor* v) { v->Visit(this); }
         
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) { return type->GetType(ctx); }
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) {
+            if (type) return type->GetType(ctx);
+            else if (initval) return initval->GetType(ctx);
+            return NULL;
+        }
         
         VarType vartype;
         boost::scoped_ptr<Type> type;
         boost::scoped_ptr<Expression> initval;
     };
     
-    typedef std::list<boost::shared_ptr<VariableDeclaration> > VariableDeclarationList;
+    typedef std::list<VariableDeclaration*> VariableDeclarationList;
     
-    class FunctionDeclaration : public ValueDeclaration, public DeclarationContext {
+    class FunctionDeclaration : public ValueDeclaration, public HierarchicalConcreteDeclarationContext {
     public:
         FunctionDeclaration(Token* name, VariableDeclarationList* a, Type* rettype) : ValueDeclaration(name),
             val(NULL), body(NULL), functype(NULL), returntype(rettype), evaluatingtype(false)
@@ -99,9 +103,22 @@ namespace AST {
         bool evaluatingtype;
     };
     
-    class StructDeclaration : public NamedDeclaration, public DeclarationContext {
+    class OverloadedFunction : public Declaration, public std::vector<Declaration*> {
     public:
-        StructDeclaration(Token* name, DeclarationList* members) : NamedDeclaration(name)
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) { return Ides::Types::OverloadedFunctionType::GetSingletonPtr(); }
+        virtual void Accept(Visitor* v) { v->Visit(this); }
+        
+    };
+    
+    class TypeDeclaration : public NamedDeclaration {
+    public:
+        TypeDeclaration(Token* tok) : NamedDeclaration(tok) { }
+        
+    };
+    
+    class StructDeclaration : public TypeDeclaration {
+    public:
+        StructDeclaration(Token* name, DeclarationList* members) : TypeDeclaration(name)
         {
             if (members != NULL) {
                 std::copy(members->begin(), members->end(), std::back_inserter(this->members));

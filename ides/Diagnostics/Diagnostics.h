@@ -21,15 +21,28 @@ namespace Diagnostics {
         RETURN_FROM_UNIT,
         RETURN_NO_EXPRESSION,
         
+        UNKNOWN_IDENTIFIER,
+        UNKNOWN_MEMBER,
+        
         BLOCK_UNREACHABLE_CODE,
+        
+        
+        NOTE_DECLARED_HERE,
         
         DIAGS_COUNT
     };
     
+    long CustomDiagToClangID(DiagIDs id);
     void InitAllDiagnostics(clang::DiagnosticsEngine& diags);
     
-    clang::DiagnosticBuilder Diag(clang::DiagnosticsEngine& diags, Ides::Diagnostics::DiagIDs id);
-    clang::DiagnosticBuilder Diag(clang::DiagnosticsEngine& diags, Ides::Diagnostics::DiagIDs id, clang::SourceLocation loc);
+    
+    inline clang::DiagnosticBuilder Diag(clang::DiagnosticsEngine& diags, Ides::Diagnostics::DiagIDs id) {
+        return diags.Report(CustomDiagToClangID(id));
+    }
+    
+    inline clang::DiagnosticBuilder Diag(clang::DiagnosticsEngine& diags, Ides::Diagnostics::DiagIDs id, clang::SourceLocation loc) {
+        return diags.Report(loc, CustomDiagToClangID(id));
+    }
 }
 }
 

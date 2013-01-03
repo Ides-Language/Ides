@@ -53,10 +53,14 @@ namespace CodeGen {
         }
         
     public:
+        void Visit(Ides::AST::CompilationUnit* ast);
+        
         void Visit(Ides::AST::FunctionDeclaration* ast);
         void Visit(Ides::AST::StructDeclaration* ast);
         void Visit(Ides::AST::VariableDeclaration* ast);
         
+        void Visit(Ides::AST::IdentifierExpression* ast);
+        void Visit(Ides::AST::DotExpression* ast);
         void Visit(Ides::AST::ReturnExpression* ast);
         
         void Visit(Ides::AST::Block* ast);

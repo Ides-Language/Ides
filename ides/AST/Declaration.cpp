@@ -64,12 +64,15 @@ namespace AST {
     }
     
     void StructDeclaration::GenType(ASTContext& ctx) {
+        Ides::Types::StructType* st = Ides::Types::StructType::GetOrCreate(ctx, this->GetName());
+        
         std::vector<std::pair<Ides::String, const Ides::Types::Type*> > membertypes;
         for (auto i = this->members.begin(); i != this->members.end(); ++i) {
-            NamedDeclaration* decl = (NamedDeclaration*)i->get();
+            NamedDeclaration* decl = (NamedDeclaration*)*i;
             membertypes.push_back(std::make_pair(decl->GetName(), decl->GetType(ctx)));
+            st->AddMember(decl->GetName(), decl);
         }
-        Ides::Types::StructType::GetOrCreate(ctx, this->GetName())->SetMembers(ctx, membertypes);
+        st->SetMembers(ctx, membertypes);
     }
 }
 }

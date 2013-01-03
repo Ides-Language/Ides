@@ -4,10 +4,13 @@
 #include <map>
 #include <list>
 
+#include <ides/Diagnostics/Diagnostics.h>
+
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/unordered_map.hpp>
+#include <boost/noncopyable.hpp>
 
 #include <ides/common.h>
 #include <ides/Types/Type.h>
@@ -16,6 +19,7 @@
 #include <ides/ASTVisitor/ASTVisitor.h>
 
 #include <ides/AST/ASTContext.h>
+#include <ides/AST/DeclarationContext.h>
 
 namespace Ides {
 namespace AST {
@@ -38,7 +42,7 @@ namespace AST {
         CONST = 16,
     };
     
-    class AST {
+    class AST : public boost::noncopyable {
     public:
         
         AST() { }
@@ -54,7 +58,7 @@ namespace AST {
         Token(llvm::StringRef name) : name(name) {}
         virtual void Accept(Visitor* v) { v->Visit(this); }
         
-        const Ides::String& operator*() { return name; }
+        Ides::StringRef operator*() { return name; }
         
     private:
         const Ides::String name;
@@ -116,7 +120,7 @@ namespace AST {
         boost::scoped_ptr<Type> basetype;
     };
     
-    typedef std::list<boost::shared_ptr<Type> > TypeList;
+    typedef std::list<Type*> TypeList;
     
     class FunctionType : public Type {
     public:
@@ -141,10 +145,15 @@ namespace AST {
         TypeName (Token* name) : name(name) { }
         virtual void Accept(Visitor* v) { v->Visit(this); }
         
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) { return NULL; }
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx);
         
         boost::scoped_ptr<Token> name;
         
+    };
+    
+    class CompilationUnit : public AST, public ConcreteDeclarationContext {
+    public:
+        virtual void Accept(Visitor* v) { v->Visit(this); }
     };
     
 } // namespace AST

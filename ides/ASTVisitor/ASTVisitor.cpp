@@ -15,7 +15,7 @@ namespace AST {
     
     void Visitor::Visit(CompilationUnit* ast) {
         for (auto i = ast->begin(); i != ast->end(); ++i) {
-            (*i)->Accept(this);
+            i->second->Accept(this);
         }
     }
     

@@ -19,6 +19,8 @@ namespace CodeGen {
     using namespace Ides::Diagnostics;
     
     void CodeGen::Visit(Ides::AST::IfStatement* ast) { SETTRACE("CodeGen::Visit(IfStatement)")
+        Ides::AST::ASTContext::DeclScope typescope(actx, ast);
+        
         llvm::BasicBlock* ifblock = llvm::BasicBlock::Create(lctx, "if", GetEvaluatingLLVMFunction());
         llvm::BasicBlock* elseblock = llvm::BasicBlock::Create(lctx, "else", GetEvaluatingLLVMFunction());
         llvm::BasicBlock* resumeBlock = llvm::BasicBlock::Create(lctx, "endif", GetEvaluatingLLVMFunction());
@@ -63,6 +65,8 @@ namespace CodeGen {
     }
     
     void CodeGen::Visit(Ides::AST::WhileStatement* ast) { SETTRACE("CodeGen::Visit(WhileStatement)")
+        Ides::AST::ASTContext::DeclScope typescope(actx, ast);
+        
         llvm::BasicBlock* whileblock = llvm::BasicBlock::Create(lctx, "while", GetEvaluatingLLVMFunction());
         llvm::BasicBlock* resumeblock = llvm::BasicBlock::Create(lctx, "endwhile", GetEvaluatingLLVMFunction());
         
@@ -82,6 +86,8 @@ namespace CodeGen {
     }
     
     void CodeGen::Visit(Ides::AST::ForStatement* ast) { SETTRACE("CodeGen::Visit(ForStatement)")
+        Ides::AST::ASTContext::DeclScope typescope(actx, ast);
+        
         llvm::BasicBlock* forblock = llvm::BasicBlock::Create(lctx, "for", GetEvaluatingLLVMFunction());
         llvm::BasicBlock* resumeblock = llvm::BasicBlock::Create(lctx, "endfor", GetEvaluatingLLVMFunction());
         
@@ -105,6 +111,8 @@ namespace CodeGen {
     }
     
     void CodeGen::Visit(Ides::AST::Block* ast) { SETTRACE("CodeGen::Visit(Block)")
+        Ides::AST::ASTContext::DeclScope typescope(actx, ast);
+        
         //ParseContext::ScopedLocalScope localScope(ctx);
         
         llvm::BasicBlock* scope = llvm::BasicBlock::Create(lctx, "scope", GetEvaluatingLLVMFunction());
@@ -115,7 +123,7 @@ namespace CodeGen {
                 (*i)->Accept(this);
             } catch (const detail::UnitValueException& ex) {
                 if (++i != ast->statements.end()) {
-                    Diag(BLOCK_UNREACHABLE_CODE, i->get());
+                    Diag(BLOCK_UNREACHABLE_CODE, *i);
                 }
                 throw ex;
             }

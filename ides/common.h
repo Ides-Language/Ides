@@ -43,6 +43,7 @@
 
 namespace Ides {
     typedef std::string String;
+    typedef const Ides::String& StringRef;
     typedef Ides::String::const_iterator SourceIterator;
     
     namespace Util {

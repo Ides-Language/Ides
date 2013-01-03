@@ -120,10 +120,11 @@ int main(int argc, const char* argv[])
     
     std::list<llvm::Module*> modules;
     
-    Ides::AST::ASTContext actx;
     clang::DiagnosticOptions diagOpts;
     clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> diagIDs= new clang::DiagnosticIDs();
     clang::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag = new clang::DiagnosticsEngine(diagIDs, &diagOpts, new clang::TextDiagnosticPrinter(llvm::errs(), &diagOpts), false);
+    
+    Ides::AST::ASTContext actx(diag);
     
     Ides::Diagnostics::InitAllDiagnostics(*diag);
     

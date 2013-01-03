@@ -29,15 +29,16 @@ namespace Diagnostics {
         CreateDiagnostic(diags, RETURN_FROM_UNIT, clang::DiagnosticsEngine::Error, "functions with unit return type cannot return");
         CreateDiagnostic(diags, RETURN_NO_EXPRESSION, clang::DiagnosticsEngine::Error, "expected expression");
         
+        CreateDiagnostic(diags, UNKNOWN_IDENTIFIER, clang::DiagnosticsEngine::Error, "unrecognized identifier %0");
+        CreateDiagnostic(diags, UNKNOWN_MEMBER, clang::DiagnosticsEngine::Error, "%0 has no member named %1");
+        
         CreateDiagnostic(diags, BLOCK_UNREACHABLE_CODE, clang::DiagnosticsEngine::Warning, "unreachable code");
+        
+        CreateDiagnostic(diags, NOTE_DECLARED_HERE, clang::DiagnosticsEngine::Note, "originally declared here");
     }
     
-    clang::DiagnosticBuilder Diag(clang::DiagnosticsEngine& diags, Ides::Diagnostics::DiagIDs id) {
-        return diags.Report(ids[id]);
-    }
-    
-    clang::DiagnosticBuilder Diag(clang::DiagnosticsEngine& diags, Ides::Diagnostics::DiagIDs id, clang::SourceLocation loc) {
-        return diags.Report(loc, ids[id]);
+    long CustomDiagToClangID(DiagIDs id) {
+        return ids[id];
     }
     
 }

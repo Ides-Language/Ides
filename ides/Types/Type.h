@@ -5,9 +5,11 @@
 #include <ides/AST/ASTContext.h>
 #include <boost/function.hpp>
 #include <boost/unordered_map.hpp>
+#include <ides/AST/DeclarationContext.h>
 namespace Ides {
     namespace AST {
         class AST;
+        class Declaration;
     }
 namespace Types {
 
@@ -15,9 +17,9 @@ namespace Types {
     
     class PointerType;
     
-    class Type {
+    class Type : public Ides::AST::ConcreteDeclarationContext {
     public:
-        Type(const Ides::String& type_name, Type* supertype) : type_name(type_name), supertype(supertype) {
+        Type(Ides::StringRef type_name, Type* supertype) : type_name(type_name), supertype(supertype) {
             typenames.GetOrCreateValue(type_name, this);
         }
         
@@ -43,6 +45,7 @@ namespace Types {
         virtual bool HasImplicitConversionTo(const Type* other) const {
             return IsSubtypeOf(other);
         }
+        
         
         virtual const Ides::String ToString() const { return type_name; }
         
@@ -105,6 +108,11 @@ namespace Types {
         llvm::FunctionType* ft;
     };
     
+    class OverloadedFunctionType : public Type, public Ides::Util::Singleton<OverloadedFunctionType> {
+    public:
+        OverloadedFunctionType() : Type("overloaded fn()", VoidType::GetSingletonPtr()) { }
+    };
+    
     class PointerType : public Type {
         PointerType(const Ides::Types::Type* targetType) : Type(targetType->ToString() + "*", VoidType::GetSingletonPtr()), targetType(targetType) { }
     public:
@@ -125,21 +133,21 @@ namespace Types {
     
     class StructType : public Type {
     public:
-        StructType(const Ides::String& name) :
+        StructType(Ides::StringRef name) :
             Type("struct " + name, VoidType::GetSingletonPtr()), name(name) { }
         virtual ~StructType() { }
         
-        static StructType* GetOrCreate(ParseContext& ctx, const Ides::String& name);
+        static StructType* GetOrCreate(ParseContext& ctx, Ides::StringRef name);
         
         virtual llvm::Type* GetLLVMType(ParseContext& ctx) const { return type; }
-        const Ides::Types::Type* GetMemberType(const Ides::String& str) const;
-        int GetMemberIndex(const Ides::String& str) const;
+        const Ides::Types::Type* GetMemberType(Ides::StringRef str) const;
+        int GetMemberIndex(Ides::StringRef str) const;
         
         void SetMembers(ParseContext& ctx, const std::vector<std::pair<Ides::String, const Type*> >& members);
     private:
         llvm::StructType* type;
         Ides::String name;
-        std::vector<std::pair<Ides::String, const Type*> > members;
+        std::vector<std::pair<Ides::String, const Type*> > type_members;
         static llvm::StringMap<StructType*> types;
     };
     
@@ -166,7 +174,7 @@ namespace Types {
         typedef boost::function<const Ides::Types::Type*(ParseContext&, Ides::AST::AST*, Ides::AST::AST*)> GetType;
         typedef std::pair<GetType, GetValue> NumericOperator;
         
-        NumberType(const Ides::String& type_name, Type* supertype) : Type(type_name, supertype) { }
+        NumberType(Ides::StringRef type_name, Type* supertype) : Type(type_name, supertype) { }
         virtual ~NumberType() { }
         
         enum NumberClass {
