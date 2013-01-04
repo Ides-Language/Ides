@@ -70,14 +70,12 @@ namespace CodeGen {
         llvm::BasicBlock* whileblock = llvm::BasicBlock::Create(lctx, "while", GetEvaluatingLLVMFunction());
         llvm::BasicBlock* resumeblock = llvm::BasicBlock::Create(lctx, "endwhile", GetEvaluatingLLVMFunction());
         
-        ast->condition->Accept(this);
-        builder->CreateCondBr(last, whileblock, resumeblock);
+        builder->CreateCondBr(GetValue(ast->condition), whileblock, resumeblock);
         
         builder->SetInsertPoint(whileblock);
         try {
             ast->body->Accept(this);
-            ast->condition->Accept(this);
-            builder->CreateCondBr(last, whileblock, resumeblock);
+            builder->CreateCondBr(GetValue(ast->condition), whileblock, resumeblock);
         } catch (const detail::UnitValueException& ex) {
             // Block early-exits function.
             // Don't propogate the Unit value because we may not execute at all.
@@ -93,15 +91,13 @@ namespace CodeGen {
         
         if (ast->startexpr) ast->startexpr->Accept(this);
         
-        ast->endexpr->Accept(this);
-        builder->CreateCondBr(last, forblock, resumeblock);
+        builder->CreateCondBr(GetValue(ast->endexpr), forblock, resumeblock);
         
         builder->SetInsertPoint(forblock);
         try {
             ast->body->Accept(this);
-            if (ast->eachexpr) ast->eachexpr->Accept(this);
-            ast->endexpr->Accept(this);
-            builder->CreateCondBr(last, forblock, resumeblock);
+            if (ast->eachexpr) GetValue(ast->eachexpr);
+            builder->CreateCondBr(GetValue(ast->endexpr), forblock, resumeblock);
         } catch (const detail::UnitValueException& ex) {
             // Block early-exits function.
             // Don't propogate the Unit value because we may not execute at all.

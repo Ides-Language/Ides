@@ -56,12 +56,15 @@ namespace CodeGen {
         void Visit(Ides::AST::CompilationUnit* ast);
         
         void Visit(Ides::AST::FunctionDeclaration* ast);
-        void Visit(Ides::AST::StructDeclaration* ast);
         void Visit(Ides::AST::VariableDeclaration* ast);
+        void Visit(Ides::AST::StructDeclaration* ast);
         
         void Visit(Ides::AST::IdentifierExpression* ast);
         void Visit(Ides::AST::DotExpression* ast);
         void Visit(Ides::AST::ReturnExpression* ast);
+        void Visit(Ides::AST::FunctionCallExpression* ast);
+        
+        void Visit(Ides::AST::AssignmentExpression* ast);
         
         void Visit(Ides::AST::Block* ast);
         void Visit(Ides::AST::IfStatement* ast);
@@ -78,6 +81,9 @@ namespace CodeGen {
         void Visit(Ides::AST::ConstantFloatExpression* ast);
         
     private:
+        
+        llvm::Value* GetPtr(Ides::AST::Expression* ast);
+        llvm::Value* GetValue(Ides::AST::Expression* ast);
         
         llvm::Function* GetEvaluatingLLVMFunction() { return this->functions[this->currentFunctions.top()]; }
         

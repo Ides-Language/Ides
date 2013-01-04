@@ -20,6 +20,13 @@ namespace CodeGen {
     
     using namespace Ides::Diagnostics;
     
+    
+    void CodeGen::Visit(Ides::AST::AssignmentExpression* ast) { SETTRACE("CodeGen::Visit(AssignmentExpression)")
+        llvm::Value* toExpr = GetPtr(ast->GetLHS());
+        builder->CreateStore(GetValue(ast->GetRHS()), toExpr);
+        last = toExpr;
+    }
+    
     void CodeGen::Visit(Ides::AST::IdentifierExpression* ast) { SETTRACE("CodeGen::Visit(IdentifierExpression)")
         Ides::AST::Declaration* decl = actx.GetCurrentScope()->GetMember(actx, ast->GetName());
         if (decl) {
@@ -54,8 +61,8 @@ namespace CodeGen {
             throw detail::CodeGenError();
         }
         else if (exprtype->IsEquivalentType(funcrettype)) {
-            ast->GetRetVal()->Accept(this);
-            builder->CreateRet(last);
+            llvm::Value* retVal = GetValue(ast->GetRetVal());
+            builder->CreateRet(retVal);
         }
         else {
             try {
@@ -68,10 +75,54 @@ namespace CodeGen {
     }
     
     
-    void CodeGen::Visit(Ides::AST::DotExpression* ast) {
-        ast->GetExpression().Accept(this);
-        //llvm::Value* lhs = last;
-        ast->GetExpression().GetMember(actx, *ast->GetToken())->Accept(this);
+    void CodeGen::Visit(Ides::AST::DotExpression* ast) { SETTRACE("CodeGen::Visit(DotExpression)")
+        llvm::Value* val = GetPtr(&ast->GetExpression());
+        
+        const Ides::Types::Type* exprtype = ast->GetExpression().GetType(actx);
+        Ides::AST::Declaration* decl = exprtype->GetMember(actx, *ast->GetToken());
+        
+        if (decl == NULL) {
+            Diag(UNKNOWN_MEMBER, ast) << *ast->GetToken() << exprtype->ToString();
+            throw detail::CodeGenError();
+        }
+        
+        if (const Ides::Types::StructType* st = dynamic_cast<const Ides::Types::StructType*>(ast->GetExpression().GetType(actx))) {
+            int memberidx = st->GetMemberIndex(*ast->GetToken());
+            last = builder->CreateStructGEP(val, memberidx, exprtype->ToString() + "." + *ast->GetToken());
+            // No such member
+            return;
+        }
+        else {
+        }
+    }
+    
+    
+    void CodeGen::Visit(Ides::AST::FunctionCallExpression* ast) { SETTRACE("CodeGen::Visit(FunctionCallExpression)")
+        const Ides::Types::FunctionType* function = static_cast<const Ides::Types::FunctionType*>(ast->GetFunction()->GetType(actx));
+        if (function == NULL) throw detail::CodeGenError();
+        
+        const Ides::AST::ExpressionList& args = ast->GetArgs();
+        llvm::Function* func = static_cast<llvm::Function*>(GetPtr(ast->GetFunction()));
+        std::vector<llvm::Value*> fnargs;
+        auto i = args.begin();
+        auto defi = function->argTypes.begin();
+        for (; i != args.end() && defi != function->argTypes.end(); ++i, ++defi) {
+            const Ides::Types::Type* argtype = (*i)->GetType(actx);
+            
+            if (!argtype->IsEquivalentType(*defi)) {
+                Diag(NO_IMPLICIT_CONVERSION, *i) << argtype->ToString() << (*defi)->ToString();
+            }
+            fnargs.push_back(GetValue(*i));
+        }
+        
+        if (function->argTypes.size() > args.size()) {
+            Diag(CALL_INSUFFICIENT_ARGS, ast) << (int)function->argTypes.size() << (int)args.size();
+            throw detail::CodeGenError();
+        } else if (function->argTypes.size() < args.size()) {
+            Diag(CALL_TOO_MANY_ARGS, ast) << (int)function->argTypes.size() << (int)args.size();
+            throw detail::CodeGenError();
+        }
+        last = builder->CreateCall(func, fnargs);
     }
     
     

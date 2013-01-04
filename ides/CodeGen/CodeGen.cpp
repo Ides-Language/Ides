@@ -26,17 +26,48 @@ namespace CodeGen {
     
     CodeGen::~CodeGen() {
         delete builder;
-        delete module;
+        //delete module;
     }
     
     void CodeGen::Compile(Ides::AST::CompilationUnit* ast) { SETTRACE("CodeGen::Compile")
         try {
             ast->Accept(this);
-            module->dump();
         } catch (const detail::CodeGenError&) {
             std::cerr << "Build completed with errors." << std::endl;
+            
+            //GetEvaluatingLLVMFunction()->dump();
         }
         functions.clear();
+    }
+    
+    llvm::Value* CodeGen::GetValue(Ides::AST::Expression* ast) { SETTRACE("CodeGen::GetValue")
+        ast->Accept(this);
+        const Ides::Types::Type* exprType = ast->GetType(actx);
+        llvm::Type* valType = last->getType();
+        while (exprType->IsPtrType()) {
+            assert(valType->isPointerTy());
+            
+            exprType = static_cast<const Ides::Types::PointerType*>(exprType)->GetTargetType();
+            valType = llvm::dyn_cast<llvm::PointerType>(valType)->getElementType();
+        }
+        if (valType->isPointerTy())
+            last = builder->CreateLoad(last, "autoderef");
+        return last;
+    }
+    
+    llvm::Value* CodeGen::GetPtr(Ides::AST::Expression* ast) { SETTRACE("CodeGen::GetPtr")
+        ast->Accept(this);
+        const Ides::Types::Type* exprType = ast->GetType(actx);
+        llvm::Type* valType = last->getType();
+        while (exprType->IsPtrType()) {
+            exprType = static_cast<const Ides::Types::PointerType*>(exprType)->GetTargetType();
+            valType = llvm::dyn_cast<llvm::PointerType>(valType);
+        }
+        
+        if (valType->isPointerTy()) return last;
+        
+        Diag(INVALID_TEMPORARY_VALUE, ast);
+        throw detail::CodeGenError();
     }
     
     void CodeGen::Visit(Ides::AST::CompilationUnit* ast) {
@@ -46,7 +77,7 @@ namespace CodeGen {
             i->second->Accept(this);
         }
     }
-        
+    
     
 }
 }

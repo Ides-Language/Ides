@@ -30,5 +30,13 @@ namespace AST {
         return NULL;
     }
     
+    const Ides::Types::Type* FunctionCallExpression::GetType(ASTContext& ctx) const {
+        const Ides::Types::Type* ft = fn->GetType(ctx);
+        const Ides::Types::FunctionType* fntype = dynamic_cast<const Ides::Types::FunctionType*>(ft);
+        if (fn) return fntype->retType;
+        Ides::Diagnostics::Diag(ctx.GetDiagnostics(), Ides::Diagnostics::CALL_NON_FUNCTION, this->exprloc.getBegin()) << ft->ToString();
+        return NULL;
+    }
+    
 }
 }

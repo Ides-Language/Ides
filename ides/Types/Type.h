@@ -46,6 +46,8 @@ namespace Types {
             return IsSubtypeOf(other);
         }
         
+        virtual bool IsPtrType() const { return false; }
+        
         
         virtual const Ides::String ToString() const { return type_name; }
         
@@ -126,6 +128,8 @@ namespace Types {
         }
         
         const Ides::Types::Type* GetTargetType() const { return this->targetType; }
+        
+        virtual bool IsPtrType() const { return true; }
     private:
         const Ides::Types::Type* targetType;
         static PointerTypeMap types;
@@ -134,7 +138,7 @@ namespace Types {
     class StructType : public Type {
     public:
         StructType(Ides::StringRef name) :
-            Type("struct " + name, VoidType::GetSingletonPtr()), name(name) { }
+            Type(name, VoidType::GetSingletonPtr()), name(name) { }
         virtual ~StructType() { }
         
         static StructType* GetOrCreate(ParseContext& ctx, Ides::StringRef name);

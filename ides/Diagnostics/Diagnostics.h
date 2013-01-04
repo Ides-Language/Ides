@@ -24,8 +24,13 @@ namespace Diagnostics {
         UNKNOWN_IDENTIFIER,
         UNKNOWN_MEMBER,
         
+        CALL_NON_FUNCTION,
+        CALL_TOO_MANY_ARGS,
+        CALL_INSUFFICIENT_ARGS,
+        
         BLOCK_UNREACHABLE_CODE,
         
+        INVALID_TEMPORARY_VALUE,
         
         NOTE_DECLARED_HERE,
         

@@ -50,6 +50,7 @@ namespace AST {
     class ValueDeclaration;
     class VariableDeclaration;
     class StructDeclaration;
+    class FieldDeclaration;
     
     class FunctionDeclaration;
     class OverloadedFunction;
@@ -85,6 +86,7 @@ namespace AST {
         virtual void Visit(Ides::AST::ValueDeclaration* ast) { }
         virtual void Visit(Ides::AST::VariableDeclaration* ast) { }
         virtual void Visit(Ides::AST::StructDeclaration* ast) { }
+        virtual void Visit(Ides::AST::FieldDeclaration* ast) { }
         virtual void Visit(Ides::AST::FunctionDeclaration* ast) { }
         virtual void Visit(Ides::AST::OverloadedFunction* ast) { }
         virtual void Visit(Ides::AST::Token* ast) { }

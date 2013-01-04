@@ -36,8 +36,6 @@ namespace AST {
         
         std::vector<const Ides::Types::Type*> argTypes;
         for (auto i = this->args.begin(); i != this->args.end(); ++i) {
-            //ASTDeclaration* decl = dynamic_cast<ASTDeclaration*>(*i);
-            //ctx.GetLocalSymbols()->insert(std::make_pair(decl->name->name, decl));
             argTypes.push_back((*i)->GetType(ctx));
         }
         

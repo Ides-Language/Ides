@@ -83,18 +83,19 @@ namespace AST {
         FunctionCallExpression(Expression* fn) : fn(fn) { }
     public:
         virtual void Accept(Visitor* v) { v->Visit(this); }
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const { return NULL; }
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const;
         
         static FunctionCallExpression* Create(Expression* fn, ExpressionList* args){
             FunctionCallExpression* ret = Create(fn);
-            std::copy(args->begin(), args->end(), ret->args.begin());
+            std::copy(args->begin(), args->end(), std::back_inserter(ret->args));
+            delete args;
             return ret;
         }
         static FunctionCallExpression* Create(Expression* fn) {
             return new FunctionCallExpression(fn);
         }
         
-        const Expression& GetFunction() const { return *fn; }
+        Expression* GetFunction() const { return fn.get(); }
         const ExpressionList& GetArgs() const { return args; }
     private:
         boost::scoped_ptr<Expression> fn;
@@ -149,8 +150,11 @@ namespace AST {
         AssignmentExpression(Expression* lhs, Expression* rhs) : lhs(lhs), rhs(rhs) { }
         virtual void Accept(Visitor* v) { v->Visit(this); }
         
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const { return NULL; }
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const { return rhs->GetType(ctx); }
         
+        Expression* GetLHS() { return lhs.get(); }
+        Expression* GetRHS() { return rhs.get(); }
+    private:
         boost::scoped_ptr<Expression> lhs;
         boost::scoped_ptr<Expression> rhs;
     };

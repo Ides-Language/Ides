@@ -69,8 +69,8 @@ namespace AST {
         }
         
         VarType vartype;
-        boost::scoped_ptr<Type> type;
-        boost::scoped_ptr<Expression> initval;
+        Type* type;
+        Expression* initval;
     };
     
     typedef std::list<VariableDeclaration*> VariableDeclarationList;
@@ -99,7 +99,7 @@ namespace AST {
         
         VariableDeclarationList args;
         
-        boost::scoped_ptr<Type> returntype;
+        Type* returntype;
         bool evaluatingtype;
     };
     
@@ -134,6 +134,20 @@ namespace AST {
         void GenType(ASTContext& ctx);
         
         DeclarationList members;
+    };
+    
+    class FieldDeclaration : public VariableDeclaration {
+    public:
+        FieldDeclaration(VarType vartype, Token* name, Type* type) :
+            VariableDeclaration(vartype, name, type) {}
+        
+        FieldDeclaration(VarType vartype, Token* name, Expression* initval) :
+            VariableDeclaration(vartype, name, initval) {}
+        
+        FieldDeclaration(VarType vartype, Token* name, Type* type, Expression* initval) :
+            VariableDeclaration(vartype, name, initval) {}
+        
+        virtual void Accept(Visitor* v) { v->Visit(this); }
     };
     
     class Namespace : public NamedDeclaration, public DeclarationContext {

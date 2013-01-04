@@ -149,8 +149,24 @@ int main(int argc, const char* argv[])
         compiler.Compile((Ides::AST::CompilationUnit*)ast);
         
         diag->getClient()->EndSourceFile();
+        
+        modules.push_back(compiler.GetModule());
     }
     
+    llvm::Linker linker(output_name, output_name, llvm::getGlobalContext());
+    
+    for (auto modi = modules.begin(); modi != modules.end(); ++modi) {
+        if (linker.LinkInModule(*modi)) {
+            std::cerr << linker.getLastError() << std::endl;
+        }
+    }
+    llvm::Module* linkermod = linker.getModule();
+    
+    linkermod->dump();
+    
+    fs::ofstream outfile(output_file);
+    llvm::raw_os_ostream llvm_outfile(outfile);
+    llvm::WriteBitcodeToFile(linker.getModule(), llvm_outfile);
     
 
 	return 0;

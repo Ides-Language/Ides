@@ -23,15 +23,14 @@ namespace CodeGen {
     void CodeGen::Visit(Ides::AST::VariableDeclaration* ast) { SETTRACE("CodeGen::Visit(VariableDeclaration)")
         auto vi = variables.find(ast);
         if (vi != variables.end()) {
-            last = builder->CreateLoad(vi->second);
+            last = vi->second;
             return;
         }
         
         llvm::Value* var = builder->CreateAlloca(ast->GetType(actx)->GetLLVMType(actx), 0, ast->GetName());
         variables.insert(std::make_pair(ast, var));
         if (ast->initval != NULL) {
-            ast->initval->Accept(this);
-            builder->CreateStore(last, var);
+            builder->CreateStore(GetValue(ast->initval), var);
         }
         
         actx.GetCurrentScope()->AddMember(ast->GetName(), ast);
@@ -85,9 +84,9 @@ namespace CodeGen {
         llvm::Function::arg_iterator ai = func->arg_begin();
         for (; i != ast->GetArgs().end() && ai != func->arg_end(); ++ai, ++i) {
             Ides::AST::VariableDeclaration* decl = *i;
-            decl->Accept(this);
-            
             ai->setName(decl->GetName());
+            decl->Accept(this);
+            builder->CreateStore(ai, last);
         }
         assert (i == ast->GetArgs().end() && ai == func->arg_end());
         
@@ -101,12 +100,10 @@ namespace CodeGen {
                 const Ides::Types::Type* valtype = ast->val->GetType(actx);
                 const Ides::Types::Type* rettype = ast->GetReturnType(actx);
                 if (valtype->IsEquivalentType(rettype)) {
-                    ast->val->Accept(this);
-                    builder->CreateRet(this->last);
+                    builder->CreateRet(GetValue(ast->val));
                 } else if (valtype->HasImplicitConversionTo(rettype)) {
                     try {
-                        ast->val->Accept(this);
-                        builder->CreateRet(this->last);
+                        builder->CreateRet(GetValue(ast->val));
                     } catch (const std::runtime_error& ex) {
                         // TODO: Diagnostics!
                     }

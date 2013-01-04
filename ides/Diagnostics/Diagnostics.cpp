@@ -32,6 +32,12 @@ namespace Diagnostics {
         CreateDiagnostic(diags, UNKNOWN_IDENTIFIER, clang::DiagnosticsEngine::Error, "unrecognized identifier %0");
         CreateDiagnostic(diags, UNKNOWN_MEMBER, clang::DiagnosticsEngine::Error, "%0 has no member named %1");
         
+        CreateDiagnostic(diags, CALL_NON_FUNCTION, clang::DiagnosticsEngine::Error, "cannot call expression of type %0");
+        CreateDiagnostic(diags, CALL_TOO_MANY_ARGS, clang::DiagnosticsEngine::Error, "too many arguments to function: expected %0, got %1");
+        CreateDiagnostic(diags, CALL_INSUFFICIENT_ARGS, clang::DiagnosticsEngine::Error, "not enough arguments to function: expected %0, got %1");
+        
+        CreateDiagnostic(diags, INVALID_TEMPORARY_VALUE, clang::DiagnosticsEngine::Error, "invalid use of temporary value");
+        
         CreateDiagnostic(diags, BLOCK_UNREACHABLE_CODE, clang::DiagnosticsEngine::Warning, "unreachable code");
         
         CreateDiagnostic(diags, NOTE_DECLARED_HERE, clang::DiagnosticsEngine::Note, "originally declared here");

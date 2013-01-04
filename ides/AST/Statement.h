@@ -33,8 +33,8 @@ namespace AST {
         virtual void Accept(Visitor* v) { v->Visit(this); }
         
         Expression* condition;
-        boost::scoped_ptr<Statement> iftrue;
-        boost::scoped_ptr<Statement> iffalse;
+        Statement* iftrue;
+        Statement* iffalse;
     };
     
     class WhileStatement : public Statement, public HierarchicalConcreteDeclarationContext {
@@ -43,7 +43,7 @@ namespace AST {
         virtual void Accept(Visitor* v) { v->Visit(this); }
         
         Expression* condition;
-        boost::scoped_ptr<Statement> body;
+        Statement* body;
     };
     
     class ForStatement : public Statement, public HierarchicalConcreteDeclarationContext {
@@ -55,7 +55,7 @@ namespace AST {
         AST* startexpr;
         Expression* endexpr;
         Expression* eachexpr;
-        boost::scoped_ptr<Statement> body;
+        Statement* body;
     };
 }
 }
