@@ -15,8 +15,8 @@ namespace Ides {
 namespace Parsing {
    
     
-    ParseContext::ParseContext(clang::SourceManager& srcMgr, const clang::FileEntry* file)
-        : srcMgr(srcMgr), file(file), ptr(0)
+    ParseContext::ParseContext(clang::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag, clang::SourceManager& srcMgr, const clang::FileEntry* file)
+        : diag(diag), srcMgr(srcMgr), file(file), ptr(0)
     {
         this->fid = srcMgr.createMainFileID(file);
         this->buf = srcMgr.getMemoryBufferForFile(file);

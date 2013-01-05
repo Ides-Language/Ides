@@ -60,17 +60,5 @@ namespace AST {
         this->functype = Ides::Types::FunctionType::Get(ret, argTypes);
         return this->functype;
     }
-    
-    void StructDeclaration::GenType(ASTContext& ctx) {
-        Ides::Types::StructType* st = Ides::Types::StructType::GetOrCreate(ctx, this->GetName());
-        
-        std::vector<std::pair<Ides::String, const Ides::Types::Type*> > membertypes;
-        for (auto i = this->members.begin(); i != this->members.end(); ++i) {
-            NamedDeclaration* decl = (NamedDeclaration*)*i;
-            membertypes.push_back(std::make_pair(decl->GetName(), decl->GetType(ctx)));
-            st->AddMember(decl->GetName(), decl);
-        }
-        st->SetMembers(ctx, membertypes);
-    }
 }
 }

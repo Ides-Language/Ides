@@ -14,6 +14,8 @@
 namespace Ides {
 namespace Diagnostics {
     enum DiagIDs {
+        PARSE_GENERIC_ERROR,
+        
         NO_IMPLICIT_CONVERSION,
         FUNCTION_NO_RETURN,
         
@@ -27,6 +29,8 @@ namespace Diagnostics {
         CALL_NON_FUNCTION,
         CALL_TOO_MANY_ARGS,
         CALL_INSUFFICIENT_ARGS,
+        
+        OP_NO_SUCH_OPERATOR,
         
         BLOCK_UNREACHABLE_CODE,
         

@@ -31,6 +31,9 @@ namespace AST {
     class DotExpression;
     
     class UnaryExpression;
+    class AddressOfExpression;
+    class DereferenceExpression;
+    
     class InfixExpression;
     class AssignmentExpression;
     
@@ -73,6 +76,8 @@ namespace AST {
         virtual void Visit(Ides::AST::FunctionCallExpression* ast) { }
         virtual void Visit(Ides::AST::DotExpression* ast) { }
         virtual void Visit(Ides::AST::UnaryExpression* ast) { }
+        virtual void Visit(Ides::AST::AddressOfExpression* ast) { }
+        virtual void Visit(Ides::AST::DereferenceExpression* ast) { }
         virtual void Visit(Ides::AST::InfixExpression* ast) { }
         virtual void Visit(Ides::AST::AssignmentExpression* ast) { }
         virtual void Visit(Ides::AST::ConstantStringExpression* ast) { }

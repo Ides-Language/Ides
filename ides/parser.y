@@ -1,14 +1,14 @@
 %{
     #include <iostream>
     #include <ides/Parsing/ParserCommon.h>
+    #include <ides/Diagnostics/Diagnostics.h>
     #include <stdexcept>
     #include <sstream>
     
     void yyerror(YYLTYPE* locp, Ides::Parsing::ParseContext* context, Ides::AST::AST** output, const char* err)
 	{
-        //throw Ides::Diagnostics::CompileError(err, *locp);
-        std::cerr << err << std::endl;
-        exit(1);
+        Ides::Diagnostics::Diag(context->GetDiagnostics(), Ides::Diagnostics::PARSE_GENERIC_ERROR, locp->getBegin()) << err;
+        throw std::runtime_error("parse error");
 	}
     
     #define SET_EXPRLOC(x, loc) (x)->exprloc = (loc)
@@ -90,6 +90,10 @@
 // Operators
 %token OP_INC OP_DEC OP_COALESCE OP_CAST
 %token OP_EQ OP_NE OP_LT OP_LE OP_GT OP_GE
+%token OP_AND OP_OR OP_NOT
+%token OP_BAND OP_BOR OP_BXOR OP_BNOT OP_ASHL OP_ASHR OP_LSHL OP_LSHR
+%token OP_ASSIGN OP_PLUS OP_MINUS OP_STAR OP_SLASH OP_MOD
+%token OP_RARROW OP_LARROW
 
 %token <ast_int> TINTEGER
 %token <ast_ident> TIDENTIFIER
@@ -183,29 +187,41 @@ postfix_expression : primary_expression
                    | postfix_expression '(' arg_val_list ')' { $$ = Ides::AST::FunctionCallExpression::Create($1, $3); SET_EXPRLOC($$, @$); }
                    //| postfix_expression '[' arg_val_list ']' { $$ = new Ides::AST::BracketCall($1, $3); SET_EXPRLOC($$, @$); }
                    | postfix_expression '.' TIDENTIFIER { $$ = new Ides::AST::DotExpression($1, $3); SET_EXPRLOC($$, @$); }
+                   | postfix_expression OP_INC { $$ = NEW_POSTFIX("++", $1); SET_EXPRLOC($$, @$); }
+                   | postfix_expression OP_DEC { $$ = NEW_POSTFIX("--", $1); SET_EXPRLOC($$, @$); }
 ;
 
 prefix_expression : postfix_expression
-                  //| '*' prefix_expression { $$ = new Ides::AST::DereferenceExpression($2); SET_EXPRLOC($$, @$); }
-                  //| '&' prefix_expression { $$ = new Ides::AST::AddressOfExpression($2); SET_EXPRLOC($$, @$); }
-                  | '!' prefix_expression { $$ = NEW_PREFIX("!", $2); SET_EXPRLOC($$, @$); }
-                  | '~' prefix_expression { $$ = NEW_PREFIX("~", $2); SET_EXPRLOC($$, @$); }
-                  | '-' prefix_expression { $$ = NEW_PREFIX("-", $2); SET_EXPRLOC($$, @$); }
-                  | "++" prefix_expression { $$ = NEW_PREFIX("++", $2); SET_EXPRLOC($$, @$); }
-                  | "--" prefix_expression { $$ = NEW_PREFIX("--", $2); SET_EXPRLOC($$, @$); }
+                  | OP_STAR prefix_expression { $$ = new Ides::AST::DereferenceExpression($2); SET_EXPRLOC($$, @$); }
+                  | OP_BAND prefix_expression { $$ = new Ides::AST::AddressOfExpression($2); SET_EXPRLOC($$, @$); }
+                  
+                  | OP_NOT prefix_expression { $$ = NEW_PREFIX("!", $2); SET_EXPRLOC($$, @$); }
+                  | OP_BNOT prefix_expression { $$ = NEW_PREFIX("~", $2); SET_EXPRLOC($$, @$); }
+                  | OP_MINUS prefix_expression { $$ = NEW_PREFIX("-", $2); SET_EXPRLOC($$, @$); }
+                  | OP_INC prefix_expression { $$ = NEW_PREFIX("++", $2); SET_EXPRLOC($$, @$); }
+                  | OP_DEC prefix_expression { $$ = NEW_PREFIX("--", $2); SET_EXPRLOC($$, @$); }
 ;
 
 infix_expression : prefix_expression
-                 | infix_expression '=' infix_expression { $$ = new Ides::AST::AssignmentExpression($1, $3); SET_EXPRLOC($$, @$); }
-                 | infix_expression '+' infix_expression { $$ = NEW_INFIX("+", $1, $3); SET_EXPRLOC($$, @$); }
-                 | infix_expression '-' infix_expression { $$ = NEW_INFIX("-", $1, $3); SET_EXPRLOC($$, @$); }
-                 | infix_expression '*' infix_expression { $$ = NEW_INFIX("*", $1, $3); SET_EXPRLOC($$, @$); }
-                 | infix_expression '/' infix_expression { $$ = NEW_INFIX("/", $1, $3); SET_EXPRLOC($$, @$); }
-                 | infix_expression '%' infix_expression { $$ = NEW_INFIX("%", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_ASSIGN infix_expression { $$ = new Ides::AST::AssignmentExpression($1, $3); SET_EXPRLOC($$, @$); }
+
+                 | infix_expression OP_PLUS infix_expression { $$ = NEW_INFIX("+", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_MINUS infix_expression { $$ = NEW_INFIX("-", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_STAR infix_expression { $$ = NEW_INFIX("*", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_SLASH infix_expression { $$ = NEW_INFIX("/", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_MOD infix_expression { $$ = NEW_INFIX("%", $1, $3); SET_EXPRLOC($$, @$); }
                  
-                 | infix_expression '&' infix_expression { $$ = NEW_INFIX("&", $1, $3); SET_EXPRLOC($$, @$); }
-                 | infix_expression '|' infix_expression { $$ = NEW_INFIX("|", $1, $3); SET_EXPRLOC($$, @$); }
-                 | infix_expression '^' infix_expression { $$ = NEW_INFIX("^", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_BAND infix_expression { $$ = NEW_INFIX("&", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_BOR infix_expression { $$ = NEW_INFIX("|", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_BXOR infix_expression { $$ = NEW_INFIX("^", $1, $3); SET_EXPRLOC($$, @$); }
+
+                 | infix_expression OP_LSHL infix_expression { $$ = NEW_INFIX("lshl", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_LSHR infix_expression { $$ = NEW_INFIX("lshr", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_ASHL infix_expression { $$ = NEW_INFIX("ashl", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_ASHR infix_expression { $$ = NEW_INFIX("ashr", $1, $3); SET_EXPRLOC($$, @$); }
+                 
+                 | infix_expression OP_AND infix_expression { $$ = NEW_INFIX("&&", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_OR infix_expression { $$ = NEW_INFIX("||", $1, $3); SET_EXPRLOC($$, @$); }
                  
                  | infix_expression OP_EQ infix_expression { $$ = NEW_INFIX("==", $1, $3); SET_EXPRLOC($$, @$); }
                  | infix_expression OP_NE infix_expression { $$ = NEW_INFIX("!=", $1, $3); SET_EXPRLOC($$, @$); }
@@ -229,7 +245,7 @@ specifier : KW_PUBLIC { $$ = Ides::AST::PUBLIC; }
           | KW_PRIVATE { $$ = Ides::AST::PRIVATE; }
 ;
 
-var_type : var_type '*' { $$ = new Ides::AST::PtrType($1); SET_EXPRLOC($$, @$); }
+var_type : var_type OP_STAR { $$ = new Ides::AST::PtrType($1); SET_EXPRLOC($$, @$); }
 
          | KW_VOID   { $$ = new Ides::AST::VoidType(); SET_EXPRLOC($$, @$); }
          | KW_UNIT   { $$ = new Ides::AST::UnitType(); SET_EXPRLOC($$, @$); }
@@ -262,12 +278,12 @@ var_type_list : var_type { $$ = new Ides::AST::TypeList(); $$->push_back($1); }
               | var_type_list ',' var_type { $$ = $1; $$->push_back($3); }
 ;
 
-var_decl : KW_VAR TIDENTIFIER '=' expression { $$ = new Ides::AST::VariableDeclaration(Ides::AST::VariableDeclaration::DECL_VAR, $2, $4); SET_EXPRLOC($$, @$); }
+var_decl : KW_VAR TIDENTIFIER OP_ASSIGN expression { $$ = new Ides::AST::VariableDeclaration(Ides::AST::VariableDeclaration::DECL_VAR, $2, $4); SET_EXPRLOC($$, @$); }
          | KW_VAR TIDENTIFIER ':' var_type { $$ = new Ides::AST::VariableDeclaration(Ides::AST::VariableDeclaration::DECL_VAR, $2, $4); SET_EXPRLOC($$, @$); }
-         | KW_VAR TIDENTIFIER ':' var_type '=' expression { $$ = new Ides::AST::VariableDeclaration(Ides::AST::VariableDeclaration::DECL_VAR, $2, $4, $6); SET_EXPRLOC($$, @$); }
+         | KW_VAR TIDENTIFIER ':' var_type OP_ASSIGN expression { $$ = new Ides::AST::VariableDeclaration(Ides::AST::VariableDeclaration::DECL_VAR, $2, $4, $6); SET_EXPRLOC($$, @$); }
 ;
 
-val_decl : KW_VAL TIDENTIFIER '=' expression
+val_decl : KW_VAL TIDENTIFIER OP_ASSIGN expression
                 {
                     $$ = new Ides::AST::VariableDeclaration(Ides::AST::VariableDeclaration::DECL_VAL, $2, $4);
                     SET_EXPRLOC($$, @$);
@@ -277,7 +293,7 @@ val_decl : KW_VAL TIDENTIFIER '=' expression
                     $$ = new Ides::AST::VariableDeclaration(Ides::AST::VariableDeclaration::DECL_VAL, $2, $4);
                     SET_EXPRLOC($$, @$);
                 }
-         | KW_VAL TIDENTIFIER ':' var_type '=' expression
+         | KW_VAL TIDENTIFIER ':' var_type OP_ASSIGN expression
                 {
                     $$ = new Ides::AST::VariableDeclaration(Ides::AST::VariableDeclaration::DECL_VAL, $2, $4, $6);
                     SET_EXPRLOC($$, @$);

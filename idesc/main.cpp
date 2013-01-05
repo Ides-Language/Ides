@@ -143,7 +143,12 @@ int main(int argc, const char* argv[])
 
 		fs::ifstream srcfile(*i);
         
-        Ides::AST::AST* ast = proj.ParseFile(current_file);
+        Ides::AST::AST* ast = NULL;
+        try {
+            ast = proj.ParseFile(current_file);
+        } catch (const std::exception&) {
+            return 1;
+        }
         
         Ides::CodeGen::CodeGen compiler(diag, llvm::getGlobalContext(), actx);
         compiler.Compile((Ides::AST::CompilationUnit*)ast);

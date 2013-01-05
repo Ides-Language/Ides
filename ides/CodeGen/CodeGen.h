@@ -23,6 +23,8 @@
 
 #include <ides/Diagnostics/Diagnostics.h>
 
+#include <ides/CodeGen/LLVMTypeVisitor.h>
+
 namespace Ides {
     
 namespace CodeGen {
@@ -59,6 +61,9 @@ namespace CodeGen {
         void Visit(Ides::AST::VariableDeclaration* ast);
         void Visit(Ides::AST::StructDeclaration* ast);
         
+        void Visit(Ides::AST::AddressOfExpression* ast);
+        void Visit(Ides::AST::DereferenceExpression* ast);
+        
         void Visit(Ides::AST::IdentifierExpression* ast);
         void Visit(Ides::AST::DotExpression* ast);
         void Visit(Ides::AST::ReturnExpression* ast);
@@ -85,10 +90,19 @@ namespace CodeGen {
         llvm::Value* GetPtr(Ides::AST::Expression* ast);
         llvm::Value* GetValue(Ides::AST::Expression* ast);
         
+        llvm::Value* GetPtr(Ides::AST::Expression* ast, const Ides::Types::Type* toType);
+        llvm::Value* GetValue(Ides::AST::Expression* ast, const Ides::Types::Type* toType);
+        
+        llvm::Value* Cast(Ides::AST::Expression* ast, const Ides::Types::Type* toType);
+        
+        llvm::Type* GetLLVMType(const Ides::Types::Type* ty);
+        
         llvm::Function* GetEvaluatingLLVMFunction() { return this->functions[this->currentFunctions.top()]; }
         
         llvm::LLVMContext& lctx;
         Ides::AST::ASTContext& actx;
+        
+        LLVMTypeVisitor typeVisitor;
         
         llvm::IRBuilder<>* builder;
         llvm::Module* module;

@@ -34,20 +34,6 @@ namespace Types {
     PointerType::PointerTypeMap PointerType::types;
     FunctionType::FunctionTypeSet FunctionType::types;
     
-    
-    const Ides::Types::Type* Type::GetFromMDNode(const llvm::Value* node) {
-        if (llvm::isa<llvm::MDNode>(node)) {
-            const llvm::MDNode* mdnode = llvm::cast<llvm::MDNode>(node);
-            const llvm::MDString* tname = llvm::cast<llvm::MDString>(mdnode->getOperand(0));
-            if (tname->getString() == "ptr") return PointerType::Get(Type::GetFromMDNode(mdnode->getOperand(1)));
-        } else if (llvm::isa<llvm::MDString>(node)) {
-            const llvm::MDString* mdstr = llvm::cast<llvm::MDString>(node);
-            auto i = typenames.find(mdstr->getString());
-            if (i != typenames.end()) return i->second;
-        }
-        return NULL;
-    }
-    
     const Ides::Types::PointerType* Type::PtrType() const { return PointerType::Get(this); }
     
     const PointerType* PointerType::Get(const Ides::Types::Type* target) {
@@ -94,12 +80,6 @@ namespace Types {
     
     void StructType::SetMembers(ParseContext& ctx, const std::vector<std::pair<Ides::String, const Type*> >& members) {
         this->type_members = members;
-        
-        std::vector<llvm::Type*> membertypes;
-        for (auto i = members.begin(); i != members.end(); ++i) {
-            membertypes.push_back(i->second->GetLLVMType(ctx));
-        }
-        this->type->setBody(membertypes, false);
     }
     
     const Ides::Types::Type* StructType::GetMemberType(Ides::StringRef str) const {
@@ -118,26 +98,6 @@ namespace Types {
         return -1;
     }
     
-    llvm::Type* FunctionType::GetLLVMType(ParseContext& ctx) const
-    {
-        std::vector<llvm::Type*> llvmargTypes;
-        for (auto i = this->argTypes.begin(); i != this->argTypes.end(); ++i) {
-            const FunctionType* argasfunction = dynamic_cast<const FunctionType*>(*i);
-            if (argasfunction) {
-                llvmargTypes.push_back(PointerType::Get((*i))->GetLLVMType(ctx));
-            } else {
-                llvmargTypes.push_back((*i)->GetLLVMType(ctx));
-            }
-        }
-        const FunctionType* retasfunction = dynamic_cast<const FunctionType*>(retType);
-        llvm::FunctionType *FT = NULL;
-        if (retasfunction)
-            FT = llvm::FunctionType::get(PointerType::Get(retasfunction)->GetLLVMType(ctx),llvmargTypes, false);
-        else
-            FT = llvm::FunctionType::get(retType->GetLLVMType(ctx),llvmargTypes, false);
-        return FT;
-    }
-    
     const Ides::String FunctionType::ToString() const {
         std::stringstream fntype;
         fntype << "fn(";
@@ -153,14 +113,18 @@ namespace Types {
     
     /** Numeric implicit conversions **/
     
-    bool Float64Type::HasImplicitConversionTo(const Ides::Types::Type *other) const { return false; }
-    bool Float32Type::HasImplicitConversionTo(const Ides::Types::Type *other) const { return other->IsEquivalentType(Float64Type::GetSingletonPtr()); }
+    bool Float64Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
+        return false;
+    }
+    bool Float32Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
+        return other->IsEquivalentType(Float64Type::GetSingletonPtr());
+    }
     
     bool UInteger64Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
-        return Float32Type::GetSingletonPtr()->IsEquivalentType(other) || Float32Type::GetSingletonPtr()->HasImplicitConversionTo(other);
+        return false; //Float32Type::GetSingletonPtr()->IsEquivalentType(other) || Float32Type::GetSingletonPtr()->HasImplicitConversionTo(other);
     }
     bool Integer64Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
-        return Float32Type::GetSingletonPtr()->IsEquivalentType(other) || Float32Type::GetSingletonPtr()->HasImplicitConversionTo(other);
+        return false; //Float32Type::GetSingletonPtr()->IsEquivalentType(other) || Float32Type::GetSingletonPtr()->HasImplicitConversionTo(other);
     }
     
     bool UInteger32Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
@@ -170,6 +134,7 @@ namespace Types {
     bool Integer32Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
         return Integer64Type::GetSingletonPtr()->IsEquivalentType(other) || Integer64Type::GetSingletonPtr()->HasImplicitConversionTo(other);
     }
+    
     bool UInteger16Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
         return UInteger32Type::GetSingletonPtr()->IsEquivalentType(other) || UInteger32Type::GetSingletonPtr()->HasImplicitConversionTo(other) ||
         Integer32Type::GetSingletonPtr()->IsEquivalentType(other) || Integer32Type::GetSingletonPtr()->HasImplicitConversionTo(other);
@@ -177,6 +142,7 @@ namespace Types {
     bool Integer16Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
         return Integer32Type::GetSingletonPtr()->IsEquivalentType(other) || Integer32Type::GetSingletonPtr()->HasImplicitConversionTo(other);
     }
+    
     bool UInteger8Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
         return UInteger16Type::GetSingletonPtr()->IsEquivalentType(other) || UInteger16Type::GetSingletonPtr()->HasImplicitConversionTo(other) ||
                 Integer16Type::GetSingletonPtr()->IsEquivalentType(other) ||  Integer16Type::GetSingletonPtr()->HasImplicitConversionTo(other);
@@ -186,8 +152,7 @@ namespace Types {
     }
     
     bool Integer1Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
-        return UInteger8Type::GetSingletonPtr()->IsEquivalentType(other) || UInteger8Type::GetSingletonPtr()->HasImplicitConversionTo(other) ||
-                Integer8Type::GetSingletonPtr()->IsEquivalentType(other) ||  Integer8Type::GetSingletonPtr()->HasImplicitConversionTo(other);
+        return false;
     }
     
 }

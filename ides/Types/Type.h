@@ -6,6 +6,8 @@
 #include <boost/function.hpp>
 #include <boost/unordered_map.hpp>
 #include <ides/AST/DeclarationContext.h>
+#include <ides/Types/TypeVisitor.h>
+
 namespace Ides {
     namespace AST {
         class AST;
@@ -22,10 +24,7 @@ namespace Types {
         Type(Ides::StringRef type_name, Type* supertype) : type_name(type_name), supertype(supertype) {
             typenames.GetOrCreateValue(type_name, this);
         }
-        
-        virtual llvm::Type* GetLLVMType(ParseContext& ctx) const { assert(0); throw std::runtime_error("LLVM type not yet implemented."); }
-        
-        static const Ides::Types::Type* GetFromMDNode(const llvm::Value* node);
+        virtual void Accept(Ides::Types::TypeVisitor* visitor) const = 0;
         
         const Ides::Types::PointerType* PtrType() const;
         
@@ -61,10 +60,8 @@ namespace Types {
     class VoidType : public Type, public Ides::Util::Singleton<VoidType> {
     public:
         VoidType() : Type("void", NULL) { }
+        virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
         
-        virtual llvm::Type* GetLLVMType(ParseContext& ctx) const {
-            return llvm::Type::getVoidTy(ctx.GetContext());
-        }
         virtual bool IsSupertypeOf(const Type* other) const {
             return true; // VoidType is a supertype of all other types.
         }
@@ -76,10 +73,7 @@ namespace Types {
     class UnitType : public Type, public Ides::Util::Singleton<UnitType> {
     public:
         UnitType() : Type("unit", NULL) { }
-        virtual llvm::Type* GetLLVMType(ParseContext& ctx) const {
-            // Expressions of type Unit do not return. Use void as a placeholder.
-            return llvm::Type::getVoidTy(ctx.GetContext());
-        }
+        virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
         
         virtual bool IsSupertypeOf(const Type* other) const {
             return false; // Nothing inherits from Unit.
@@ -95,10 +89,10 @@ namespace Types {
         FunctionType(const Ides::Types::Type* retType, const std::vector<const Ides::Types::Type*>& argTypes) :
             Type("() : void", VoidType::GetSingletonPtr()), retType(retType), argTypes(argTypes) { }
     public:
+        virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
+        
         typedef boost::unordered_set<FunctionType*> FunctionTypeSet;
         static const FunctionType* Get(const Ides::Types::Type* retType, const std::vector<const Ides::Types::Type*>& argTypes);
-        
-        virtual llvm::Type* GetLLVMType(ParseContext& ctx) const;
         
         virtual const Ides::String ToString() const;
 
@@ -107,25 +101,22 @@ namespace Types {
         
     private:
         static FunctionTypeSet types;
-        llvm::FunctionType* ft;
     };
     
     class OverloadedFunctionType : public Type, public Ides::Util::Singleton<OverloadedFunctionType> {
     public:
         OverloadedFunctionType() : Type("overloaded fn()", VoidType::GetSingletonPtr()) { }
+        virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
+        
     };
     
     class PointerType : public Type {
         PointerType(const Ides::Types::Type* targetType) : Type(targetType->ToString() + "*", VoidType::GetSingletonPtr()), targetType(targetType) { }
     public:
+        virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
+        
         typedef boost::unordered_map<const Ides::Types::Type*, PointerType*> PointerTypeMap;
         static const PointerType* Get(const Ides::Types::Type* target);
-        
-        virtual llvm::Type* GetLLVMType(ParseContext& ctx) const {
-            if (targetType->IsEquivalentType(VoidType::GetSingletonPtr()))
-                return llvm::PointerType::getUnqual(llvm::IntegerType::getInt8Ty(ctx.GetContext()));
-            return llvm::PointerType::get(targetType->GetLLVMType(ctx), 0);
-        }
         
         const Ides::Types::Type* GetTargetType() const { return this->targetType; }
         
@@ -140,14 +131,17 @@ namespace Types {
         StructType(Ides::StringRef name) :
             Type(name, VoidType::GetSingletonPtr()), name(name) { }
         virtual ~StructType() { }
+        virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
+        
+        Ides::StringRef GetName() const { return name; }
         
         static StructType* GetOrCreate(ParseContext& ctx, Ides::StringRef name);
         
-        virtual llvm::Type* GetLLVMType(ParseContext& ctx) const { return type; }
         const Ides::Types::Type* GetMemberType(Ides::StringRef str) const;
         int GetMemberIndex(Ides::StringRef str) const;
         
         void SetMembers(ParseContext& ctx, const std::vector<std::pair<Ides::String, const Type*> >& members);
+        const std::vector<std::pair<Ides::String, const Type*> >& GetMembers() const { return type_members; }
     private:
         llvm::StructType* type;
         Ides::String name;
@@ -158,16 +152,19 @@ namespace Types {
     
     class ClassType : public Type {
     public:
+        virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
         
     };
     
     class ReferenceType : public Type {
     public:
+        virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
         
     };
     
     class StringType : public ReferenceType {
     public:
+        virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
         
     };
     
@@ -198,11 +195,9 @@ namespace Types {
 #define IntegerType(size) \
     class Integer##size##Type : public NumberType, public Ides::Util::Singleton<Integer##size##Type> { \
     public: \
+        virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); } \
         Integer##size##Type() : NumberType("int" #size, VoidType::GetSingletonPtr()) { } \
         ~Integer##size##Type() { } \
-        virtual llvm::Type* GetLLVMType(ParseContext& ctx) const { \
-            return llvm::Type::getInt##size##Ty(ctx.GetContext()); \
-        } \
         virtual NumberType::NumberClass GetNumberClass() const { return NumberType::N_SINT; } \
         virtual uint8_t GetSize() const { return size; } \
         virtual bool HasImplicitConversionTo(const Type* other) const; \
@@ -211,11 +206,9 @@ namespace Types {
 #define UIntegerType(size) \
     class UInteger##size##Type : public NumberType, public Ides::Util::Singleton<UInteger##size##Type> { \
     public: \
+        virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); } \
         UInteger##size##Type() : NumberType("uint" #size, VoidType::GetSingletonPtr()) { } \
         ~UInteger##size##Type() { } \
-        virtual llvm::Type* GetLLVMType(ParseContext& ctx) const { \
-            return llvm::Type::getInt##size##Ty(ctx.GetContext()); \
-        } \
         virtual NumberType::NumberClass GetNumberClass() const { return NumberType::N_UINT; } \
         virtual uint8_t GetSize() const { return size; } \
         virtual bool HasImplicitConversionTo(const Type* other) const; \
@@ -235,9 +228,8 @@ namespace Types {
     public:
         Float32Type() : NumberType("float32", VoidType::GetSingletonPtr()) { }
         virtual ~Float32Type() { }
-        virtual llvm::Type* GetLLVMType(ParseContext& ctx) const {
-            return llvm::Type::getFloatTy(ctx.GetContext());
-        }
+        virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
+        
         virtual NumberType::NumberClass GetNumberClass() const { return NumberType::N_FLOAT; }
         virtual uint8_t GetSize() const { return 32; }
         virtual bool HasImplicitConversionTo(const Type* other) const;
@@ -247,9 +239,8 @@ namespace Types {
     public:
         Float64Type() : NumberType("float64", VoidType::GetSingletonPtr()) { }
         virtual ~Float64Type() { }
-        virtual llvm::Type* GetLLVMType(ParseContext& ctx) const {
-            return llvm::Type::getDoubleTy(ctx.GetContext());
-        }
+        virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
+        
         virtual NumberType::NumberClass GetNumberClass() const { return NumberType::N_FLOAT; }
         virtual uint8_t GetSize() const { return 64; }
         virtual bool HasImplicitConversionTo(const Type* other) const;

@@ -131,8 +131,6 @@ namespace AST {
             return Ides::Types::StructType::GetOrCreate(ctx, this->GetName());
         }
         
-        void GenType(ASTContext& ctx);
-        
         DeclarationList members;
     };
     

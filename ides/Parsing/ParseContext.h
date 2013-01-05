@@ -27,9 +27,10 @@ namespace Parsing {
    
     class ParseContext {
     public:
-        ParseContext(clang::SourceManager& srcMgr, const clang::FileEntry* fid);
+        ParseContext(clang::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag, clang::SourceManager& srcMgr, const clang::FileEntry* fid);
         ~ParseContext();
         
+        clang::DiagnosticsEngine& GetDiagnostics() { return *diag; }
         Ides::AST::AST* Parse();
         
         int ReadInput(char *buffer, int* numBytesRead, size_t maxBytesToRead);
@@ -42,6 +43,7 @@ namespace Parsing {
         void DestroyParser();
         
     private:
+        clang::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag;
         void* scanner;
         clang::SourceManager& srcMgr;
         const clang::FileEntry* file;

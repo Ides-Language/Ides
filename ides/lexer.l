@@ -102,12 +102,38 @@
 "++"                    return OP_INC;
 "--"                    return OP_DEC;
 
+"+"                     return OP_PLUS;
+"-"                     return OP_MINUS;
+"*"                     return OP_STAR;
+"/"                     return OP_SLASH;
+"%"                     return OP_MOD;
+
 "=="                    return OP_EQ;
 "!="                    return OP_NE;
 "<"                     return OP_LT;
 ">"                     return OP_GT;
 "<="                    return OP_LE;
 ">="                    return OP_GE;
+
+"&&"                    return OP_AND;
+"||"                    return OP_OR;
+"!"                     return OP_NOT;
+
+"->"                    return OP_RARROW;
+"<-"                    return OP_LARROW;
+
+"|"                     return OP_BOR;
+"&"                     return OP_BAND;
+"^"                     return OP_BXOR;
+"~"                     return OP_BNOT;
+
+"<<"                    return OP_LSHL;
+">>"                    return OP_LSHR;
+">>>"                   return OP_ASHL;
+"<<<"                   return OP_ASHR;
+
+"="                     return OP_ASSIGN;
+
 
 
 <INITIAL>"/*"           BEGIN(IN_BLOCKCOMMENT);

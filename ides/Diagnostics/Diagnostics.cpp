@@ -22,6 +22,8 @@ namespace Diagnostics {
     
     
     void InitAllDiagnostics(clang::DiagnosticsEngine& diags) {
+        CreateDiagnostic(diags, PARSE_GENERIC_ERROR, clang::DiagnosticsEngine::Error, "parsing failed: %0");
+        
         CreateDiagnostic(diags, FUNCTION_NO_RETURN, clang::DiagnosticsEngine::Error, "function does not return a value");
         CreateDiagnostic(diags, NO_IMPLICIT_CONVERSION, clang::DiagnosticsEngine::Error, "no implicit conversion from %0 to %1");
         
@@ -35,6 +37,8 @@ namespace Diagnostics {
         CreateDiagnostic(diags, CALL_NON_FUNCTION, clang::DiagnosticsEngine::Error, "cannot call expression of type %0");
         CreateDiagnostic(diags, CALL_TOO_MANY_ARGS, clang::DiagnosticsEngine::Error, "too many arguments to function: expected %0, got %1");
         CreateDiagnostic(diags, CALL_INSUFFICIENT_ARGS, clang::DiagnosticsEngine::Error, "not enough arguments to function: expected %0, got %1");
+        
+        CreateDiagnostic(diags, OP_NO_SUCH_OPERATOR, clang::DiagnosticsEngine::Error, "no such operator %0 on type %1");
         
         CreateDiagnostic(diags, INVALID_TEMPORARY_VALUE, clang::DiagnosticsEngine::Error, "invalid use of temporary value");
         

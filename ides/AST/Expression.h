@@ -133,6 +133,33 @@ namespace AST {
         boost::scoped_ptr<Expression> arg;
     };
     
+    class AddressOfExpression : public Expression {
+    public:
+        AddressOfExpression(Expression* exp) : arg(exp) { }
+        virtual void Accept(Visitor* v) { v->Visit(this); }
+        
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const {
+            return Ides::Types::PointerType::Get(arg->GetType(ctx));
+        }
+        
+        boost::scoped_ptr<Expression> arg;
+    };
+    
+    class DereferenceExpression : public Expression {
+    public:
+        DereferenceExpression(Expression* exp) : arg(exp) { }
+        virtual void Accept(Visitor* v) { v->Visit(this); }
+        
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const {
+            if (const Ides::Types::PointerType* pt = dynamic_cast<const Ides::Types::PointerType*>(arg->GetType(ctx))) {
+                return pt->GetTargetType();
+            }
+            return NULL;
+        }
+        
+        boost::scoped_ptr<Expression> arg;
+    };
+    
     class InfixExpression : public Expression {
     public:
         InfixExpression(Token* op, Expression* lhs, Expression* rhs) : func(op), lhs(lhs), rhs(rhs) { }

@@ -35,7 +35,7 @@ namespace Project {
     }
     
     Ides::AST::AST* Project::ParseFile(llvm::StringRef srcfile) {
-        Ides::Parsing::ParseContext ctx(*sman, fman->getFile(srcfile));
+        Ides::Parsing::ParseContext ctx(diag, *sman, fman->getFile(srcfile));
         return ctx.Parse();
     }
     

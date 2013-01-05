@@ -23,7 +23,7 @@ namespace CodeGen {
     
     void CodeGen::Visit(Ides::AST::AssignmentExpression* ast) { SETTRACE("CodeGen::Visit(AssignmentExpression)")
         llvm::Value* toExpr = GetPtr(ast->GetLHS());
-        builder->CreateStore(GetValue(ast->GetRHS()), toExpr);
+        builder->CreateStore(GetValue(ast->GetRHS(), ast->GetLHS()->GetType(actx)), toExpr);
         last = toExpr;
     }
     
@@ -40,7 +40,9 @@ namespace CodeGen {
     
     void CodeGen::Visit(Ides::AST::ReturnExpression* ast) { SETTRACE("CodeGen::Visit(ReturnExpression)")
         const Ides::Types::Type* exprtype = ast->GetRetType(actx);
-        if (exprtype == NULL) throw detail::CodeGenError();
+        if (exprtype == NULL) {
+            throw detail::CodeGenError();
+        }
         const Ides::Types::Type* funcrettype = this->currentFunctions.top()->GetReturnType(actx);
         if (funcrettype == NULL) {
             throw detail::CodeGenError();
@@ -65,18 +67,15 @@ namespace CodeGen {
             builder->CreateRet(retVal);
         }
         else {
-            try {
-                //ctx.GetIRBuilder()->CreateRet(this->retval->GetValue(ctx, funcrettype));
-            } catch (const std::exception& ex) {
-                //throw Ides::Diagnostics::CompileError(ex.what(), this->exprloc);
-            }
+            // Returning from function with return type.
+            builder->CreateRet(GetValue(ast->GetRetVal(), ast->GetRetType(actx)));
         }
         throw detail::UnitValueException();
     }
     
     
     void CodeGen::Visit(Ides::AST::DotExpression* ast) { SETTRACE("CodeGen::Visit(DotExpression)")
-        llvm::Value* val = GetPtr(&ast->GetExpression());
+        llvm::Value* ptr = GetPtr(&ast->GetExpression());
         
         const Ides::Types::Type* exprtype = ast->GetExpression().GetType(actx);
         Ides::AST::Declaration* decl = exprtype->GetMember(actx, *ast->GetToken());
@@ -88,7 +87,11 @@ namespace CodeGen {
         
         if (const Ides::Types::StructType* st = dynamic_cast<const Ides::Types::StructType*>(ast->GetExpression().GetType(actx))) {
             int memberidx = st->GetMemberIndex(*ast->GetToken());
-            last = builder->CreateStructGEP(val, memberidx, exprtype->ToString() + "." + *ast->GetToken());
+            if (memberidx == -1) {
+                Diag(UNKNOWN_MEMBER, ast) << *ast->GetToken() << exprtype->ToString();
+                throw detail::CodeGenError();
+            }
+            last = builder->CreateStructGEP(ptr, memberidx, exprtype->ToString() + "." + *ast->GetToken());
             // No such member
             return;
         }
@@ -107,12 +110,7 @@ namespace CodeGen {
         auto i = args.begin();
         auto defi = function->argTypes.begin();
         for (; i != args.end() && defi != function->argTypes.end(); ++i, ++defi) {
-            const Ides::Types::Type* argtype = (*i)->GetType(actx);
-            
-            if (!argtype->IsEquivalentType(*defi)) {
-                Diag(NO_IMPLICIT_CONVERSION, *i) << argtype->ToString() << (*defi)->ToString();
-            }
-            fnargs.push_back(GetValue(*i));
+            fnargs.push_back(GetValue(*i, *defi));
         }
         
         if (function->argTypes.size() > args.size()) {
@@ -125,6 +123,22 @@ namespace CodeGen {
         last = builder->CreateCall(func, fnargs);
     }
     
+    
+    void CodeGen::Visit(Ides::AST::AddressOfExpression* ast) { SETTRACE("CodeGen::Visit(AddressOfExpression)")
+        llvm::Value* ptr = builder->CreateAlloca(GetLLVMType(ast->arg->GetType(actx)), 0, "addrof");
+        builder->CreateStore(GetValue(ast->arg.get()), ptr);
+        last = ptr;
+    }
+    
+    void CodeGen::Visit(Ides::AST::DereferenceExpression* ast) { SETTRACE("CodeGen::Visit(DereferenceExpression)")
+        const Ides::Types::Type* astType = ast->arg->GetType(actx);
+        if (dynamic_cast<const Ides::Types::PointerType*>(astType)) {
+            last = builder->CreateLoad(this->GetPtr(ast->arg.get()), "deref");
+            return;
+        }
+        Diag(OP_NO_SUCH_OPERATOR, ast) << "*" << astType->ToString();
+        throw detail::CodeGenError();
+    }
     
     
     void CodeGen::Visit(Ides::AST::ConstantStringExpression* ast) {
@@ -148,15 +162,15 @@ namespace CodeGen {
     }
     
     void CodeGen::Visit(Ides::AST::ConstantCharExpression* ast) {
-        last = llvm::ConstantInt::get(ast->GetType(actx)->GetLLVMType(actx), ast->GetValue());
+        last = llvm::ConstantInt::get(this->GetLLVMType(ast->GetType(actx)), ast->GetValue());
     }
     
     void CodeGen::Visit(Ides::AST::ConstantIntExpression* ast) {
-        last = llvm::ConstantInt::get(ast->GetType(actx)->GetLLVMType(actx), ast->GetValue());
+        last = llvm::ConstantInt::get(this->GetLLVMType(ast->GetType(actx)), ast->GetValue());
     }
     
     void CodeGen::Visit(Ides::AST::ConstantFloatExpression* ast) {
-        last = llvm::ConstantFP::get(ast->GetType(actx)->GetLLVMType(actx), ast->GetValue());
+        last = llvm::ConstantFP::get(this->GetLLVMType(ast->GetType(actx)), ast->GetValue());
     }
 
 

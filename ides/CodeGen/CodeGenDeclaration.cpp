@@ -27,10 +27,10 @@ namespace CodeGen {
             return;
         }
         
-        llvm::Value* var = builder->CreateAlloca(ast->GetType(actx)->GetLLVMType(actx), 0, ast->GetName());
+        llvm::Value* var = builder->CreateAlloca(this->GetLLVMType(ast->GetType(actx)), 0, ast->GetName());
         variables.insert(std::make_pair(ast, var));
         if (ast->initval != NULL) {
-            builder->CreateStore(GetValue(ast->initval), var);
+            builder->CreateStore(GetValue(ast->initval, ast->GetType(actx)), var);
         }
         
         actx.GetCurrentScope()->AddMember(ast->GetName(), ast);
@@ -39,7 +39,19 @@ namespace CodeGen {
     }
     
     void CodeGen::Visit(Ides::AST::StructDeclaration* ast) { SETTRACE("CodeGen::Visit(StructDeclaration)")
-        ast->GenType(actx);
+        Ides::Types::StructType* st = Ides::Types::StructType::GetOrCreate(actx, ast->GetName());
+        
+        std::vector<llvm::Type*> memberLLVMtypes;
+        std::vector<std::pair<Ides::String, const Ides::Types::Type*> > membertypes;
+        for (auto i = ast->members.begin(); i != ast->members.end(); ++i) {
+            Ides::AST::NamedDeclaration* decl = (Ides::AST::NamedDeclaration*)*i;
+            const Ides::Types::Type* memberType = decl->GetType(actx);
+            membertypes.push_back(std::make_pair(decl->GetName(), memberType));
+            st->AddMember(decl->GetName(), decl);
+            memberLLVMtypes.push_back(this->GetLLVMType(memberType));
+        }
+        st->SetMembers(actx, membertypes);
+        static_cast<llvm::StructType*>(this->GetLLVMType(st))->setBody(memberLLVMtypes, false);
     }
     
     void CodeGen::Visit(Ides::AST::FunctionDeclaration* ast) { SETTRACE("CodeGen::Visit(FunctionDeclaration)")
@@ -63,7 +75,7 @@ namespace CodeGen {
         };
         FSM functionStackManager(this, ast);
         
-        llvm::FunctionType *FT = static_cast<llvm::FunctionType*>(ast->GetType(actx)->GetLLVMType(actx));
+        llvm::FunctionType *FT = static_cast<llvm::FunctionType*>(this->GetLLVMType(ast->GetType(actx)));
         //func = (llvm::Function*)ctx.GetModule()->getOrInsertFunction(this->GetMangledName(), FT);
         llvm::Function* func = llvm::Function::Create(FT, llvm::GlobalValue::ExternalLinkage, ast->GetName(), module);
         func->setGC("shadow-stack");
