@@ -122,16 +122,189 @@ namespace CodeGen {
         last = Cast(ast->lhs.get(), ast->GetType(actx));
     }
     
-    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_PLUS>* ast) {
+#define CREATE_BINARY_EXPRESSION(op, generator) \
+    void CodeGen::Visit(Ides::AST::BinaryExpression<op>* ast) { \
+        const Ides::Types::Type* resultType = ast->GetType(actx); \
+        if (resultType->IsNumericType()) { \
+            llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType); \
+            llvm::Value* rhsresult = Cast(ast->rhs.get(), resultType); \
+            last = builder->generator(lhsresult, rhsresult, #op); \
+            return; \
+        } \
+    }
+    
+    CREATE_BINARY_EXPRESSION(OP_PLUS, CreateAdd)
+    CREATE_BINARY_EXPRESSION(OP_MINUS, CreateSub)
+    CREATE_BINARY_EXPRESSION(OP_STAR, CreateMul)
+    
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_SLASH>* ast) {
         const Ides::Types::Type* resultType = ast->GetType(actx);
         
         if (resultType->IsNumericType()) {
+            auto nt = static_cast<const Ides::Types::NumberType*>(resultType);
             llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
             llvm::Value* rhsresult = Cast(ast->rhs.get(), resultType);
-            last = builder->CreateAdd(lhsresult, rhsresult);
+            
+            if (nt->IsSigned())
+                last = builder->CreateSDiv(lhsresult, rhsresult);
+            else
+                last = builder->CreateUDiv(lhsresult, rhsresult);
             return;
         }
     }
+    
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_MOD>* ast) {
+        const Ides::Types::Type* resultType = ast->GetType(actx);
+        
+        if (resultType->IsNumericType()) {
+            auto nt = static_cast<const Ides::Types::NumberType*>(resultType);
+            llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
+            llvm::Value* rhsresult = Cast(ast->rhs.get(), resultType);
+            
+            if (nt->IsSigned())
+                last = builder->CreateSRem(lhsresult, rhsresult);
+            else
+                last = builder->CreateURem(lhsresult, rhsresult);
+            return;
+        }
+    }
+    
+    CREATE_BINARY_EXPRESSION(OP_BAND, CreateAnd);
+    CREATE_BINARY_EXPRESSION(OP_BOR, CreateOr);
+    CREATE_BINARY_EXPRESSION(OP_BXOR, CreateXor);
+    
+    CREATE_BINARY_EXPRESSION(OP_AND, CreateAnd);
+    CREATE_BINARY_EXPRESSION(OP_OR, CreateOr);
+    
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_ASHL>* ast) {
+        const Ides::Types::Type* resultType = ast->GetType(actx);
+        if (resultType->IsNumericType()) {
+            llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
+            llvm::Value* rhsresult = Cast(ast->rhs.get(), Ides::Types::UInteger64Type::GetSingletonPtr());
+            last = builder->CreateShl(lhsresult, rhsresult, "OP_ASHL");
+            return;
+        }
+    }
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_LSHL>* ast) {
+        const Ides::Types::Type* resultType = ast->GetType(actx);
+        if (resultType->IsNumericType()) {
+            llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
+            llvm::Value* rhsresult = Cast(ast->rhs.get(), Ides::Types::UInteger64Type::GetSingletonPtr());
+            last = builder->CreateShl(lhsresult, rhsresult, "OP_LSHL");
+            return;
+        }
+    }
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_ASHR>* ast) {
+        const Ides::Types::Type* resultType = ast->GetType(actx);
+        if (resultType->IsNumericType()) {
+            llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
+            llvm::Value* rhsresult = Cast(ast->rhs.get(), Ides::Types::UInteger64Type::GetSingletonPtr());
+            last = builder->CreateAShr(lhsresult, rhsresult, "OP_ASHR");
+            return;
+        }
+    }
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_LSHR>* ast) {
+        const Ides::Types::Type* resultType = ast->GetType(actx);
+        if (resultType->IsNumericType()) {
+            llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
+            llvm::Value* rhsresult = Cast(ast->rhs.get(), Ides::Types::UInteger64Type::GetSingletonPtr());
+            last = builder->CreateLShr(lhsresult, rhsresult, "OP_LSHR");
+            return;
+        }
+    }
+    
+    
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_EQ>* ast) {
+        const Ides::Types::Type* resultType = ast->GetType(actx);
+        
+        if (resultType->IsNumericType()) {
+            auto nt = static_cast<const Ides::Types::NumberType*>(resultType);
+            llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
+            llvm::Value* rhsresult = Cast(ast->rhs.get(), resultType);
+            
+            if (nt->IsIntegerType())
+                last = builder->CreateICmpEQ(lhsresult, rhsresult, "OP_EQ");
+            else
+                last = builder->CreateFCmpUEQ(lhsresult, rhsresult, "OP_EQ");
+            return;
+        }
+    }
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_NE>* ast) {
+        const Ides::Types::Type* resultType = ast->GetType(actx);
+        
+        if (resultType->IsNumericType()) {
+            auto nt = static_cast<const Ides::Types::NumberType*>(resultType);
+            llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
+            llvm::Value* rhsresult = Cast(ast->rhs.get(), resultType);
+            
+            if (nt->IsIntegerType())
+                last = builder->CreateICmpNE(lhsresult, rhsresult, "OP_NE");
+            else
+                last = builder->CreateFCmpUNE(lhsresult, rhsresult, "OP_NE");
+            return;
+        }
+    }
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_LT>* ast) {
+        const Ides::Types::Type* resultType = ast->GetType(actx);
+        
+        if (resultType->IsNumericType()) {
+            auto nt = static_cast<const Ides::Types::NumberType*>(resultType);
+            llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
+            llvm::Value* rhsresult = Cast(ast->rhs.get(), resultType);
+            
+            if (nt->IsIntegerType())
+                last = nt->IsSigned() ? builder->CreateICmpSLT(lhsresult, rhsresult, "OP_LT") : builder->CreateICmpULT(lhsresult, rhsresult, "OP_LT");
+            else
+                last = builder->CreateFCmpULT(lhsresult, rhsresult, "OP_LT");
+            return;
+        }
+    }
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_LE>* ast) {
+        const Ides::Types::Type* resultType = ast->GetType(actx);
+        
+        if (resultType->IsNumericType()) {
+            auto nt = static_cast<const Ides::Types::NumberType*>(resultType);
+            llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
+            llvm::Value* rhsresult = Cast(ast->rhs.get(), resultType);
+            
+            if (nt->IsIntegerType())
+                last = nt->IsSigned() ? builder->CreateICmpSLE(lhsresult, rhsresult, "OP_LE") : builder->CreateICmpULE(lhsresult, rhsresult, "OP_LE");
+            else
+                last = builder->CreateFCmpULE(lhsresult, rhsresult, "OP_LE");
+            return;
+        }
+    }
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_GT>* ast) {
+        const Ides::Types::Type* resultType = ast->GetType(actx);
+        
+        if (resultType->IsNumericType()) {
+            auto nt = static_cast<const Ides::Types::NumberType*>(resultType);
+            llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
+            llvm::Value* rhsresult = Cast(ast->rhs.get(), resultType);
+            
+            if (nt->IsIntegerType())
+                last = nt->IsSigned() ? builder->CreateICmpSGT(lhsresult, rhsresult, "OP_GT") : builder->CreateICmpUGT(lhsresult, rhsresult, "OP_GT");
+            else
+                last = builder->CreateFCmpUGT(lhsresult, rhsresult, "OP_GT");
+            return;
+        }
+    }
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_GE>* ast) {
+        const Ides::Types::Type* resultType = ast->GetType(actx);
+        
+        if (resultType->IsNumericType()) {
+            auto nt = static_cast<const Ides::Types::NumberType*>(resultType);
+            llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
+            llvm::Value* rhsresult = Cast(ast->rhs.get(), resultType);
+            
+            if (nt->IsIntegerType())
+                last = nt->IsSigned() ? builder->CreateICmpSGE(lhsresult, rhsresult, "OP_GE") : builder->CreateICmpUGE(lhsresult, rhsresult, "OP_GE");
+            else
+                last = builder->CreateFCmpUGE(lhsresult, rhsresult, "OP_GE");
+            return;
+        }
+    }
+    
     
     
     void CodeGen::Visit(Ides::AST::ConstantStringExpression* ast) {

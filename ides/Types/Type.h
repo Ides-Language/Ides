@@ -226,18 +226,6 @@ namespace Types {
         }
     };
     
-    class FloatLiteralType : public NumberType, public Ides::Util::Singleton<FloatLiteralType> {
-    public:
-        FloatLiteralType() : NumberType("float64", VoidType::GetSingletonPtr()) { }
-        
-        virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
-        
-        virtual NumberClass GetNumberClass() const { return NumberType::N_SINT; }
-        virtual uint8_t GetSize() const { return 64; }
-        virtual bool IsFloatType() const { return true; }
-        virtual bool HasImplicitConversionTo(const Type* other) const { return other->IsFloatType(); }
-    };
-    
 #define IntegerType(size) \
     class Integer##size##Type : public NumberType, public Ides::Util::Singleton<Integer##size##Type> { \
     public: \

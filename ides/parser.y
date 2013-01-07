@@ -211,24 +211,24 @@ infix_expression : prefix_expression
                  | infix_expression OP_SLASH infix_expression { $$ = new Ides::AST::BinaryExpression<OP_SLASH>($1, $3); SET_EXPRLOC($$, @$); }
                  | infix_expression OP_MOD infix_expression { $$ = new Ides::AST::BinaryExpression<OP_MOD>($1, $3); SET_EXPRLOC($$, @$); }
                  
-                 | infix_expression OP_BAND infix_expression { $$ = NEW_INFIX("&", $1, $3); SET_EXPRLOC($$, @$); }
-                 | infix_expression OP_BOR infix_expression { $$ = NEW_INFIX("|", $1, $3); SET_EXPRLOC($$, @$); }
-                 | infix_expression OP_BXOR infix_expression { $$ = NEW_INFIX("^", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_BAND infix_expression { $$ = new Ides::AST::BinaryExpression<OP_BAND>($1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_BOR infix_expression { $$ = new Ides::AST::BinaryExpression<OP_BOR>($1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_BXOR infix_expression { $$ = new Ides::AST::BinaryExpression<OP_BXOR>($1, $3); SET_EXPRLOC($$, @$); }
 
-                 | infix_expression OP_LSHL infix_expression { $$ = NEW_INFIX("lshl", $1, $3); SET_EXPRLOC($$, @$); }
-                 | infix_expression OP_LSHR infix_expression { $$ = NEW_INFIX("lshr", $1, $3); SET_EXPRLOC($$, @$); }
-                 | infix_expression OP_ASHL infix_expression { $$ = NEW_INFIX("ashl", $1, $3); SET_EXPRLOC($$, @$); }
-                 | infix_expression OP_ASHR infix_expression { $$ = NEW_INFIX("ashr", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_LSHL infix_expression { $$ = new Ides::AST::BinaryExpression<OP_LSHL>($1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_LSHR infix_expression { $$ = new Ides::AST::BinaryExpression<OP_LSHR>($1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_ASHL infix_expression { $$ = new Ides::AST::BinaryExpression<OP_ASHL>($1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_ASHR infix_expression { $$ = new Ides::AST::BinaryExpression<OP_ASHR>($1, $3); SET_EXPRLOC($$, @$); }
                  
-                 | infix_expression OP_AND infix_expression { $$ = NEW_INFIX("&&", $1, $3); SET_EXPRLOC($$, @$); }
-                 | infix_expression OP_OR infix_expression { $$ = NEW_INFIX("||", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_AND infix_expression { $$ = new Ides::AST::BinaryExpression<OP_AND>($1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_OR infix_expression { $$ = new Ides::AST::BinaryExpression<OP_OR>($1, $3); SET_EXPRLOC($$, @$); }
                  
-                 | infix_expression OP_EQ infix_expression { $$ = NEW_INFIX("==", $1, $3); SET_EXPRLOC($$, @$); }
-                 | infix_expression OP_NE infix_expression { $$ = NEW_INFIX("!=", $1, $3); SET_EXPRLOC($$, @$); }
-                 | infix_expression OP_LT infix_expression { $$ = NEW_INFIX("<", $1, $3); SET_EXPRLOC($$, @$); }
-                 | infix_expression OP_LE infix_expression { $$ = NEW_INFIX("<=", $1, $3); SET_EXPRLOC($$, @$); }
-                 | infix_expression OP_GT infix_expression { $$ = NEW_INFIX(">", $1, $3); SET_EXPRLOC($$, @$); }
-                 | infix_expression OP_GE infix_expression { $$ = NEW_INFIX(">=", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_EQ infix_expression { $$ = new Ides::AST::BinaryExpression<OP_EQ>($1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_NE infix_expression { $$ = new Ides::AST::BinaryExpression<OP_NE>($1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_LT infix_expression { $$ = new Ides::AST::BinaryExpression<OP_LT>($1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_LE infix_expression { $$ = new Ides::AST::BinaryExpression<OP_LE>($1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_GT infix_expression { $$ = new Ides::AST::BinaryExpression<OP_GT>($1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_GE infix_expression { $$ = new Ides::AST::BinaryExpression<OP_GE>($1, $3); SET_EXPRLOC($$, @$); }
                  
                  | infix_expression OP_CAST var_type { $$ = new Ides::AST::CastExpression($1, $3); SET_EXPRLOC($$, @$); }
 ;

@@ -56,7 +56,6 @@ namespace CodeGen {
         virtual void Visit(const Ides::Types::IntegerLiteralType<16>* ty) { t = llvm::Type::getInt16Ty(ctx); }
         virtual void Visit(const Ides::Types::IntegerLiteralType<32>* ty) { t = llvm::Type::getInt32Ty(ctx); }
         virtual void Visit(const Ides::Types::IntegerLiteralType<64>* ty) { t = llvm::Type::getInt64Ty(ctx); }
-        virtual void Visit(const Ides::Types::FloatLiteralType* ty) { t = llvm::Type::getFloatTy(ctx); }
         
         
         llvm::Type* GetType() { return t; }

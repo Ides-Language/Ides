@@ -63,6 +63,25 @@ namespace AST {
         virtual void Visit(Ides::AST::BinaryExpression<OP_STAR>* ast) { }
         virtual void Visit(Ides::AST::BinaryExpression<OP_SLASH>* ast) { }
         virtual void Visit(Ides::AST::BinaryExpression<OP_MOD>* ast) { }
+        
+        virtual void Visit(Ides::AST::BinaryExpression<OP_BAND>* ast) { }
+        virtual void Visit(Ides::AST::BinaryExpression<OP_BOR>* ast) { }
+        virtual void Visit(Ides::AST::BinaryExpression<OP_BXOR>* ast) { }
+        
+        virtual void Visit(Ides::AST::BinaryExpression<OP_LSHL>* ast) { }
+        virtual void Visit(Ides::AST::BinaryExpression<OP_LSHR>* ast) { }
+        virtual void Visit(Ides::AST::BinaryExpression<OP_ASHL>* ast) { }
+        virtual void Visit(Ides::AST::BinaryExpression<OP_ASHR>* ast) { }
+        
+        virtual void Visit(Ides::AST::BinaryExpression<OP_AND>* ast) { }
+        virtual void Visit(Ides::AST::BinaryExpression<OP_OR>* ast) { }
+        
+        virtual void Visit(Ides::AST::BinaryExpression<OP_EQ>* ast) { }
+        virtual void Visit(Ides::AST::BinaryExpression<OP_NE>* ast) { }
+        virtual void Visit(Ides::AST::BinaryExpression<OP_LT>* ast) { }
+        virtual void Visit(Ides::AST::BinaryExpression<OP_LE>* ast) { }
+        virtual void Visit(Ides::AST::BinaryExpression<OP_GT>* ast) { }
+        virtual void Visit(Ides::AST::BinaryExpression<OP_GE>* ast) { }
     };
     
 }

@@ -72,7 +72,6 @@ namespace Types {
         virtual void Visit(const Ides::Types::IntegerLiteralType<16>* ty) = 0;
         virtual void Visit(const Ides::Types::IntegerLiteralType<32>* ty) = 0;
         virtual void Visit(const Ides::Types::IntegerLiteralType<64>* ty) = 0;
-        virtual void Visit(const Ides::Types::FloatLiteralType* ty) = 0;
         
     };
     

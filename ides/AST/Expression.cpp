@@ -53,6 +53,21 @@ namespace AST {
     
     void CastExpression::Accept(Visitor* v) { v->Visit(this); }
     
+    template<> const Ides::Types::Type* BinaryExpression<OP_ASHL>::GetType(Ides::AST::ASTContext &ctx) const { return lhs->GetType(ctx); }
+    template<> const Ides::Types::Type* BinaryExpression<OP_ASHR>::GetType(Ides::AST::ASTContext &ctx) const { return lhs->GetType(ctx); }
+    template<> const Ides::Types::Type* BinaryExpression<OP_LSHL>::GetType(Ides::AST::ASTContext &ctx) const { return lhs->GetType(ctx); }
+    template<> const Ides::Types::Type* BinaryExpression<OP_LSHR>::GetType(Ides::AST::ASTContext &ctx) const { return lhs->GetType(ctx); }
+    
+    template<> const Ides::Types::Type* BinaryExpression<OP_AND>::GetType(Ides::AST::ASTContext &ctx) const { return Ides::Types::Integer1Type::GetSingletonPtr(); }
+    template<> const Ides::Types::Type* BinaryExpression<OP_OR>::GetType(Ides::AST::ASTContext &ctx) const { return Ides::Types::Integer1Type::GetSingletonPtr(); }
+    
+    template<> const Ides::Types::Type* BinaryExpression<OP_EQ>::GetType(Ides::AST::ASTContext &ctx) const { return Ides::Types::Integer1Type::GetSingletonPtr(); }
+    template<> const Ides::Types::Type* BinaryExpression<OP_NE>::GetType(Ides::AST::ASTContext &ctx) const { return Ides::Types::Integer1Type::GetSingletonPtr(); }
+    template<> const Ides::Types::Type* BinaryExpression<OP_LT>::GetType(Ides::AST::ASTContext &ctx) const { return Ides::Types::Integer1Type::GetSingletonPtr(); }
+    template<> const Ides::Types::Type* BinaryExpression<OP_LE>::GetType(Ides::AST::ASTContext &ctx) const { return Ides::Types::Integer1Type::GetSingletonPtr(); }
+    template<> const Ides::Types::Type* BinaryExpression<OP_GT>::GetType(Ides::AST::ASTContext &ctx) const { return Ides::Types::Integer1Type::GetSingletonPtr(); }
+    template<> const Ides::Types::Type* BinaryExpression<OP_GE>::GetType(Ides::AST::ASTContext &ctx) const { return Ides::Types::Integer1Type::GetSingletonPtr(); }
+    
     template<> void BinaryExpression<0>::Accept(Visitor* v) { }
     
     template<> void BinaryExpression<OP_PLUS>::Accept(Visitor* v) { v->Visit(this); }
@@ -60,5 +75,25 @@ namespace AST {
     template<> void BinaryExpression<OP_STAR>::Accept(Visitor* v) { v->Visit(this); }
     template<> void BinaryExpression<OP_SLASH>::Accept(Visitor* v) { v->Visit(this); }
     template<> void BinaryExpression<OP_MOD>::Accept(Visitor* v) { v->Visit(this); }
+    
+    
+    template<> void BinaryExpression<OP_BAND>::Accept(Visitor* v) { v->Visit(this); }
+    template<> void BinaryExpression<OP_BOR>::Accept(Visitor* v) { v->Visit(this); }
+    template<> void BinaryExpression<OP_BXOR>::Accept(Visitor* v) { v->Visit(this); }
+    
+    template<> void BinaryExpression<OP_LSHL>::Accept(Visitor* v) { v->Visit(this); }
+    template<> void BinaryExpression<OP_LSHR>::Accept(Visitor* v) { v->Visit(this); }
+    template<> void BinaryExpression<OP_ASHL>::Accept(Visitor* v) { v->Visit(this); }
+    template<> void BinaryExpression<OP_ASHR>::Accept(Visitor* v) { v->Visit(this); }
+    
+    template<> void BinaryExpression<OP_AND>::Accept(Visitor* v) { v->Visit(this); }
+    template<> void BinaryExpression<OP_OR>::Accept(Visitor* v) { v->Visit(this); }
+    
+    template<> void BinaryExpression<OP_EQ>::Accept(Visitor* v) { v->Visit(this); }
+    template<> void BinaryExpression<OP_NE>::Accept(Visitor* v) { v->Visit(this); }
+    template<> void BinaryExpression<OP_LT>::Accept(Visitor* v) { v->Visit(this); }
+    template<> void BinaryExpression<OP_LE>::Accept(Visitor* v) { v->Visit(this); }
+    template<> void BinaryExpression<OP_GT>::Accept(Visitor* v) { v->Visit(this); }
+    template<> void BinaryExpression<OP_GE>::Accept(Visitor* v) { v->Visit(this); }
 }
 }

@@ -25,7 +25,6 @@ namespace Util {
     SINGLETON(Ides::Types::IntegerLiteralType<16>);
     SINGLETON(Ides::Types::IntegerLiteralType<32>);
     SINGLETON(Ides::Types::IntegerLiteralType<64>);
-    SINGLETON(Ides::Types::FloatLiteralType);
     
     SINGLETON(Ides::Types::Float32Type);
     SINGLETON(Ides::Types::Float64Type);

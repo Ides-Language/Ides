@@ -36,7 +36,7 @@ namespace AST {
     };
     
     typedef ConstantBuiltinTypeExpression<Ides::Types::Integer1Type, bool> ConstantBoolExpression;
-    typedef ConstantBuiltinTypeExpression<Ides::Types::FloatLiteralType, double> ConstantFloatExpression;
+    typedef ConstantBuiltinTypeExpression<Ides::Types::Float64Type, double> ConstantFloatExpression;
     
     class ConstantIntExpression : public ConstantExpression {
     public:
