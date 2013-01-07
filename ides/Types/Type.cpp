@@ -51,7 +51,7 @@ namespace Types {
         return i->second;
     }
     
-    const FunctionType* FunctionType::Get(const Ides::Types::Type* retType, const std::vector<const Ides::Types::Type*>& argTypes)
+    const FunctionType* FunctionType::Get(const Ides::Types::Type* retType, const std::vector<const Ides::Types::Type*>& argTypes, bool isVarArgs)
     {
         for (auto i = types.begin(); i != types.end(); ++i) {
             if ((*i)->retType->IsEquivalentType(retType)) {
@@ -64,11 +64,11 @@ namespace Types {
                         break;
                     }
                 }
-                if (found) return *i;
+                if (found && isVarArgs == (*i)->isVarArgs) return *i;
             }
         }
         
-        FunctionType* f = new FunctionType(retType, argTypes);
+        FunctionType* f = new FunctionType(retType, argTypes, isVarArgs);
         types.insert(f);
         return f;
     }

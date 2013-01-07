@@ -105,6 +105,7 @@ namespace AST {
         
         const VariableDeclarationList& GetArgs() const { return args; }
         
+        bool isVarArgs;
         Expression* val;
         Statement* body;
     private:

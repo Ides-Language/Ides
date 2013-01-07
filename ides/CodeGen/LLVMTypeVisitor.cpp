@@ -27,11 +27,11 @@ namespace CodeGen {
         llvm::FunctionType *FT = NULL;
         if (retasfunction) {
             Ides::Types::PointerType::Get(ty->retType)->Accept(this);
-            FT = llvm::FunctionType::get(this->t,llvmargTypes, false);
+            FT = llvm::FunctionType::get(this->t,llvmargTypes, ty->isVarArgs);
         }
         else {
             ty->retType->Accept(this);
-            FT = llvm::FunctionType::get(this->t,llvmargTypes, false);
+            FT = llvm::FunctionType::get(this->t,llvmargTypes, ty->isVarArgs);
         }
         t = FT;
         

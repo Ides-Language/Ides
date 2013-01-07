@@ -58,7 +58,7 @@ namespace AST {
         
         evaluatingtype = false;
         assert(ret != NULL);
-        this->functype = Ides::Types::FunctionType::Get(ret, argTypes);
+        this->functype = Ides::Types::FunctionType::Get(ret, argTypes, this->isVarArgs);
         return this->functype;
     }
     

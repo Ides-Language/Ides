@@ -88,15 +88,20 @@ namespace CodeGen {
         const Ides::AST::ExpressionList& args = ast->GetArgs();
         llvm::Function* func = static_cast<llvm::Function*>(GetPtr(ast->GetFunction()));
         std::vector<llvm::Value*> fnargs;
-        auto i = args.begin();
         auto defi = function->argTypes.begin();
-        for (; i != args.end() && defi != function->argTypes.end(); ++i, ++defi) {
-            fnargs.push_back(GetValue(*i, *defi));
+        for (auto i = args.begin(); i != args.end(); ++i) {
+            if (defi != function->argTypes.end()) {
+                fnargs.push_back(GetValue(*i, *defi));
+                ++defi;
+            }
+            else {
+                fnargs.push_back(GetValue(*i));
+            }
         }
         
         if (function->argTypes.size() > args.size()) {
             throw detail::CodeGenError(*diag, CALL_INSUFFICIENT_ARGS, ast->exprloc) << (int)function->argTypes.size() << (int)args.size();
-        } else if (function->argTypes.size() < args.size()) {
+        } else if (function->argTypes.size() < args.size() && !function->isVarArgs) {
             throw detail::CodeGenError(*diag, CALL_TOO_MANY_ARGS, ast->exprloc) << (int)function->argTypes.size() << (int)args.size();
         }
         last = builder->CreateCall(func, fnargs);

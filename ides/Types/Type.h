@@ -91,29 +91,33 @@ namespace Types {
     };
     
     class FunctionType : public Type {
-        FunctionType(const Ides::Types::Type* retType, const std::vector<const Ides::Types::Type*>& argTypes) :
-            Type("", VoidType::GetSingletonPtr()), retType(retType), argTypes(argTypes) {
-                std::stringstream t;
-                t << "fn(";
-                
-                auto i = argTypes.begin();
-                if (i != argTypes.end()) { t << (*i)->ToString(); ++i; }
-                for (; i != argTypes.end(); ++i) {
-                    t << ", " << (*i)->ToString();
-                }
-                t << ") : " << retType->ToString();
-                this->type_name = t.str();
+        FunctionType(const Ides::Types::Type* retType, const std::vector<const Ides::Types::Type*>& argTypes, bool varArgs = false) :
+            Type("", VoidType::GetSingletonPtr()), retType(retType), argTypes(argTypes), isVarArgs(varArgs)
+        {
+            std::stringstream t;
+            t << "fn(";
+            
+            auto i = argTypes.begin();
+            if (i != argTypes.end()) { t << (*i)->ToString(); ++i; }
+            for (; i != argTypes.end(); ++i) {
+                t << ", " << (*i)->ToString();
             }
+            if (varArgs) t << "...";
+            
+            t << ") : " << retType->ToString();
+            this->type_name = t.str();
+        }
     public:
         virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
         
         typedef boost::unordered_set<FunctionType*> FunctionTypeSet;
-        static const FunctionType* Get(const Ides::Types::Type* retType, const std::vector<const Ides::Types::Type*>& argTypes);
+        static const FunctionType* Get(const Ides::Types::Type* retType, const std::vector<const Ides::Types::Type*>& argTypes, bool isVarArgs = false);
         
         virtual const Ides::String ToString() const;
 
         const Ides::Types::Type* retType;
         const std::vector<const Ides::Types::Type*> argTypes;
+        const bool isVarArgs;
         
     private:
         static FunctionTypeSet types;

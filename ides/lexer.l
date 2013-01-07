@@ -134,6 +134,8 @@
 
 "="                     return OP_ASSIGN;
 
+"\.\.\."             return KW_VARARGS;
+
 
 
 <INITIAL>"/*"           BEGIN(IN_BLOCKCOMMENT);

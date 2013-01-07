@@ -27,12 +27,33 @@ namespace CodeGen {
             return;
         }
         
+        const Ides::Types::Type* astType = ast->GetType(actx);
+        
         llvm::GlobalVariable* var = new llvm::GlobalVariable(*module,
-                                                             GetLLVMType(ast->GetType(actx)),
-                                                             false,
+                                                             GetLLVMType(astType),
+                                                             ast->vartype == Ides::AST::VariableDeclaration::DECL_VAL,
                                                              llvm::GlobalValue::ExternalLinkage,
-                                                             llvm::Constant::getNullValue(GetLLVMType(ast->initval->GetType(actx))),
+                                                             0,
                                                              ast->GetName());
+        
+        globalVariables.insert(std::make_pair(ast, var));
+        
+        if (ast->initval == NULL) {
+            var->setInitializer(llvm::Constant::getNullValue(GetLLVMType(astType)));
+            last = var;
+            return;
+        }
+        else if (auto iv = dynamic_cast<Ides::AST::ConstantExpression*>(ast->initval)) {
+            // Simple constant initializer. NBD.
+            var->setInitializer((llvm::Constant*)GetValue(iv));
+            last = var;
+            return;
+        }
+        
+        // If we're here, we need to evaluate an expression as an initializer.
+        // Set up an initializer function.
+        var->setInitializer(llvm::Constant::getNullValue(GetLLVMType(astType)));
+        
         
         
         llvm::Function* initializer = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(lctx), false),
@@ -54,8 +75,6 @@ namespace CodeGen {
         builder->SetInsertPoint(oldBB);
         
         this->globalInitializers.push_back(std::make_pair(1, initializer));
-        
-        globalVariables.insert(std::make_pair(ast, var));
         
         last = var;
     }

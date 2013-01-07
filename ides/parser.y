@@ -84,6 +84,7 @@
 // Keywords
 %token KW_DEF KW_FN KW_STRUCT KW_CLASS KW_VAR KW_VAL KW_NULL KW_NAMESPACE
 %token KW_IF KW_ELSE KW_DO KW_WHILE KW_FOR
+%token KW_VARARGS
 // Keyword operators
 %token KW_THROW KW_NEW KW_RETURN
 
@@ -317,11 +318,16 @@ fn_decl : KW_DEF TIDENTIFIER '(' arg_decl_list ')' { $$ = new Ides::AST::Functio
         | KW_DEF TIDENTIFIER '(' arg_decl_list ')' ':' var_type { $$ = new Ides::AST::FunctionDeclaration($2, $4, $7); SET_EXPRLOC($$, @$); }
         | KW_DEF TIDENTIFIER '(' ')' { $$ = new Ides::AST::FunctionDeclaration($2, NULL, NULL); SET_EXPRLOC($$, @$); }
         | KW_DEF TIDENTIFIER '(' ')' ':' var_type { $$ = new Ides::AST::FunctionDeclaration($2, NULL, $6); SET_EXPRLOC($$, @$); }
+        
+        | KW_DEF TIDENTIFIER '(' arg_decl_list ',' KW_VARARGS ')' { $$ = new Ides::AST::FunctionDeclaration($2, $4, NULL); $$->isVarArgs = true; SET_EXPRLOC($$, @$); }
+        | KW_DEF TIDENTIFIER '(' arg_decl_list ',' KW_VARARGS ')' ':' var_type { $$ = new Ides::AST::FunctionDeclaration($2, $4, $9); $$->isVarArgs = true; SET_EXPRLOC($$, @$); }
+        | KW_DEF TIDENTIFIER '(' KW_VARARGS ')' { $$ = new Ides::AST::FunctionDeclaration($2, NULL, NULL); $$->isVarArgs = true; SET_EXPRLOC($$, @$); }
+        | KW_DEF TIDENTIFIER '(' KW_VARARGS ')' ':' var_type { $$ = new Ides::AST::FunctionDeclaration($2, NULL, $7); $$->isVarArgs = true; SET_EXPRLOC($$, @$); }
 ;
 
 fn_def  : fn_decl '{' stmt_list '}' { $$ = $1; $$->body = $3; }
         | fn_decl '{' '}'
-        | fn_decl '=' expression ';' { $$ = $1; $$->val = $3; }
+        | fn_decl OP_ASSIGN expression ';' { $$ = $1; $$->val = $3; }
 ;
 
 member_decl : fn_def
