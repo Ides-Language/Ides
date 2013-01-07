@@ -20,7 +20,7 @@ namespace CodeGen {
     
     using namespace Ides::Diagnostics;
     
-    CodeGen::CodeGen(clang::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diags, llvm::LLVMContext& lctx, Ides::AST::ASTContext& actx)
+    CodeGen::CodeGen(llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diags, llvm::LLVMContext& lctx, Ides::AST::ASTContext& actx)
         : lctx(lctx), typeVisitor(lctx), actx(actx), diag(diags)
     {
         this->module = new llvm::Module("Ides Module", lctx);

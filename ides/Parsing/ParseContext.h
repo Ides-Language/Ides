@@ -27,7 +27,7 @@ namespace Parsing {
    
     class ParseContext {
     public:
-        ParseContext(clang::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag, clang::SourceManager& srcMgr, const clang::FileEntry* fid);
+        ParseContext(llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag, clang::SourceManager& srcMgr, const clang::FileEntry* fid);
         ~ParseContext();
         
         clang::DiagnosticsEngine& GetDiagnostics() { return *diag; }
@@ -43,7 +43,7 @@ namespace Parsing {
         void DestroyParser();
         
     private:
-        clang::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag;
+        llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag;
         void* scanner;
         clang::SourceManager& srcMgr;
         const clang::FileEntry* file;

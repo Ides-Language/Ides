@@ -16,8 +16,8 @@ namespace Project {
     
     class Project {
     public:
-        Project(clang::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag, Ides::AST::ASTContext& actx);
-        Project(clang::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag, Ides::AST::ASTContext& actx, llvm::StringRef projfile);
+        Project(llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag, Ides::AST::ASTContext& actx);
+        Project(llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag, Ides::AST::ASTContext& actx, llvm::StringRef projfile);
         ~Project();
         
         Ides::AST::AST* ParseFile(llvm::StringRef srcfile);
@@ -28,7 +28,7 @@ namespace Project {
         clang::FileManager* fman;
         clang::SourceManager* sman;
         
-        clang::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag;
+        llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag;
         
         Ides::AST::ASTContext& actx;
     };

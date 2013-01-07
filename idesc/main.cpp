@@ -121,8 +121,8 @@ int main(int argc, const char* argv[])
     std::list<llvm::Module*> modules;
     
     clang::DiagnosticOptions diagOpts;
-    clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> diagIDs= new clang::DiagnosticIDs();
-    clang::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag = new clang::DiagnosticsEngine(diagIDs, &diagOpts, new clang::TextDiagnosticPrinter(llvm::errs(), &diagOpts), false);
+    llvm::IntrusiveRefCntPtr<clang::DiagnosticIDs> diagIDs= new clang::DiagnosticIDs();
+    llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag = new clang::DiagnosticsEngine(diagIDs, &diagOpts, new clang::TextDiagnosticPrinter(llvm::errs(), &diagOpts), false);
     
     Ides::AST::ASTContext actx(diag);
     

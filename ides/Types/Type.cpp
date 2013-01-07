@@ -74,7 +74,7 @@ namespace Types {
     }
     
     StructType* StructType::GetOrCreate(ParseContext& ctx, Ides::StringRef name) {
-        llvm::StringMap<Ides::Types::StructType*>::MapEntryTy& i = StructType::types.GetOrCreateValue(name);
+        auto i = StructType::types.GetOrCreateValue(name);
         if (!i.getValue()) {
             StructType* t = new StructType(name);
             t->type = llvm::StructType::create(ctx.GetContext(), name);

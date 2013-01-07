@@ -19,7 +19,7 @@ namespace AST {
    
     class ASTContext {
     public:
-        ASTContext(clang::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag) : diag(diag) { }
+        ASTContext(llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag) : diag(diag) { }
         
         llvm::LLVMContext& GetContext() { return llvm::getGlobalContext(); }
         
@@ -40,7 +40,7 @@ namespace AST {
             ASTContext& ctx;
         };
     private:
-        clang::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag;
+        llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag;
         std::stack<DeclarationContext*> scopes;
     };
     

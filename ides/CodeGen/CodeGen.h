@@ -52,7 +52,7 @@ namespace CodeGen {
     class CodeGen : public Ides::AST::Visitor {
         friend struct FSM;
     public:
-        CodeGen(clang::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diags, llvm::LLVMContext& lctx, Ides::AST::ASTContext& actx);
+        CodeGen(llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diags, llvm::LLVMContext& lctx, Ides::AST::ASTContext& actx);
         ~CodeGen();
         
         void Compile(Ides::AST::CompilationUnit* ast);
@@ -159,7 +159,7 @@ namespace CodeGen {
         
         llvm::Value* last;
         
-        clang::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag;
+        llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag;
     };
     
 }

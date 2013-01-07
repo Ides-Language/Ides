@@ -15,11 +15,11 @@
 namespace Ides {
 namespace Project {
    
-    Project::Project(clang::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag, Ides::AST::ASTContext& actx) : actx(actx), diag(diag) {
+    Project::Project(llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag, Ides::AST::ASTContext& actx) : actx(actx), diag(diag) {
         InitManagers();
     }
     
-    Project::Project(clang::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag, Ides::AST::ASTContext& actx, llvm::StringRef projfile) : actx(actx), diag(diag) {
+    Project::Project(llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag, Ides::AST::ASTContext& actx, llvm::StringRef projfile) : actx(actx), diag(diag) {
         InitManagers();
     }
     
