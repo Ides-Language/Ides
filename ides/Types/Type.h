@@ -8,6 +8,8 @@
 #include <ides/AST/DeclarationContext.h>
 #include <ides/Types/TypeVisitor.h>
 
+#include <boost/lexical_cast.hpp>
+
 namespace Ides {
     namespace AST {
         class AST;
@@ -46,12 +48,15 @@ namespace Types {
         }
         
         virtual bool IsPtrType() const { return false; }
+        virtual bool IsNumericType() const { return IsIntegerType() || IsFloatType(); }
+        virtual bool IsIntegerType() const { return false; }
+        virtual bool IsFloatType() const { return false; }
         
         
         virtual const Ides::String ToString() const { return type_name; }
         
     protected:
-        const Ides::String type_name;
+        Ides::String type_name;
         const Type* supertype;
         
         static llvm::StringMap<const Ides::Types::Type*> typenames;
@@ -87,7 +92,18 @@ namespace Types {
     
     class FunctionType : public Type {
         FunctionType(const Ides::Types::Type* retType, const std::vector<const Ides::Types::Type*>& argTypes) :
-            Type("() : void", VoidType::GetSingletonPtr()), retType(retType), argTypes(argTypes) { }
+            Type("", VoidType::GetSingletonPtr()), retType(retType), argTypes(argTypes) {
+                std::stringstream t;
+                t << "fn(";
+                
+                auto i = argTypes.begin();
+                if (i != argTypes.end()) { t << (*i)->ToString(); ++i; }
+                for (; i != argTypes.end(); ++i) {
+                    t << ", " << (*i)->ToString();
+                }
+                t << ") : " << retType->ToString();
+                this->type_name = t.str();
+            }
     public:
         virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
         
@@ -129,7 +145,7 @@ namespace Types {
     class StructType : public Type {
     public:
         StructType(Ides::StringRef name) :
-            Type(name, VoidType::GetSingletonPtr()), name(name) { }
+            Type("struct " + name, VoidType::GetSingletonPtr()), name(name) { }
         virtual ~StructType() { }
         virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
         
@@ -176,7 +192,6 @@ namespace Types {
         typedef std::pair<GetType, GetValue> NumericOperator;
         
         NumberType(Ides::StringRef type_name, Type* supertype) : Type(type_name, supertype) { }
-        virtual ~NumberType() { }
         
         enum NumberClass {
             N_UINT,
@@ -192,6 +207,37 @@ namespace Types {
         boost::unordered_map<Ides::String, NumericOperator> operators;
     };
     
+    template<uint8_t size>
+    class IntegerLiteralType : public NumberType, public Ides::Util::Singleton<IntegerLiteralType<size> > {
+    public:
+        IntegerLiteralType() : NumberType(Ides::String("int") + boost::lexical_cast<Ides::String>((int32_t)size), VoidType::GetSingletonPtr()) { }
+        
+        virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
+        
+        virtual NumberClass GetNumberClass() const { return NumberType::N_SINT; }
+        virtual uint8_t GetSize() const { return size; }
+        virtual bool IsIntegerType() const { return true; }
+        virtual bool IsSigned() const { return false; }
+        virtual bool HasImplicitConversionTo(const Type* other) const {
+            if (auto nt = dynamic_cast<const NumberType*>(other)) {
+                return nt->GetSize() >= size || (nt->IsSigned() == false && nt->GetSize() * 2 >= size);
+            }
+            return false;
+        }
+    };
+    
+    class FloatLiteralType : public NumberType, public Ides::Util::Singleton<FloatLiteralType> {
+    public:
+        FloatLiteralType() : NumberType("float64", VoidType::GetSingletonPtr()) { }
+        
+        virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
+        
+        virtual NumberClass GetNumberClass() const { return NumberType::N_SINT; }
+        virtual uint8_t GetSize() const { return 64; }
+        virtual bool IsFloatType() const { return true; }
+        virtual bool HasImplicitConversionTo(const Type* other) const { return other->IsFloatType(); }
+    };
+    
 #define IntegerType(size) \
     class Integer##size##Type : public NumberType, public Ides::Util::Singleton<Integer##size##Type> { \
     public: \
@@ -201,6 +247,7 @@ namespace Types {
         virtual NumberType::NumberClass GetNumberClass() const { return NumberType::N_SINT; } \
         virtual uint8_t GetSize() const { return size; } \
         virtual bool HasImplicitConversionTo(const Type* other) const; \
+        virtual bool IsIntegerType() const { return true; } \
     }
 
 #define UIntegerType(size) \
@@ -212,6 +259,7 @@ namespace Types {
         virtual NumberType::NumberClass GetNumberClass() const { return NumberType::N_UINT; } \
         virtual uint8_t GetSize() const { return size; } \
         virtual bool HasImplicitConversionTo(const Type* other) const; \
+        virtual bool IsIntegerType() const { return true; } \
     }
     
     IntegerType(1);
@@ -233,6 +281,7 @@ namespace Types {
         virtual NumberType::NumberClass GetNumberClass() const { return NumberType::N_FLOAT; }
         virtual uint8_t GetSize() const { return 32; }
         virtual bool HasImplicitConversionTo(const Type* other) const;
+        virtual bool IsFloatType() const { return true; }
     };
     
     class Float64Type : public NumberType, public Ides::Util::Singleton<Float64Type> {
@@ -244,6 +293,7 @@ namespace Types {
         virtual NumberType::NumberClass GetNumberClass() const { return NumberType::N_FLOAT; }
         virtual uint8_t GetSize() const { return 64; }
         virtual bool HasImplicitConversionTo(const Type* other) const;
+        virtual bool IsFloatType() const { return true; }
     };
     
 } // namespace Types

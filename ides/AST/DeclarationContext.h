@@ -43,6 +43,7 @@ namespace AST {
     
     class HierarchicalConcreteDeclarationContext : public ConcreteDeclarationContext {
     public:
+        HierarchicalConcreteDeclarationContext() : parentContext(NULL) { }
         
         virtual Declaration* GetMember(ASTContext& ctx, Ides::StringRef name) const;
         DeclarationContext* GetParent() const { return this->parentContext; }

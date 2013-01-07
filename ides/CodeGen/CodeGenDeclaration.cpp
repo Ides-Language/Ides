@@ -55,13 +55,13 @@ namespace CodeGen {
     }
     
     void CodeGen::Visit(Ides::AST::FunctionDeclaration* ast) { SETTRACE("CodeGen::Visit(FunctionDeclaration)")
-        Ides::AST::ASTContext::DeclScope typescope(actx, ast);
         
         auto fi = functions.find(ast);
         if (fi != functions.end()) {
             last = fi->second;
             return;
         }
+        Ides::AST::ASTContext::DeclScope typescope(actx, ast);
         
         struct FSM {
             FSM(CodeGen* cg, Ides::AST::FunctionDeclaration* ast) : cg(cg) {
@@ -114,15 +114,10 @@ namespace CodeGen {
                 if (valtype->IsEquivalentType(rettype)) {
                     builder->CreateRet(GetValue(ast->val));
                 } else if (valtype->HasImplicitConversionTo(rettype)) {
-                    try {
-                        builder->CreateRet(GetValue(ast->val));
-                    } catch (const std::runtime_error& ex) {
-                        // TODO: Diagnostics!
-                    }
+                    builder->CreateRet(GetValue(ast->val));
                 } else {
-                    Diag(NO_IMPLICIT_CONVERSION, ast->val->exprloc.getBegin()) << rettype->ToString() << valtype->ToString();
                     func->removeFromParent();
-                    throw detail::CodeGenError();
+                    throw detail::CodeGenError(*diag, NO_IMPLICIT_CONVERSION, ast->val->exprloc) << rettype->ToString() << valtype->ToString();
                 }
             }
         }
@@ -133,9 +128,8 @@ namespace CodeGen {
                     // Function didn't return, but it's void, so NBD.
                     builder->CreateRetVoid();
                 } else {
-                    Diag(FUNCTION_NO_RETURN, ast->exprloc.getBegin());
                     func->removeFromParent();
-                    throw detail::CodeGenError();
+                    throw detail::CodeGenError(*diag, FUNCTION_NO_RETURN, ast->exprloc);
                 }
             } catch (const detail::UnitValueException&) {
                 // Function returned.

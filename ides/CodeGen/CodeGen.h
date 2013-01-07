@@ -29,8 +29,24 @@ namespace Ides {
     
 namespace CodeGen {
     namespace detail {
-        class CodeGenError { };
+        class CodeGenError : public Ides::Util::DiagnosticsError {
+        public:
+            CodeGenError(clang::DiagnosticsEngine& diags, Ides::Diagnostics::DiagIDs diagid, const clang::SourceRange& loc) :
+                Ides::Util::DiagnosticsError(diags, diagid, loc) { }
+            
+            CodeGenError(clang::DiagnosticsEngine& diags, const clang::SourceRange& loc, const Ides::Util::DiagnosticsError& inner) :
+                Ides::Util::DiagnosticsError(diags, loc, inner) { }
+            
+            ~CodeGenError() throw() {}
+        };
+        
         class UnitValueException { };
+        
+        class DiagnosticsEmittedException : public std::exception {
+        public:
+            const char* what() const throw() { return "Code generation completed with errors."; }
+            
+        };
     }
     
     class CodeGen : public Ides::AST::Visitor {
@@ -81,16 +97,18 @@ namespace CodeGen {
         void Visit(Ides::AST::ConstantWCStringExpression* ast);
         void Visit(Ides::AST::ConstantLCStringExpression* ast);
         void Visit(Ides::AST::ConstantBoolExpression* ast);
-        void Visit(Ides::AST::ConstantCharExpression* ast);
         void Visit(Ides::AST::ConstantIntExpression* ast);
         void Visit(Ides::AST::ConstantFloatExpression* ast);
+        
+        void Visit(Ides::AST::CastExpression* ast);
+        
+        void Visit(Ides::AST::BinaryExpression<OP_PLUS>* ast);
         
     private:
         
         llvm::Value* GetPtr(Ides::AST::Expression* ast);
         llvm::Value* GetValue(Ides::AST::Expression* ast);
         
-        llvm::Value* GetPtr(Ides::AST::Expression* ast, const Ides::Types::Type* toType);
         llvm::Value* GetValue(Ides::AST::Expression* ast, const Ides::Types::Type* toType);
         
         llvm::Value* Cast(Ides::AST::Expression* ast, const Ides::Types::Type* toType);

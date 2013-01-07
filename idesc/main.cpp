@@ -167,8 +167,6 @@ int main(int argc, const char* argv[])
     }
     llvm::Module* linkermod = linker.getModule();
     
-    linkermod->dump();
-    
     fs::ofstream outfile(output_file);
     llvm::raw_os_ostream llvm_outfile(outfile);
     llvm::WriteBitcodeToFile(linker.getModule(), llvm_outfile);

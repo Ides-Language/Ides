@@ -35,6 +35,8 @@
 #include <clang/Basic/Diagnostic.h>
 #include <clang/Basic/DiagnosticIDs.h>
 
+#include <ides/Diagnostics/Diagnostics.h>
+
 
 #define xppstr(s) #s
 #define ppstr(s) xppstr(s)
@@ -82,8 +84,41 @@ namespace Ides {
             static T* GetSingletonPtr( void )
             { return msSingleton; }
         };
+        
+        class DiagnosticsError : public std::runtime_error {
+        public:
+            DiagnosticsError(clang::DiagnosticsEngine& diags, Ides::Diagnostics::DiagIDs diagid, const clang::SourceRange& loc) :
+            std::runtime_error("code error"), loc(loc), innerException(),
+            builder(new clang::DiagnosticBuilder(Ides::Diagnostics::Diag(diags, diagid, loc.getBegin()))) { }
+            
+            DiagnosticsError(clang::DiagnosticsEngine& diags, const clang::SourceRange& loc, const DiagnosticsError& inner) :
+            std::runtime_error("code error"), innerException(new DiagnosticsError(inner)),
+            builder(new clang::DiagnosticBuilder(Ides::Diagnostics::Diag(diags, Ides::Diagnostics::NOTE_FROM, loc.getBegin()))) { }
+            
+            ~DiagnosticsError() throw() {}
+            
+            const clang::SourceRange& GetLocation() const { return loc; }
+            const DiagnosticsError& GetInnerException() const { return *innerException; }
+            
+            bool HasInnerException() const { return innerException != NULL; }
+            
+            clang::DiagnosticBuilder& GetBuilder() { return *builder; }
+        private:
+            const clang::SourceRange loc;
+            boost::shared_ptr<DiagnosticsError> innerException;
+            
+            boost::shared_ptr<clang::DiagnosticBuilder> builder;
+        };
     }
 } // namespace Ides
+
+
+
+template<typename T>
+Ides::Util::DiagnosticsError operator<<(Ides::Util::DiagnosticsError err, const T& output) {
+    err.GetBuilder() << output;
+    return err;
+}
 
 #endif // _IDES_COMMON_H_
 

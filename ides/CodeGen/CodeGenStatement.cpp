@@ -117,7 +117,8 @@ namespace CodeGen {
         for (auto i = ast->statements.begin(); i != ast->statements.end(); ++i) {
             try {
                 (*i)->Accept(this);
-            } catch (const detail::UnitValueException& ex) {
+            }
+            catch (const detail::UnitValueException& ex) {
                 if (++i != ast->statements.end()) {
                     Diag(BLOCK_UNREACHABLE_CODE, *i);
                 }

@@ -34,33 +34,24 @@ namespace CodeGen {
             return;
         }
         
-        Diag(UNKNOWN_IDENTIFIER) << ast->GetName();
-        throw detail::CodeGenError();
+        throw detail::CodeGenError(*diag, UNKNOWN_IDENTIFIER, ast->exprloc) << ast->GetName();
     }
     
     void CodeGen::Visit(Ides::AST::ReturnExpression* ast) { SETTRACE("CodeGen::Visit(ReturnExpression)")
         const Ides::Types::Type* exprtype = ast->GetRetType(actx);
-        if (exprtype == NULL) {
-            throw detail::CodeGenError();
-        }
         const Ides::Types::Type* funcrettype = this->currentFunctions.top()->GetReturnType(actx);
-        if (funcrettype == NULL) {
-            throw detail::CodeGenError();
-        }
-        else if (funcrettype == Ides::Types::VoidType::GetSingletonPtr()) {
+        
+        if (funcrettype == Ides::Types::VoidType::GetSingletonPtr()) {
             if (ast->GetRetVal() != NULL) {
-                Diag(RETURN_FROM_VOID, ast->exprloc.getBegin());
-                throw detail::CodeGenError();
+                throw detail::CodeGenError(*diag, RETURN_FROM_VOID, ast->exprloc);
             }
             last = builder->CreateRetVoid();
         }
         else if (funcrettype == Ides::Types::UnitType::GetSingletonPtr()) {
-            Diag(RETURN_FROM_UNIT, ast->exprloc.getBegin());
-            throw detail::CodeGenError();
+            throw detail::CodeGenError(*diag, RETURN_FROM_UNIT, ast->exprloc);
         }
         else if (ast->GetRetVal() == NULL && funcrettype != Ides::Types::VoidType::GetSingletonPtr()) {
-            Diag(RETURN_NO_EXPRESSION, ast->exprloc.getBegin());
-            throw detail::CodeGenError();
+            throw detail::CodeGenError(*diag, RETURN_NO_EXPRESSION, ast->exprloc);
         }
         else if (exprtype->IsEquivalentType(funcrettype)) {
             llvm::Value* retVal = GetValue(ast->GetRetVal());
@@ -68,31 +59,22 @@ namespace CodeGen {
         }
         else {
             // Returning from function with return type.
-            builder->CreateRet(GetValue(ast->GetRetVal(), ast->GetRetType(actx)));
+            builder->CreateRet(GetValue(ast->GetRetVal(), funcrettype));
         }
         throw detail::UnitValueException();
     }
     
     
     void CodeGen::Visit(Ides::AST::DotExpression* ast) { SETTRACE("CodeGen::Visit(DotExpression)")
+        const Ides::Types::Type* exprtype = ast->GetExpression().GetType(actx);
+        
         llvm::Value* ptr = GetPtr(&ast->GetExpression());
         
-        const Ides::Types::Type* exprtype = ast->GetExpression().GetType(actx);
-        Ides::AST::Declaration* decl = exprtype->GetMember(actx, *ast->GetToken());
-        
-        if (decl == NULL) {
-            Diag(UNKNOWN_MEMBER, ast) << *ast->GetToken() << exprtype->ToString();
-            throw detail::CodeGenError();
-        }
-        
-        if (const Ides::Types::StructType* st = dynamic_cast<const Ides::Types::StructType*>(ast->GetExpression().GetType(actx))) {
+        if (const Ides::Types::StructType* st = dynamic_cast<const Ides::Types::StructType*>(exprtype)) {
             int memberidx = st->GetMemberIndex(*ast->GetToken());
-            if (memberidx == -1) {
-                Diag(UNKNOWN_MEMBER, ast) << *ast->GetToken() << exprtype->ToString();
-                throw detail::CodeGenError();
-            }
+            if (memberidx == -1) throw detail::CodeGenError(*diag, UNKNOWN_MEMBER, ast->GetToken().exprloc) << exprtype->ToString() << *ast->GetToken();
+            
             last = builder->CreateStructGEP(ptr, memberidx, exprtype->ToString() + "." + *ast->GetToken());
-            // No such member
             return;
         }
         else {
@@ -102,7 +84,6 @@ namespace CodeGen {
     
     void CodeGen::Visit(Ides::AST::FunctionCallExpression* ast) { SETTRACE("CodeGen::Visit(FunctionCallExpression)")
         const Ides::Types::FunctionType* function = static_cast<const Ides::Types::FunctionType*>(ast->GetFunction()->GetType(actx));
-        if (function == NULL) throw detail::CodeGenError();
         
         const Ides::AST::ExpressionList& args = ast->GetArgs();
         llvm::Function* func = static_cast<llvm::Function*>(GetPtr(ast->GetFunction()));
@@ -114,11 +95,9 @@ namespace CodeGen {
         }
         
         if (function->argTypes.size() > args.size()) {
-            Diag(CALL_INSUFFICIENT_ARGS, ast) << (int)function->argTypes.size() << (int)args.size();
-            throw detail::CodeGenError();
+            throw detail::CodeGenError(*diag, CALL_INSUFFICIENT_ARGS, ast->exprloc) << (int)function->argTypes.size() << (int)args.size();
         } else if (function->argTypes.size() < args.size()) {
-            Diag(CALL_TOO_MANY_ARGS, ast) << (int)function->argTypes.size() << (int)args.size();
-            throw detail::CodeGenError();
+            throw detail::CodeGenError(*diag, CALL_TOO_MANY_ARGS, ast->exprloc) << (int)function->argTypes.size() << (int)args.size();
         }
         last = builder->CreateCall(func, fnargs);
     }
@@ -136,8 +115,22 @@ namespace CodeGen {
             last = builder->CreateLoad(this->GetPtr(ast->arg.get()), "deref");
             return;
         }
-        Diag(OP_NO_SUCH_OPERATOR, ast) << "*" << astType->ToString();
-        throw detail::CodeGenError();
+        throw detail::CodeGenError(*diag, OP_NO_SUCH_OPERATOR, ast->exprloc) << "*" << astType->ToString();
+    }
+    
+    void CodeGen::Visit(Ides::AST::CastExpression* ast) {
+        last = Cast(ast->lhs.get(), ast->GetType(actx));
+    }
+    
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_PLUS>* ast) {
+        const Ides::Types::Type* resultType = ast->GetType(actx);
+        
+        if (resultType->IsNumericType()) {
+            llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
+            llvm::Value* rhsresult = Cast(ast->rhs.get(), resultType);
+            last = builder->CreateAdd(lhsresult, rhsresult);
+            return;
+        }
     }
     
     
@@ -159,10 +152,6 @@ namespace CodeGen {
     
     void CodeGen::Visit(Ides::AST::ConstantBoolExpression* ast) {
         last = ast->GetValue() ? llvm::ConstantInt::getTrue(lctx) : llvm::ConstantInt::getFalse(lctx);
-    }
-    
-    void CodeGen::Visit(Ides::AST::ConstantCharExpression* ast) {
-        last = llvm::ConstantInt::get(this->GetLLVMType(ast->GetType(actx)), ast->GetValue());
     }
     
     void CodeGen::Visit(Ides::AST::ConstantIntExpression* ast) {

@@ -6,6 +6,8 @@
 #include <boost/uuid/uuid_generators.hpp> // generators
 #include <boost/uuid/uuid_io.hpp>         // streaming operators etc.
 
+#include <ides/ASTVisitor/ASTVisitor.h>
+
 #include <sstream>
 
 namespace Ides {
@@ -26,7 +28,17 @@ namespace AST {
         if (decl) {
             return decl->GetType(ctx);
         }
-        return NULL;
+        //throw Ides::AST::TypeEvalError("no such type", this->exprloc);
     }
+    
+    
+    void CompilationUnit::Accept(Visitor* v) { v->Visit(this); }
+    void Token::Accept(Visitor* v) { v->Visit(this); }
+    
+    void Type::Accept(Visitor* v) { v->Visit(this); }
+    
+    void PtrType::Accept(Visitor* v) { v->Visit(this); }
+    void FunctionType::Accept(Visitor* v) { v->Visit(this); }
+    void TypeName::Accept(Visitor* v) { v->Visit(this); }
 }
 }

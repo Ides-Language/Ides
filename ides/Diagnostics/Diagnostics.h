@@ -9,14 +9,20 @@
 #ifndef __ides__Diagnostics__
 #define __ides__Diagnostics__
 
-#include <ides/common.h>
+#include <clang/Basic/Diagnostic.h>
+#include <clang/Basic/DiagnosticIDs.h>
 
 namespace Ides {
 namespace Diagnostics {
     enum DiagIDs {
+        IMPOSSIBLE_ERROR,
+        
+        NOTE_FROM,
+        
         PARSE_GENERIC_ERROR,
         
         NO_IMPLICIT_CONVERSION,
+        NO_EXPLICIT_CAST,
         FUNCTION_NO_RETURN,
         
         RETURN_FROM_VOID,

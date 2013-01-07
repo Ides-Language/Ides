@@ -7,6 +7,7 @@
 //
 
 #include "Declaration.h"
+#include <ides/ASTVisitor/ASTVisitor.h>
 
 namespace Ides {
 namespace AST {
@@ -60,5 +61,12 @@ namespace AST {
         this->functype = Ides::Types::FunctionType::Get(ret, argTypes);
         return this->functype;
     }
+    
+    void ValueDeclaration::Accept(Visitor* v) { v->Visit(this); }
+    void VariableDeclaration::Accept(Visitor* v) { v->Visit(this); }
+    void FunctionDeclaration::Accept(Visitor* v) { v->Visit(this); }
+    void OverloadedFunction::Accept(Visitor* v) { v->Visit(this); }
+    void StructDeclaration::Accept(Visitor* v) { v->Visit(this); }
+    void FieldDeclaration::Accept(Visitor* v) { v->Visit(this); }
 }
 }

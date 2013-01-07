@@ -8,6 +8,7 @@
 
 #ifndef __ides__TypeVisitor__
 #define __ides__TypeVisitor__
+#include <stdint.h>
 
 namespace Ides {
 namespace Types {
@@ -36,6 +37,11 @@ namespace Types {
     class Float32Type;
     class Float64Type;
     
+    template<uint8_t size>
+    class IntegerLiteralType;
+    
+    class FloatLiteralType;
+    
     class TypeVisitor {
     public:
         virtual void Visit(const Ides::Types::VoidType* ty) = 0;
@@ -62,7 +68,11 @@ namespace Types {
         virtual void Visit(const Ides::Types::Float32Type* ty) = 0;
         virtual void Visit(const Ides::Types::Float64Type* ty) = 0;
         
-        
+        virtual void Visit(const Ides::Types::IntegerLiteralType<8>* ty) = 0;
+        virtual void Visit(const Ides::Types::IntegerLiteralType<16>* ty) = 0;
+        virtual void Visit(const Ides::Types::IntegerLiteralType<32>* ty) = 0;
+        virtual void Visit(const Ides::Types::IntegerLiteralType<64>* ty) = 0;
+        virtual void Visit(const Ides::Types::FloatLiteralType* ty) = 0;
         
     };
     

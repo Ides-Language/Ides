@@ -34,8 +34,9 @@ namespace CodeGen {
     void CodeGen::Compile(Ides::AST::CompilationUnit* ast) { SETTRACE("CodeGen::Compile")
         try {
             ast->Accept(this);
-        } catch (const detail::CodeGenError&) {
-            std::cerr << "Build completed with errors." << std::endl;
+            this->module->dump();
+        }
+        catch (const std::exception&) {
         }
         functions.clear();
     }
@@ -66,42 +67,66 @@ namespace CodeGen {
         
         if (valType->isPointerTy()) return last;
         
-        Diag(INVALID_TEMPORARY_VALUE, ast);
-        throw detail::CodeGenError();
+        throw detail::CodeGenError(*diag, INVALID_TEMPORARY_VALUE, ast->exprloc);
     }
     
     llvm::Value* CodeGen::GetValue(Ides::AST::Expression* ast, const Ides::Types::Type* toType) {
-        llvm::Value* val = GetValue(ast);
         const Ides::Types::Type* fromType = ast->GetType(actx);
         if (fromType->IsEquivalentType(toType)) {
-            // The types are identical. Do nothing.
+            return GetValue(ast);
         }
         else if (fromType->HasImplicitConversionTo(toType)) {
-            // All implicit conversions are defined as conversions that do not involve
-            // losing or rewriting data. A blind bitcast is sufficient.
-            val = builder->CreateBitCast(val, this->GetLLVMType(toType));
-        } else {
-            Diag(NO_IMPLICIT_CONVERSION, ast) << fromType->ToString() << toType->ToString();
-            throw detail::CodeGenError();
+            // We've determined that an implicit conversion is safe, so go through the normal cast codepath.
+            return Cast(ast, toType);
         }
-        return val;
+        throw detail::CodeGenError(*diag, NO_IMPLICIT_CONVERSION, ast->exprloc) << fromType->ToString() << toType->ToString();
     }
     
-    llvm::Value* CodeGen::GetPtr(Ides::AST::Expression* ast, const Ides::Types::Type* toType) {
-        llvm::Value* ptr = GetPtr(ast);
-        const Ides::Types::Type* fromType = ast->GetType(actx);
-        if (fromType->IsEquivalentType(toType)) {
-            // The types are identical. Do nothing.
+    
+    llvm::Value* CodeGen::Cast(Ides::AST::Expression* ast, const Ides::Types::Type* toType) {
+        const Ides::Types::Type* exprtype = ast->GetType(actx);
+        if (exprtype->IsEquivalentType(toType)) return GetValue(ast);
+        
+        if (exprtype->IsNumericType()) {
+            const Ides::Types::NumberType* exprnumtype = static_cast<const Ides::Types::NumberType*>(exprtype);
+            if (toType->IsNumericType()) {
+                const Ides::Types::NumberType* tonumtype = static_cast<const Ides::Types::NumberType*>(toType);
+                
+                switch (exprnumtype->GetNumberClass()) {
+                    case Ides::Types::NumberType::N_UINT:
+                        if (tonumtype->GetNumberClass() == Ides::Types::NumberType::N_FLOAT) {
+                            return builder->CreateUIToFP(GetValue(ast), GetLLVMType(tonumtype));
+                        }
+                    case Ides::Types::NumberType::N_SINT:
+                        if (tonumtype->GetNumberClass() == Ides::Types::NumberType::N_FLOAT) {
+                            return builder->CreateSIToFP(GetValue(ast), GetLLVMType(tonumtype));
+                        }
+                        
+                        return builder->CreateIntCast(GetValue(ast), GetLLVMType(tonumtype),
+                                                      exprnumtype->GetNumberClass() == Ides::Types::NumberType::N_SINT);
+                        
+                    case Ides::Types::NumberType::N_FLOAT:
+                        if (tonumtype->GetNumberClass() == Ides::Types::NumberType::N_FLOAT) {
+                            return builder->CreateFPCast(GetValue(ast), GetLLVMType(tonumtype));
+                        }
+                        else if (tonumtype->IsSigned()) {
+                            return builder->CreateFPToSI(GetValue(ast), GetLLVMType(tonumtype));
+                        }
+                        else {
+                            return builder->CreateFPToUI(GetValue(ast), GetLLVMType(tonumtype));
+                        }
+                }
+            }
+            else if (toType->IsPtrType()) {
+                return builder->CreateIntToPtr(GetValue(ast), GetLLVMType(toType));
+            }
         }
-        else if (fromType->HasImplicitConversionTo(toType)) {
-            // All implicit conversions are defined as conversions that do not involve
-            // losing or rewriting data. A blind bitcast is sufficient.
-            ptr = builder->CreateBitCast(ptr, this->GetLLVMType(toType));
-        } else {
-            Diag(NO_IMPLICIT_CONVERSION, ast) << fromType->ToString() << toType->ToString();
-            throw detail::CodeGenError();
+        else if (exprtype->IsPtrType()) {
+            if (toType->IsIntegerType()) {
+                return builder->CreatePtrToInt(GetValue(ast), GetLLVMType(toType));
+            }
         }
-        return ptr;
+        throw detail::CodeGenError(*diag, NO_EXPLICIT_CAST, ast->exprloc) << exprtype->ToString() << toType->ToString();
     }
     
     void CodeGen::Visit(Ides::AST::CompilationUnit* ast) {

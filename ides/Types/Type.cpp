@@ -8,7 +8,7 @@ namespace Types {
 }
     
 namespace Util {
-#define SINGLETON(type) template<> type* Singleton<type>::msSingleton = new type()
+#define SINGLETON(type) template<> type* Singleton<type >::msSingleton = new type()
     
     
     SINGLETON(Ides::Types::Integer1Type);
@@ -20,6 +20,12 @@ namespace Util {
     SINGLETON(Ides::Types::UInteger32Type);
     SINGLETON(Ides::Types::Integer64Type);
     SINGLETON(Ides::Types::UInteger64Type);
+    
+    SINGLETON(Ides::Types::IntegerLiteralType<8>);
+    SINGLETON(Ides::Types::IntegerLiteralType<16>);
+    SINGLETON(Ides::Types::IntegerLiteralType<32>);
+    SINGLETON(Ides::Types::IntegerLiteralType<64>);
+    SINGLETON(Ides::Types::FloatLiteralType);
     
     SINGLETON(Ides::Types::Float32Type);
     SINGLETON(Ides::Types::Float64Type);

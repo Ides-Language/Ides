@@ -174,9 +174,9 @@
 <IN_LCSTRING>\"         { BEGIN(INITIAL); yylval->ast_str->exprloc.setEnd(yylloc->getBegin()); return TSTRING; }
 
 
-\'.\'                   { yylval->ast_base = new Ides::AST::ConstantCharExpression(yytext[1]); return TCHAR; }
+\'.\'                   { yylval->ast_base = new Ides::AST::ConstantIntExpression(yytext[1]); return TCHAR; }
 
-[a-zA-Z_][a-zA-Z0-9_]*  { yylval->ast_ident = new Ides::AST::Token(yytext); return TIDENTIFIER; }
+[a-zA-Z_][a-zA-Z0-9_]*  { yylval->ast_ident = new Ides::AST::Token(yytext); yylval->ast_ident->exprloc = *yylloc; return TIDENTIFIER; }
 
 <<EOF>>                 { yyterminate(); }
 

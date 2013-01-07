@@ -10,8 +10,8 @@
 #define __ides__Statement__
 
 
-#include <ides/AST/AST.h>
 #include <ides/AST/DeclarationContext.h>
+#include <ides/AST/AST.h>
 
 namespace Ides {
 namespace AST {
@@ -22,7 +22,7 @@ namespace AST {
 
     class Block : public Statement, public HierarchicalConcreteDeclarationContext {
     public:
-        virtual void Accept(Visitor* v) { v->Visit(this); }
+        virtual void Accept(Visitor* v);
         
         std::list<Statement*> statements;
     };
@@ -30,7 +30,7 @@ namespace AST {
     class IfStatement : public Statement, public HierarchicalConcreteDeclarationContext {
     public:
         IfStatement(Expression* expr, Statement* ift, Statement* iff) : condition(expr), iftrue(ift), iffalse(iff) { }
-        virtual void Accept(Visitor* v) { v->Visit(this); }
+        virtual void Accept(Visitor* v);
         
         Expression* condition;
         Statement* iftrue;
@@ -40,7 +40,7 @@ namespace AST {
     class WhileStatement : public Statement, public HierarchicalConcreteDeclarationContext {
     public:
         WhileStatement(Expression* expr, Statement* body) : condition(expr), body(body) { }
-        virtual void Accept(Visitor* v) { v->Visit(this); }
+        virtual void Accept(Visitor* v);
         
         Expression* condition;
         Statement* body;
@@ -50,7 +50,7 @@ namespace AST {
     public:
         ForStatement(AST* startexpr, Expression* endexpr, Expression* eachexpr, Statement* body) :
             startexpr(startexpr), endexpr(endexpr), eachexpr(eachexpr), body(body) { }
-        virtual void Accept(Visitor* v) { v->Visit(this); }
+        virtual void Accept(Visitor* v);
         
         AST* startexpr;
         Expression* endexpr;

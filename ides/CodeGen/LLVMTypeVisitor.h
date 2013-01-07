@@ -52,6 +52,13 @@ namespace CodeGen {
         virtual void Visit(const Ides::Types::Float32Type* ty) { t = llvm::Type::getFloatTy(ctx); }
         virtual void Visit(const Ides::Types::Float64Type* ty) { t = llvm::Type::getDoubleTy(ctx); }
         
+        virtual void Visit(const Ides::Types::IntegerLiteralType<8>* ty) { t = llvm::Type::getInt8Ty(ctx); }
+        virtual void Visit(const Ides::Types::IntegerLiteralType<16>* ty) { t = llvm::Type::getInt16Ty(ctx); }
+        virtual void Visit(const Ides::Types::IntegerLiteralType<32>* ty) { t = llvm::Type::getInt32Ty(ctx); }
+        virtual void Visit(const Ides::Types::IntegerLiteralType<64>* ty) { t = llvm::Type::getInt64Ty(ctx); }
+        virtual void Visit(const Ides::Types::FloatLiteralType* ty) { t = llvm::Type::getFloatTy(ctx); }
+        
+        
         llvm::Type* GetType() { return t; }
     private:
         llvm::Type* t;

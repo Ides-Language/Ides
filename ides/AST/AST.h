@@ -16,7 +16,6 @@
 #include <ides/Types/Type.h>
 
 #include <ides/Parsing/ParseContext.h>
-#include <ides/ASTVisitor/ASTVisitor.h>
 
 #include <ides/AST/ASTContext.h>
 #include <ides/AST/DeclarationContext.h>
@@ -26,6 +25,18 @@ namespace AST {
     class AST;
     class ASTIdentifier;
     class ASTVariableDeclaration;
+    class Visitor;
+    
+    class TypeEvalError : public Ides::Util::DiagnosticsError {
+    public:
+        TypeEvalError(clang::DiagnosticsEngine& diags, Ides::Diagnostics::DiagIDs diagid, const clang::SourceRange& loc) :
+            Ides::Util::DiagnosticsError(diags, diagid, loc) { }
+        
+        TypeEvalError(clang::DiagnosticsEngine& diags, const clang::SourceRange& loc, const Ides::Util::DiagnosticsError& inner) :
+            Ides::Util::DiagnosticsError(diags, loc, inner) { }
+        
+        ~TypeEvalError() throw() {}
+    };
     
     typedef Ides::Parsing::ParseContext ParseContext;
     
@@ -56,7 +67,7 @@ namespace AST {
     class Token : public AST {
     public:
         Token(llvm::StringRef name) : name(name) {}
-        virtual void Accept(Visitor* v) { v->Visit(this); }
+        virtual void Accept(Visitor* v);
         
         Ides::StringRef operator*() { return name; }
         
@@ -70,7 +81,7 @@ namespace AST {
     public:
         Type() : isConst(false) { }
         virtual ~Type() { }
-        virtual void Accept(Visitor* v) { v->Visit(this); }
+        virtual void Accept(Visitor* v);
         
         virtual const Ides::Types::Type* GetType(ASTContext& ctx) = 0;
         
@@ -81,7 +92,6 @@ namespace AST {
     template<typename T>
     class BuiltinType : public Type {
     public:
-        virtual void Accept(Visitor* v) { v->Visit(this); }
         virtual const Ides::Types::Type* GetType(ASTContext& ctx) {
             return T::GetSingletonPtr();
         }
@@ -110,7 +120,7 @@ namespace AST {
     class PtrType : public Type {
     public:
         PtrType(Type* type) : basetype(type) { }
-        virtual void Accept(Visitor* v) { v->Visit(this); }
+        virtual void Accept(Visitor* v);
         
         virtual const Ides::Types::Type* GetType(ASTContext& ctx) {
             return Ides::Types::PointerType::Get(basetype->GetType(ctx));
@@ -132,7 +142,7 @@ namespace AST {
             }
             
         }
-        virtual void Accept(Visitor* v) { v->Visit(this); }
+        virtual void Accept(Visitor* v);
         
         virtual const Ides::Types::Type* GetType(ASTContext& ctx);
         
@@ -143,7 +153,7 @@ namespace AST {
     class TypeName : public Type {
     public:
         TypeName (Token* name) : name(name) { }
-        virtual void Accept(Visitor* v) { v->Visit(this); }
+        virtual void Accept(Visitor* v);
         
         virtual const Ides::Types::Type* GetType(ASTContext& ctx);
         
@@ -153,12 +163,11 @@ namespace AST {
     
     class CompilationUnit : public AST, public ConcreteDeclarationContext {
     public:
-        virtual void Accept(Visitor* v) { v->Visit(this); }
+        virtual void Accept(Visitor* v);
     };
     
 } // namespace AST
 } // namespace Ides
-
 
 #endif // _IDES_AST_NODE_H_
 

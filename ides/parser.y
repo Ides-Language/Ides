@@ -205,11 +205,11 @@ prefix_expression : postfix_expression
 infix_expression : prefix_expression
                  | infix_expression OP_ASSIGN infix_expression { $$ = new Ides::AST::AssignmentExpression($1, $3); SET_EXPRLOC($$, @$); }
 
-                 | infix_expression OP_PLUS infix_expression { $$ = NEW_INFIX("+", $1, $3); SET_EXPRLOC($$, @$); }
-                 | infix_expression OP_MINUS infix_expression { $$ = NEW_INFIX("-", $1, $3); SET_EXPRLOC($$, @$); }
-                 | infix_expression OP_STAR infix_expression { $$ = NEW_INFIX("*", $1, $3); SET_EXPRLOC($$, @$); }
-                 | infix_expression OP_SLASH infix_expression { $$ = NEW_INFIX("/", $1, $3); SET_EXPRLOC($$, @$); }
-                 | infix_expression OP_MOD infix_expression { $$ = NEW_INFIX("%", $1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_PLUS infix_expression { $$ = new Ides::AST::BinaryExpression<OP_PLUS>($1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_MINUS infix_expression { $$ = new Ides::AST::BinaryExpression<OP_MINUS>($1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_STAR infix_expression { $$ = new Ides::AST::BinaryExpression<OP_STAR>($1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_SLASH infix_expression { $$ = new Ides::AST::BinaryExpression<OP_SLASH>($1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_MOD infix_expression { $$ = new Ides::AST::BinaryExpression<OP_MOD>($1, $3); SET_EXPRLOC($$, @$); }
                  
                  | infix_expression OP_BAND infix_expression { $$ = NEW_INFIX("&", $1, $3); SET_EXPRLOC($$, @$); }
                  | infix_expression OP_BOR infix_expression { $$ = NEW_INFIX("|", $1, $3); SET_EXPRLOC($$, @$); }
@@ -230,7 +230,7 @@ infix_expression : prefix_expression
                  | infix_expression OP_GT infix_expression { $$ = NEW_INFIX(">", $1, $3); SET_EXPRLOC($$, @$); }
                  | infix_expression OP_GE infix_expression { $$ = NEW_INFIX(">=", $1, $3); SET_EXPRLOC($$, @$); }
                  
-                 //| infix_expression OP_CAST var_type { $$ = new Ides::AST::CastExpression($1, $3); SET_EXPRLOC($$, @$); }
+                 | infix_expression OP_CAST var_type { $$ = new Ides::AST::CastExpression($1, $3); SET_EXPRLOC($$, @$); }
 ;
 
 expression : infix_expression

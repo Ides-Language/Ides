@@ -10,10 +10,10 @@
 #define __ides__Declaration__
 
 
-#include <ides/AST/AST.h>
 #include <ides/AST/Expression.h>
 #include <ides/AST/Statement.h>
 #include <ides/AST/DeclarationContext.h>
+#include <ides/AST/AST.h>
 
 namespace Ides {
 namespace AST {
@@ -38,7 +38,7 @@ namespace AST {
     protected:
         ValueDeclaration(Token* tok) : NamedDeclaration(tok) { }
     public:
-        virtual void Accept(Visitor* v) { v->Visit(this); }
+        virtual void Accept(Visitor* v);
         
         virtual const Ides::Types::Type* GetType(ASTContext& ctx) = 0;
         
@@ -60,12 +60,15 @@ namespace AST {
         VariableDeclaration(VarType vartype, Token* name, Type* type, Expression* initval) : ValueDeclaration(name),
             vartype(vartype), type(type), initval(initval) {}
         
-        virtual void Accept(Visitor* v) { v->Visit(this); }
+        virtual void Accept(Visitor* v);
         
         virtual const Ides::Types::Type* GetType(ASTContext& ctx) {
             if (type) return type->GetType(ctx);
             else if (initval) return initval->GetType(ctx);
-            return NULL;
+            
+            assert(false); // This shouldn't be possible according to the language grammar.
+            throw Ides::AST::TypeEvalError(ctx.GetDiagnostics(), Ides::Diagnostics::IMPOSSIBLE_ERROR, this->exprloc) <<
+                "variable declaration contains neither a type specifier nor an initializer";
         }
         
         VarType vartype;
@@ -85,7 +88,7 @@ namespace AST {
                     delete a;
                 }
             }
-        virtual void Accept(Visitor* v) { v->Visit(this); }
+        virtual void Accept(Visitor* v);
         
         const Ides::Types::Type* GetReturnType(ASTContext& ctx);
         virtual const Ides::Types::Type* GetType(ASTContext& ctx);
@@ -106,7 +109,7 @@ namespace AST {
     class OverloadedFunction : public Declaration, public std::vector<Declaration*> {
     public:
         virtual const Ides::Types::Type* GetType(ASTContext& ctx) { return Ides::Types::OverloadedFunctionType::GetSingletonPtr(); }
-        virtual void Accept(Visitor* v) { v->Visit(this); }
+        virtual void Accept(Visitor* v);
         
     };
     
@@ -125,7 +128,7 @@ namespace AST {
                 delete members;
             }
         }
-        virtual void Accept(Visitor* v) { v->Visit(this); }
+        virtual void Accept(Visitor* v);
         
         virtual const Ides::Types::Type* GetType(ASTContext& ctx) {
             return Ides::Types::StructType::GetOrCreate(ctx, this->GetName());
@@ -145,7 +148,7 @@ namespace AST {
         FieldDeclaration(VarType vartype, Token* name, Type* type, Expression* initval) :
             VariableDeclaration(vartype, name, initval) {}
         
-        virtual void Accept(Visitor* v) { v->Visit(this); }
+        virtual void Accept(Visitor* v);
     };
     
     class Namespace : public NamedDeclaration, public DeclarationContext {

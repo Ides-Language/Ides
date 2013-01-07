@@ -6,9 +6,13 @@
 //
 //
 
+#include <ides/AST/AST.h>
+#include <ides/AST/Expression.h>
+#include <ides/AST/Statement.h>
+#include <ides/AST/Declaration.h>
+
 #include "ASTVisitor.h"
 
-#include <ides/AST/Declaration.h>
 
 namespace Ides {
 namespace AST {

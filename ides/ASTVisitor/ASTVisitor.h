@@ -6,7 +6,13 @@
 //
 //
 
-#include <ides/Types/Type.h>
+#include <ides/AST/AST.h>
+#include <ides/AST/Expression.h>
+#include <ides/AST/Declaration.h>
+#include <ides/AST/Statement.h>
+#include <ides/AST/ConstantExpression.h>
+
+#include <ides/parser.hpp>
 
 #ifndef __ides__ASTVisitor__
 #define __ides__ASTVisitor__
@@ -14,54 +20,8 @@
 
 namespace Ides {
 namespace AST {
-    
-    class CompilationUnit;
-    
-    class IfStatement;
-    class WhileStatement;
-    class ForStatement;
-    
-    class Block;
-    
-    class IdentifierExpression;
-    class UnitTypeExpression;
-    class NullExpression;
-    class ReturnExpression;
-    class FunctionCallExpression;
-    class DotExpression;
-    
-    class UnaryExpression;
-    class AddressOfExpression;
-    class DereferenceExpression;
-    
-    class InfixExpression;
-    class AssignmentExpression;
-    
-    class ConstantStringExpression;
-    class ConstantCStringExpression;
-    class ConstantWCStringExpression;
-    class ConstantLCStringExpression;
-    
-    template<typename Tt, typename Vt>
-    class ConstantBuiltinTypeExpression;
-    
-    typedef ConstantBuiltinTypeExpression<Ides::Types::Integer1Type, bool> ConstantBoolExpression;
-    typedef ConstantBuiltinTypeExpression<Ides::Types::Integer8Type, uint8_t> ConstantCharExpression;
-    typedef ConstantBuiltinTypeExpression<Ides::Types::Integer32Type, uint64_t> ConstantIntExpression;
-    typedef ConstantBuiltinTypeExpression<Ides::Types::Float64Type, double> ConstantFloatExpression;
-    
-    class ValueDeclaration;
-    class VariableDeclaration;
-    class StructDeclaration;
-    class FieldDeclaration;
-    
-    class FunctionDeclaration;
-    class OverloadedFunction;
-    
-    class Token;
-    class Type;
-    
-    
+
+
     class Visitor {
     public:
         virtual void Visit(Ides::AST::CompilationUnit* ast);
@@ -85,7 +45,6 @@ namespace AST {
         virtual void Visit(Ides::AST::ConstantWCStringExpression* ast) { }
         virtual void Visit(Ides::AST::ConstantLCStringExpression* ast) { }
         virtual void Visit(Ides::AST::ConstantBoolExpression* ast) { }
-        virtual void Visit(Ides::AST::ConstantCharExpression* ast) { }
         virtual void Visit(Ides::AST::ConstantIntExpression* ast) { }
         virtual void Visit(Ides::AST::ConstantFloatExpression* ast) { }
         virtual void Visit(Ides::AST::ValueDeclaration* ast) { }
@@ -96,6 +55,14 @@ namespace AST {
         virtual void Visit(Ides::AST::OverloadedFunction* ast) { }
         virtual void Visit(Ides::AST::Token* ast) { }
         virtual void Visit(Ides::AST::Type* ast) { }
+        
+        virtual void Visit(Ides::AST::CastExpression* ast) { }
+        
+        virtual void Visit(Ides::AST::BinaryExpression<OP_PLUS>* ast) { }
+        virtual void Visit(Ides::AST::BinaryExpression<OP_MINUS>* ast) { }
+        virtual void Visit(Ides::AST::BinaryExpression<OP_STAR>* ast) { }
+        virtual void Visit(Ides::AST::BinaryExpression<OP_SLASH>* ast) { }
+        virtual void Visit(Ides::AST::BinaryExpression<OP_MOD>* ast) { }
     };
     
 }

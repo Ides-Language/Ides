@@ -22,10 +22,15 @@ namespace Diagnostics {
     
     
     void InitAllDiagnostics(clang::DiagnosticsEngine& diags) {
+        CreateDiagnostic(diags, IMPOSSIBLE_ERROR, clang::DiagnosticsEngine::Fatal, "logic error: %0");
+        
+        CreateDiagnostic(diags, NOTE_FROM, clang::DiagnosticsEngine::Note, "from here");
+        
         CreateDiagnostic(diags, PARSE_GENERIC_ERROR, clang::DiagnosticsEngine::Error, "parsing failed: %0");
         
         CreateDiagnostic(diags, FUNCTION_NO_RETURN, clang::DiagnosticsEngine::Error, "function does not return a value");
         CreateDiagnostic(diags, NO_IMPLICIT_CONVERSION, clang::DiagnosticsEngine::Error, "no implicit conversion from %0 to %1");
+        CreateDiagnostic(diags, NO_EXPLICIT_CAST, clang::DiagnosticsEngine::Error, "cannot cast from %0 to incompatible type %1");
         
         CreateDiagnostic(diags, RETURN_FROM_VOID, clang::DiagnosticsEngine::Error, "returning an expression from a function with void return type");
         CreateDiagnostic(diags, RETURN_FROM_UNIT, clang::DiagnosticsEngine::Error, "functions with unit return type cannot return");
