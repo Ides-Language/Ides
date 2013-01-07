@@ -20,6 +20,46 @@ namespace CodeGen {
     
     using namespace Ides::Diagnostics;
     
+    void CodeGen::Visit(Ides::AST::GlobalVariableDeclaration* ast) { SETTRACE("CodeGen::Visit(GlobalVariableDeclaration)")
+        auto vi = globalVariables.find(ast);
+        if (vi != globalVariables.end()) {
+            last = vi->second;
+            return;
+        }
+        
+        llvm::GlobalVariable* var = new llvm::GlobalVariable(*module,
+                                                             GetLLVMType(ast->GetType(actx)),
+                                                             false,
+                                                             llvm::GlobalValue::ExternalLinkage,
+                                                             llvm::Constant::getNullValue(GetLLVMType(ast->initval->GetType(actx))),
+                                                             ast->GetName());
+        
+        
+        llvm::Function* initializer = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(lctx), false),
+                                                             llvm::GlobalValue::InternalLinkage,
+                                                             "init_" + ast->GetName(),
+                                                             module);
+        
+        llvm::BasicBlock* oldBB = builder->GetInsertBlock();
+        
+        llvm::BasicBlock* bb = llvm::BasicBlock::Create(lctx, "entry", initializer);
+        builder->SetInsertPoint(bb);
+        
+        llvm::Value* v = GetValue(ast->initval);
+        builder->CreateStore(v, var);
+        builder->CreateRetVoid();
+        
+        llvm::verifyFunction(*initializer);
+        
+        builder->SetInsertPoint(oldBB);
+        
+        this->globalInitializers.push_back(std::make_pair(1, initializer));
+        
+        globalVariables.insert(std::make_pair(ast, var));
+        
+        last = var;
+    }
+    
     void CodeGen::Visit(Ides::AST::VariableDeclaration* ast) { SETTRACE("CodeGen::Visit(VariableDeclaration)")
         auto vi = variables.find(ast);
         if (vi != variables.end()) {

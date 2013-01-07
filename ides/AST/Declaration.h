@@ -76,6 +76,16 @@ namespace AST {
         Expression* initval;
     };
     
+    class GlobalVariableDeclaration : public VariableDeclaration {
+    public:
+        GlobalVariableDeclaration(VariableDeclaration::VarType vartype, Token* name, Type* type) : VariableDeclaration(vartype, name, type) {}
+        GlobalVariableDeclaration(VariableDeclaration::VarType vartype, Token* name, Expression* initval) : VariableDeclaration(vartype, name, initval) {}
+        GlobalVariableDeclaration(VariableDeclaration::VarType vartype, Token* name, Type* type, Expression* initval) : VariableDeclaration(vartype, name, type, initval) {}
+        
+        virtual void Accept(Visitor* v);
+        
+    };
+    
     typedef std::list<VariableDeclaration*> VariableDeclarationList;
     
     class FunctionDeclaration : public ValueDeclaration, public HierarchicalConcreteDeclarationContext {

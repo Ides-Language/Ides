@@ -75,6 +75,7 @@ namespace CodeGen {
         
         virtual void Visit(Ides::AST::FunctionDeclaration* ast);
         virtual void Visit(Ides::AST::VariableDeclaration* ast);
+        virtual void Visit(Ides::AST::GlobalVariableDeclaration* ast);
         virtual void Visit(Ides::AST::StructDeclaration* ast);
         
         virtual void Visit(Ides::AST::AddressOfExpression* ast);
@@ -150,8 +151,11 @@ namespace CodeGen {
         
         boost::unordered_map<Ides::AST::FunctionDeclaration*, llvm::Function*> functions;
         boost::unordered_map<Ides::AST::VariableDeclaration*, llvm::Value*> variables;
+        boost::unordered_map<Ides::AST::GlobalVariableDeclaration*, llvm::GlobalVariable*> globalVariables;
+        std::vector<std::pair<int32_t, llvm::Function*> > globalInitializers;
         
         std::stack<Ides::AST::FunctionDeclaration*> currentFunctions;
+        
         
         llvm::Value* last;
         

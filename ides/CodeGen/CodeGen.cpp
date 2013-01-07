@@ -12,6 +12,7 @@
 #include <ides/AST/ConstantExpression.h>
 
 #include <ides/CodeGen/LLVMTypeVisitor.h>
+#include "llvm/Analysis/Verifier.h"
 
 
 namespace Ides {
@@ -34,7 +35,8 @@ namespace CodeGen {
     void CodeGen::Compile(Ides::AST::CompilationUnit* ast) { SETTRACE("CodeGen::Compile")
         try {
             ast->Accept(this);
-            this->module->dump();
+            if(!llvm::verifyModule(*this->module, llvm::PrintMessageAction))
+                this->module->dump();
         }
         catch (const std::exception&) {
         }
@@ -135,6 +137,19 @@ namespace CodeGen {
         for (auto i = ast->begin(); i != ast->end(); ++i) {
             i->second->Accept(this);
         }
+        
+        auto initializerStruct = llvm::StructType::get(llvm::Type::getInt32Ty(lctx), llvm::FunctionType::get(llvm::Type::getVoidTy(lctx), false)->getPointerTo(), NULL);
+        auto initializerArray = llvm::ArrayType::get(initializerStruct, this->globalInitializers.size());
+        
+        std::vector<llvm::Constant*> initializers;
+        for (auto i = globalInitializers.begin(); i != globalInitializers.end(); ++i) {
+            initializers.push_back(llvm::ConstantStruct::get(initializerStruct, llvm::ConstantInt::get(llvm::Type::getInt32Ty(lctx), i->first), i->second, NULL));
+        }
+        auto constructorArray = llvm::ConstantArray::get(initializerArray, initializers);
+        
+        auto constructorArrayVar = new llvm::GlobalVariable(*module, initializerArray, false, llvm::GlobalValue::AppendingLinkage, constructorArray, "llvm.global_ctors");
+        
+        
     }
     
     llvm::Type* CodeGen::GetLLVMType(const Ides::Types::Type* ty) {
