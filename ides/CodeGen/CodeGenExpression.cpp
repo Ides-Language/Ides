@@ -55,12 +55,13 @@ namespace CodeGen {
         }
         else if (exprtype->IsEquivalentType(funcrettype)) {
             llvm::Value* retVal = GetValue(ast->GetRetVal());
-            builder->CreateRet(retVal);
+            last = builder->CreateRet(retVal);
         }
         else {
             // Returning from function with return type.
-            builder->CreateRet(GetValue(ast->GetRetVal(), funcrettype));
+            last = builder->CreateRet(GetValue(ast->GetRetVal(), funcrettype));
         }
+        llvm::cast<llvm::Instruction>(last)->setDebugLoc(GetDebugLoc(ast));
         throw detail::UnitValueException();
     }
     
@@ -109,7 +110,9 @@ namespace CodeGen {
     
     
     void CodeGen::Visit(Ides::AST::AddressOfExpression* ast) { SETTRACE("CodeGen::Visit(AddressOfExpression)")
-        llvm::Value* ptr = builder->CreateAlloca(GetLLVMType(ast->arg->GetType(actx)), 0, "addrof");
+        const Ides::Types::Type* argType = ast->arg->GetType(actx);
+        llvm::AllocaInst* ptr = builder->CreateAlloca(GetLLVMType(argType), 0, "addrof");
+        ptr->setAlignment(argType->GetAlignment());
         builder->CreateStore(GetValue(ast->arg.get()), ptr);
         last = ptr;
     }

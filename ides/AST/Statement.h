@@ -48,11 +48,11 @@ namespace AST {
     
     class ForStatement : public Statement, public HierarchicalConcreteDeclarationContext {
     public:
-        ForStatement(AST* startexpr, Expression* endexpr, Expression* eachexpr, Statement* body) :
+        ForStatement(Statement* startexpr, Expression* endexpr, Expression* eachexpr, Statement* body) :
             startexpr(startexpr), endexpr(endexpr), eachexpr(eachexpr), body(body) { }
         virtual void Accept(Visitor* v);
         
-        AST* startexpr;
+        Statement* startexpr;
         Expression* endexpr;
         Expression* eachexpr;
         Statement* body;

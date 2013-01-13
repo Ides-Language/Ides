@@ -50,6 +50,7 @@ namespace AST {
         virtual void Visit(Ides::AST::ValueDeclaration* ast) { }
         virtual void Visit(Ides::AST::VariableDeclaration* ast) { }
         virtual void Visit(Ides::AST::GlobalVariableDeclaration* ast) { }
+        virtual void Visit(Ides::AST::ArgumentDeclaration* ast) { }
         virtual void Visit(Ides::AST::StructDeclaration* ast) { }
         virtual void Visit(Ides::AST::FieldDeclaration* ast) { }
         virtual void Visit(Ides::AST::FunctionDeclaration* ast) { }

@@ -12,6 +12,7 @@
 
 #include <ides/AST/Statement.h>
 #include <llvm/BasicBlock.h>
+#include <llvm/Attributes.h>
 
 
 namespace Ides {
@@ -21,78 +22,163 @@ namespace CodeGen {
     using namespace Ides::Diagnostics;
     
     void CodeGen::Visit(Ides::AST::GlobalVariableDeclaration* ast) { SETTRACE("CodeGen::Visit(GlobalVariableDeclaration)")
-        auto vi = globalVariables.find(ast);
-        if (vi != globalVariables.end()) {
-            last = vi->second;
-            return;
-        }
-        
+        llvm::GlobalVariable* var = NULL;
         const Ides::Types::Type* astType = ast->GetType(actx);
+        DIGenerator::DebugScope dbgscope;
         
-        llvm::GlobalVariable* var = new llvm::GlobalVariable(*module,
-                                                             GetLLVMType(astType),
-                                                             ast->vartype == Ides::AST::VariableDeclaration::DECL_VAL,
-                                                             llvm::GlobalValue::ExternalLinkage,
-                                                             0,
-                                                             ast->GetName());
-        
-        globalVariables.insert(std::make_pair(ast, var));
-        
-        if (ast->initval == NULL) {
-            var->setInitializer(llvm::Constant::getNullValue(GetLLVMType(astType)));
-            last = var;
-            return;
-        }
-        else if (auto iv = dynamic_cast<Ides::AST::ConstantExpression*>(ast->initval)) {
-            // Simple constant initializer. NBD.
-            var->setInitializer((llvm::Constant*)GetValue(iv));
-            last = var;
-            return;
+        auto vi = values.find(ast);
+        if (vi != values.end()) {
+            var = static_cast<llvm::GlobalVariable*>(vi->second);
+        } else {
+            var = new llvm::GlobalVariable(*module,
+                                           GetLLVMType(astType),
+                                           ast->vartype == Ides::AST::VariableDeclaration::DECL_VAL,
+                                           llvm::GlobalValue::ExternalLinkage,
+                                           0,
+                                           ast->GetName());
+            
+            values.insert(std::make_pair(ast, var));
+            
         }
         
-        // If we're here, we need to evaluate an expression as an initializer.
-        // Set up an initializer function.
-        var->setInitializer(llvm::Constant::getNullValue(GetLLVMType(astType)));
+        if (this->IsEvaluatingDecl()) {
+            
+            if (this->dibuilder) {
+                auto offset = sman->getFileOffset(ast->exprloc.getBegin());
+                
+                llvm::DIFile diFile(dibuilder->GetCurrentScope());
+                assert(diFile.Verify());
+                llvm::MDNode* varNode = dibuilder->createGlobalVariable(ast->GetName(),
+                                                                        diFile,
+                                                                        sman->getLineNumber(sman->getMainFileID(), offset),
+                                                                        dibuilder->GetType(astType),
+                                                                        false,
+                                                                        var);
+                
+                llvm::DILexicalBlockFile diScope = dibuilder->createLexicalBlockFile(diFile, diFile);
+                dbgscope.SetScope(dibuilder, diScope);
+            }
+            
+            if (ast->initval == NULL) {
+                var->setInitializer(llvm::Constant::getNullValue(GetLLVMType(astType)));
+                last = var;
+                return;
+            }
+            else if (auto iv = dynamic_cast<Ides::AST::ConstantExpression*>(ast->initval)) {
+                // Simple constant initializer. NBD.
+                var->setInitializer((llvm::Constant*)GetValue(iv, astType));
+                last = var;
+                return;
+            }
+            else {
+                // If we're here, we need to evaluate an expression as an initializer.
+                // Set up an initializer function.
+                var->setInitializer(llvm::Constant::getNullValue(GetLLVMType(astType)));
+                
+                
+                
+                llvm::Function* initializer = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(lctx), false),
+                                                                     llvm::GlobalValue::InternalLinkage,
+                                                                     "init_" + ast->GetName(),
+                                                                     module);
+                
+                llvm::BasicBlock* oldBB = builder->GetInsertBlock();
+                
+                llvm::BasicBlock* bb = llvm::BasicBlock::Create(lctx, "entry", initializer);
+                builder->SetInsertPoint(bb);
+                
+                llvm::Value* v = GetValue(ast->initval);
+                llvm::Instruction* instr = llvm::cast<llvm::Instruction>(builder->CreateStore(v, var));
+                instr->setDebugLoc(GetDebugLoc(ast->initval));
+                
+                instr = llvm::cast<llvm::Instruction>(builder->CreateRetVoid());
+                instr->setDebugLoc(GetDebugLoc(ast->initval));
+                
+                llvm::verifyFunction(*initializer);
+                
+                builder->SetInsertPoint(oldBB);
+                
+                this->globalInitializers.push_back(std::make_pair(this->GetInitializerWeight(WEIGHT_EXPRESSION_VAR), initializer));
+            }
+        }
         
-        
-        
-        llvm::Function* initializer = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(lctx), false),
-                                                             llvm::GlobalValue::InternalLinkage,
-                                                             "init_" + ast->GetName(),
-                                                             module);
-        
-        llvm::BasicBlock* oldBB = builder->GetInsertBlock();
-        
-        llvm::BasicBlock* bb = llvm::BasicBlock::Create(lctx, "entry", initializer);
-        builder->SetInsertPoint(bb);
-        
-        llvm::Value* v = GetValue(ast->initval);
-        builder->CreateStore(v, var);
-        builder->CreateRetVoid();
-        
-        llvm::verifyFunction(*initializer);
-        
-        builder->SetInsertPoint(oldBB);
-        
-        this->globalInitializers.push_back(std::make_pair(1, initializer));
+        last = var;
+    }
+    
+    void CodeGen::Visit(Ides::AST::ArgumentDeclaration* ast) { SETTRACE("CodeGen::Visit(VariableDeclaration)")
+        llvm::Value* var;
+        auto vi = values.find(ast);
+        if (vi != values.end()) {
+            var = vi->second;
+        }
+        else {
+            const Ides::Types::Type* varType = ast->GetType(actx);
+            llvm::AllocaInst* alloca = builder->CreateAlloca(this->GetLLVMType(varType), 0, ast->GetName());
+            alloca->setAlignment(varType->GetAlignment());
+            var = alloca;
+            
+            values.insert(std::make_pair(ast, var));
+            
+            actx.GetCurrentScope()->AddMember(ast->GetName(), ast);
+            
+            if (dibuilder != NULL) {
+                auto offset = sman->getFileOffset(ast->exprloc.getBegin());
+                llvm::DISubprogram currentDIScope(dibuilder->GetCurrentScope());
+                assert(currentDIScope.Verify());
+                unsigned int lineNum = sman->getLineNumber(this->fid, offset);
+                int argNum = ast->argNum + 1;
+                llvm::DIVariable diVar = dibuilder->createLocalVariable(llvm::dwarf::DW_TAG_arg_variable,
+                                                                        currentDIScope,
+                                                                        ast->GetName(),
+                                                                        llvm::DIFile(this->diFile),
+                                                                        lineNum,
+                                                                        dibuilder->GetType(varType),
+                                                                        true,
+                                                                        0,
+                                                                        argNum);
+                assert(diVar.Verify());
+                auto declInst = dibuilder->insertDeclare(var, diVar, builder->GetInsertBlock());
+                declInst->setDebugLoc(GetDebugLoc(ast));
+            }
+        }
         
         last = var;
     }
     
     void CodeGen::Visit(Ides::AST::VariableDeclaration* ast) { SETTRACE("CodeGen::Visit(VariableDeclaration)")
-        auto vi = variables.find(ast);
-        if (vi != variables.end()) {
-            last = vi->second;
-            return;
+        llvm::Value* var;
+        auto vi = values.find(ast);
+        if (vi != values.end()) {
+            var = vi->second;
         }
-        
-        llvm::Value* var = builder->CreateAlloca(this->GetLLVMType(ast->GetType(actx)), 0, ast->GetName());
-        variables.insert(std::make_pair(ast, var));
-        if (ast->initval != NULL) {
-            builder->CreateStore(GetValue(ast->initval, ast->GetType(actx)), var);
+        else {
+            const Ides::Types::Type* varType = ast->GetType(actx);
+            llvm::AllocaInst* alloca = builder->CreateAlloca(this->GetLLVMType(varType), 0, ast->GetName());
+            alloca->setAlignment(varType->GetAlignment());
+            var = alloca;
+            
+            values.insert(std::make_pair(ast, var));
+            if (ast->initval != NULL) {
+                llvm::Instruction* instr = llvm::cast<llvm::Instruction>(builder->CreateStore(GetValue(ast->initval, varType), var));
+                instr->setDebugLoc(GetDebugLoc(ast));
+            }
+            
+            actx.GetCurrentScope()->AddMember(ast->GetName(), ast);
+            
+            if (dibuilder != NULL) {
+                auto offset = sman->getFileOffset(ast->exprloc.getBegin());
+                llvm::DIScope currentDIScope(dibuilder->GetCurrentScope());
+                assert(currentDIScope.Verify());
+                llvm::DIVariable diVar = dibuilder->createLocalVariable(llvm::dwarf::DW_TAG_auto_variable,
+                                                                        currentDIScope,
+                                                                        ast->GetName(),
+                                                                        llvm::DIFile(this->diFile),
+                                                                        sman->getLineNumber(this->fid, offset),
+                                                                        dibuilder->GetType(varType));
+                
+                dibuilder->insertDeclare(var, diVar, builder->GetInsertBlock());
+            }
         }
-        
-        actx.GetCurrentScope()->AddMember(ast->GetName(), ast);
         
         last = var;
     }
@@ -114,89 +200,131 @@ namespace CodeGen {
     }
     
     void CodeGen::Visit(Ides::AST::FunctionDeclaration* ast) { SETTRACE("CodeGen::Visit(FunctionDeclaration)")
-        
-        auto fi = functions.find(ast);
-        if (fi != functions.end()) {
-            last = fi->second;
-            return;
+        DIGenerator::DebugScope dbgscope;
+        llvm::Function* func = NULL;
+        const Ides::Types::Type* functionType = ast->GetType(actx);
+        auto fi = values.find(ast);
+        if (fi != values.end()) {
+            func = llvm::cast<llvm::Function>(fi->second);
         }
-        Ides::AST::ASTContext::DeclScope typescope(actx, ast);
-        
-        struct FSM {
-            FSM(CodeGen* cg, Ides::AST::FunctionDeclaration* ast) : cg(cg) {
-                cg->currentFunctions.push(ast);
+        else {
+            llvm::FunctionType *FT = static_cast<llvm::FunctionType*>(this->GetLLVMType(functionType));
+            //func = (llvm::Function*)ctx.GetModule()->getOrInsertFunction(this->GetMangledName(), FT);
+            func = llvm::Function::Create(FT, llvm::GlobalValue::ExternalLinkage, ast->GetMangledName(), module);
+            //func->setGC("shadow-stack");
+            
+            if (ast->GetReturnType(actx)->IsEquivalentType(Ides::Types::UnitType::GetSingletonPtr())) {
+                func->addFnAttr(llvm::Attributes::NoReturn);
             }
             
-            ~FSM() throw() {
-                cg->currentFunctions.pop();
+            values.insert(std::make_pair(ast, func));
+        }
+        
+        if ((ast->val || ast->body) && this->IsEvaluatingDecl()) {
+            if (dibuilder) {
+                auto offset = sman->getFileOffset(ast->exprloc.getBegin());
+                
+                llvm::DIFile diCurrentFile(dibuilder->GetCurrentScope());
+                assert(diCurrentFile.Verify());
+                
+                std::vector<llvm::Value*> argDITypes;
+                for (auto i = ast->GetArgs().begin(); i != ast->GetArgs().end(); ++i) {
+                    const Ides::Types::Type* argType = (*i)->GetType(actx);
+                    llvm::DIType dit(dibuilder->GetType(argType));
+                    assert(dit.Verify());
+                    argDITypes.push_back(dit);
+                }
+                llvm::DIArray argTypes = dibuilder->getOrCreateArray(argDITypes);
+                
+                llvm::DIType funcDIType = dibuilder->createSubroutineType(diCurrentFile, argTypes);
+                assert(funcDIType.Verify());
+                
+                auto funcLineNum = sman->getLineNumber(sman->getMainFileID(), offset);
+                llvm::DISubprogram funcNode = dibuilder->createFunction(diCurrentFile,
+                                                                        ast->GetName(),
+                                                                        ast->GetMangledName(),
+                                                                        llvm::DIFile(dibuilder->getCU()),
+                                                                        funcLineNum,
+                                                                        funcDIType,
+                                                                        false,
+                                                                        true,
+                                                                        funcLineNum,
+                                                                        0,
+                                                                        false,
+                                                                        func);
+                
+                assert(funcNode.Verify());
+                
+                dbgscope.SetScope(dibuilder, funcNode);
             }
-            CodeGen* cg;
-        };
-        FSM functionStackManager(this, ast);
-        
-        llvm::FunctionType *FT = static_cast<llvm::FunctionType*>(this->GetLLVMType(ast->GetType(actx)));
-        //func = (llvm::Function*)ctx.GetModule()->getOrInsertFunction(this->GetMangledName(), FT);
-        llvm::Function* func = llvm::Function::Create(FT, llvm::GlobalValue::ExternalLinkage, ast->GetName(), module);
-        func->setGC("shadow-stack");
-        
-        if (ast->GetReturnType(actx)->IsEquivalentType(Ides::Types::UnitType::GetSingletonPtr())) {
-            func->addFnAttr(llvm::Attributes::NoReturn);
-        }
-        
-        functions.insert(std::make_pair(ast, func));
-        last = func;
-        
-        if (ast->val == NULL && ast->body == NULL) return;
-        
-        llvm::BasicBlock* entryblock = llvm::BasicBlock::Create(lctx, "entry", func);
-        builder->SetInsertPoint(entryblock);
-        
-        auto i = ast->GetArgs().begin();
-        llvm::Function::arg_iterator ai = func->arg_begin();
-        for (; i != ast->GetArgs().end() && ai != func->arg_end(); ++ai, ++i) {
-            Ides::AST::VariableDeclaration* decl = *i;
-            ai->setName(decl->GetName());
-            decl->Accept(this);
-            builder->CreateStore(ai, last);
-        }
-        assert (i == ast->GetArgs().end() && ai == func->arg_end());
-        
-        
-        if (ast->val) {
-            if (ast->GetReturnType(actx)->IsEquivalentType(Ides::Types::VoidType::GetSingletonPtr())
-                || ast->GetReturnType(actx)->IsEquivalentType(Ides::Types::UnitType::GetSingletonPtr())) {
-                ast->val->Accept(this);
-                builder->CreateRetVoid();
-            } else {
-                const Ides::Types::Type* valtype = ast->val->GetType(actx);
-                const Ides::Types::Type* rettype = ast->GetReturnType(actx);
-                if (valtype->IsEquivalentType(rettype)) {
-                    builder->CreateRet(GetValue(ast->val));
-                } else if (valtype->HasImplicitConversionTo(rettype)) {
-                    builder->CreateRet(GetValue(ast->val));
+            
+            struct FSM {
+                FSM(CodeGen* cg, Ides::AST::FunctionDeclaration* ast) : cg(cg) {
+                    cg->currentFunctions.push(ast);
+                }
+                
+                ~FSM() throw() {
+                    cg->currentFunctions.pop();
+                }
+                CodeGen* cg;
+            };
+            FSM functionStackManager(this, ast);
+            
+            Ides::AST::ASTContext::DeclScope typescope(actx, ast);
+            
+            llvm::BasicBlock* entryblock = llvm::BasicBlock::Create(lctx, "entry", func);
+            builder->SetInsertPoint(entryblock);
+            
+            auto i = ast->GetArgs().begin();
+            llvm::Function::arg_iterator ai = func->arg_begin();
+            for (; i != ast->GetArgs().end() && ai != func->arg_end(); ++ai, ++i) {
+                Ides::AST::ArgumentDeclaration* decl = *i;
+                ai->setName(decl->GetName());
+                this->GetDecl(decl);
+                llvm::Instruction* instr = llvm::cast<llvm::Instruction>(builder->CreateStore(ai, last));
+                instr->setDebugLoc(GetDebugLoc(decl));
+            }
+            assert (i == ast->GetArgs().end() && ai == func->arg_end());
+            
+            
+            if (ast->val) {
+                if (ast->GetReturnType(actx)->IsEquivalentType(Ides::Types::VoidType::GetSingletonPtr())
+                    || ast->GetReturnType(actx)->IsEquivalentType(Ides::Types::UnitType::GetSingletonPtr())) {
+                    this->GetValue(ast->val);
+                    auto retVal = builder->CreateRetVoid();
+                    retVal->setDebugLoc(GetDebugLoc(ast->val));
                 } else {
-                    func->removeFromParent();
-                    throw detail::CodeGenError(*diag, NO_IMPLICIT_CONVERSION, ast->val->exprloc) << rettype->ToString() << valtype->ToString();
+                    const Ides::Types::Type* rettype = ast->GetReturnType(actx);
+                    try {
+                        auto retVal = builder->CreateRet(GetValue(ast->val, rettype));
+                        retVal->setDebugLoc(GetDebugLoc(ast->val));
+                    }
+                    catch (const std::exception& ex) {
+                        func->removeFromParent();
+                        throw ex;
+                    }
                 }
             }
-        }
-        else if (ast->body) {
-            try {
-                ast->body->Accept(this);
-                if (ast->GetReturnType(actx)->IsEquivalentType(Ides::Types::VoidType::GetSingletonPtr())) {
-                    // Function didn't return, but it's void, so NBD.
-                    builder->CreateRetVoid();
-                } else {
-                    func->removeFromParent();
-                    throw detail::CodeGenError(*diag, FUNCTION_NO_RETURN, ast->exprloc);
+            else if (ast->body) {
+                try {
+                    GetValue(ast->body);
+                    if (ast->GetReturnType(actx)->IsEquivalentType(Ides::Types::VoidType::GetSingletonPtr())) {
+                        // Function didn't return, but it's void, so NBD.
+                        llvm::Instruction* instr = (llvm::Instruction*)builder->CreateRetVoid();
+                        instr->setDebugLoc(GetDebugLoc(ast));
+                    } else {
+                        func->removeFromParent();
+                        throw detail::CodeGenError(*diag, FUNCTION_NO_RETURN, ast->exprloc);
+                    }
+                } catch (const detail::UnitValueException&) {
+                    // Function returned.
                 }
-            } catch (const detail::UnitValueException&) {
-                // Function returned.
             }
+            
+            llvm::verifyFunction(*func);
         }
         
-        llvm::verifyFunction(*func);
-        
+        assert(func != NULL);
         last = func;
     }
 

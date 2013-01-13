@@ -65,6 +65,7 @@ namespace AST {
     void ValueDeclaration::Accept(Visitor* v) { v->Visit(this); }
     void VariableDeclaration::Accept(Visitor* v) { v->Visit(this); }
     void GlobalVariableDeclaration::Accept(Visitor* v) { v->Visit(this); }
+    void ArgumentDeclaration::Accept(Visitor* v) { v->Visit(this); }
     void FunctionDeclaration::Accept(Visitor* v) { v->Visit(this); }
     void OverloadedFunction::Accept(Visitor* v) { v->Visit(this); }
     void StructDeclaration::Accept(Visitor* v) { v->Visit(this); }

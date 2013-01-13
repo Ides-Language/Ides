@@ -7,6 +7,7 @@
 //
 
 #include "ParseContext.h"
+#include <ides/AST/AST.h>
 #include <algorithm>
 
 int yyparse (Ides::Parsing::ParseContext* context, Ides::AST::AST** program);
@@ -30,6 +31,7 @@ namespace Parsing {
     Ides::AST::AST* ParseContext::Parse() {
         Ides::AST::AST* ret;
         yyparse(this, &ret);
+        static_cast<Ides::AST::CompilationUnit*>(ret)->SetFile(this->fid);
         return ret;
     }
     

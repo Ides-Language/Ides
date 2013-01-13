@@ -20,30 +20,49 @@ namespace CodeGen {
     
     using namespace Ides::Diagnostics;
     
-    CodeGen::CodeGen(llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diags, llvm::LLVMContext& lctx, Ides::AST::ASTContext& actx)
-        : lctx(lctx), typeVisitor(lctx), actx(actx), diag(diags)
+    CodeGen::CodeGen(llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diags,
+                     llvm::LLVMContext& lctx,
+                     Ides::AST::ASTContext& actx,
+                     clang::FileManager* fman,
+                     clang::SourceManager* sman)
+    : fman(fman), sman(sman), lctx(lctx), typeVisitor(lctx), actx(actx), diag(diags)
     {
+        this->staticInitializerSequence = 0;
         this->module = new llvm::Module("Ides Module", lctx);
         this->builder = new llvm::IRBuilder<>(lctx);
+        this->dibuilder = new DIGenerator(*this->module);
     }
     
     CodeGen::~CodeGen() {
+        delete dibuilder;
         delete builder;
         //delete module;
     }
     
     void CodeGen::Compile(Ides::AST::CompilationUnit* ast) { SETTRACE("CodeGen::Compile")
         try {
+            this->module->setModuleIdentifier(sman->getFileEntryForID(ast->GetFile())->getName());
             ast->Accept(this);
-            if(!llvm::verifyModule(*this->module, llvm::PrintMessageAction))
-                this->module->dump();
+            dibuilder->finalize();
+            llvm::verifyModule(*this->module);
         }
         catch (const std::exception&) {
         }
-        functions.clear();
+        values.clear();
+    }
+    llvm::Value* CodeGen::GetValue(Ides::AST::Statement* ast) {
+        DeclarationGuard _guard(this->isDeclaration, false);
+        ast->Accept(this);
+        
+        if (last != NULL && llvm::isa<llvm::Instruction>(last) && dibuilder != NULL) {
+            llvm::cast<llvm::Instruction>(last)->setDebugLoc(this->GetDebugLoc(ast));
+        }
+        return last;
     }
     
     llvm::Value* CodeGen::GetValue(Ides::AST::Expression* ast) { SETTRACE("CodeGen::GetValue")
+        DeclarationGuard _guard(this->isDeclaration, false);
+        
         ast->Accept(this);
         const Ides::Types::Type* exprType = ast->GetType(actx);
         llvm::Type* valType = last->getType();
@@ -55,10 +74,30 @@ namespace CodeGen {
         }
         if (valType->isPointerTy())
             last = builder->CreateLoad(last, "autoderef");
+        
+        if (llvm::isa<llvm::Instruction>(last) && dibuilder != NULL) {
+            llvm::cast<llvm::Instruction>(last)->setDebugLoc(this->GetDebugLoc(ast));
+        }
         return last;
     }
     
+    llvm::Value* CodeGen::GetValue(Ides::AST::Expression* ast, const Ides::Types::Type* toType) {
+        DeclarationGuard _guard(this->isDeclaration, false);
+        
+        const Ides::Types::Type* fromType = ast->GetType(actx);
+        if (fromType->IsEquivalentType(toType)) {
+            return GetValue(ast);
+        }
+        else if (fromType->HasImplicitConversionTo(toType)) {
+            // We've determined that an implicit conversion is safe, so go through the normal cast codepath.
+            return Cast(ast, toType);
+        }
+        throw detail::CodeGenError(*diag, NO_IMPLICIT_CONVERSION, ast->exprloc) << fromType->ToString() << toType->ToString();
+    }
+    
     llvm::Value* CodeGen::GetPtr(Ides::AST::Expression* ast) { SETTRACE("CodeGen::GetPtr")
+        DeclarationGuard _guard(this->isDeclaration, false);
+        
         ast->Accept(this);
         const Ides::Types::Type* exprType = ast->GetType(actx);
         llvm::Type* valType = last->getType();
@@ -72,24 +111,35 @@ namespace CodeGen {
         throw detail::CodeGenError(*diag, INVALID_TEMPORARY_VALUE, ast->exprloc);
     }
     
-    llvm::Value* CodeGen::GetValue(Ides::AST::Expression* ast, const Ides::Types::Type* toType) {
-        const Ides::Types::Type* fromType = ast->GetType(actx);
-        if (fromType->IsEquivalentType(toType)) {
-            return GetValue(ast);
+    llvm::Value* CodeGen::GetDecl(Ides::AST::Declaration* ast) {
+        DeclarationGuard _guard(this->isDeclaration, true);
+        ast->Accept(this);
+        if (llvm::isa<llvm::Instruction>(last) && dibuilder != NULL) {
+            llvm::cast<llvm::Instruction>(last)->setDebugLoc(this->GetDebugLoc(ast));
         }
-        else if (fromType->HasImplicitConversionTo(toType)) {
-            // We've determined that an implicit conversion is safe, so go through the normal cast codepath.
-            return Cast(ast, toType);
-        }
-        throw detail::CodeGenError(*diag, NO_IMPLICIT_CONVERSION, ast->exprloc) << fromType->ToString() << toType->ToString();
+        return last;
+    }
+    
+    
+    llvm::DebugLoc CodeGen::GetDebugLoc(Ides::AST::AST* ast) {
+        auto offset = sman->getFileOffset(ast->exprloc.getBegin());
+        return llvm::DebugLoc::get(sman->getLineNumber(sman->getMainFileID(), offset),
+                                   sman->getColumnNumber(sman->getMainFileID(), offset),
+                                   const_cast<llvm::MDNode*>(dibuilder->GetCurrentScope()),
+                                   NULL);
     }
     
     
     llvm::Value* CodeGen::Cast(Ides::AST::Expression* ast, const Ides::Types::Type* toType) {
-        const Ides::Types::Type* exprtype = ast->GetType(actx);
-        if (exprtype->IsEquivalentType(toType)) return GetValue(ast);
+        DeclarationGuard _guard(this->isDeclaration, false);
         
-        if (exprtype->IsNumericType()) {
+        llvm::Value* ret = NULL;
+        
+        const Ides::Types::Type* exprtype = ast->GetType(actx);
+        if (exprtype->IsEquivalentType(toType)) {
+            ret = GetValue(ast);
+        }
+        else if (exprtype->IsNumericType()) {
             const Ides::Types::NumberType* exprnumtype = static_cast<const Ides::Types::NumberType*>(exprtype);
             if (toType->IsNumericType()) {
                 const Ides::Types::NumberType* tonumtype = static_cast<const Ides::Types::NumberType*>(toType);
@@ -97,26 +147,30 @@ namespace CodeGen {
                 switch (exprnumtype->GetNumberClass()) {
                     case Ides::Types::NumberType::N_UINT:
                         if (tonumtype->GetNumberClass() == Ides::Types::NumberType::N_FLOAT) {
-                            return builder->CreateUIToFP(GetValue(ast), GetLLVMType(tonumtype));
+                            ret = builder->CreateUIToFP(GetValue(ast), GetLLVMType(tonumtype));
+                            break;
                         }
                     case Ides::Types::NumberType::N_SINT:
                         if (tonumtype->GetNumberClass() == Ides::Types::NumberType::N_FLOAT) {
-                            return builder->CreateSIToFP(GetValue(ast), GetLLVMType(tonumtype));
+                            ret = builder->CreateSIToFP(GetValue(ast), GetLLVMType(tonumtype));
                         }
-                        
-                        return builder->CreateIntCast(GetValue(ast), GetLLVMType(tonumtype),
-                                                      exprnumtype->GetNumberClass() == Ides::Types::NumberType::N_SINT);
+                        else {
+                            ret = builder->CreateIntCast(GetValue(ast), GetLLVMType(tonumtype),
+                                                         exprnumtype->GetNumberClass() == Ides::Types::NumberType::N_SINT);
+                        }
+                        break;
                         
                     case Ides::Types::NumberType::N_FLOAT:
                         if (tonumtype->GetNumberClass() == Ides::Types::NumberType::N_FLOAT) {
-                            return builder->CreateFPCast(GetValue(ast), GetLLVMType(tonumtype));
+                            ret = builder->CreateFPCast(GetValue(ast), GetLLVMType(tonumtype));
                         }
                         else if (tonumtype->IsSigned()) {
-                            return builder->CreateFPToSI(GetValue(ast), GetLLVMType(tonumtype));
+                            ret = builder->CreateFPToSI(GetValue(ast), GetLLVMType(tonumtype));
                         }
                         else {
-                            return builder->CreateFPToUI(GetValue(ast), GetLLVMType(tonumtype));
+                            ret = builder->CreateFPToUI(GetValue(ast), GetLLVMType(tonumtype));
                         }
+                        break;
                 }
             }
             else if (toType->IsPtrType()) {
@@ -128,14 +182,31 @@ namespace CodeGen {
                 return builder->CreatePtrToInt(GetValue(ast), GetLLVMType(toType));
             }
         }
-        throw detail::CodeGenError(*diag, NO_EXPLICIT_CAST, ast->exprloc) << exprtype->ToString() << toType->ToString();
+        
+        if (ret == NULL) {
+            throw detail::CodeGenError(*diag, NO_EXPLICIT_CAST, ast->exprloc) << exprtype->ToString() << toType->ToString();
+        }
+        
+        if (llvm::isa<llvm::Instruction>(ret) && dibuilder != NULL) {
+            llvm::cast<llvm::Instruction>(ret)->setDebugLoc(this->GetDebugLoc(ast));
+        }
+        return ret;
     }
     
     void CodeGen::Visit(Ides::AST::CompilationUnit* ast) {
         Ides::AST::ASTContext::DeclScope typescope(actx, ast);
         
+        DIGenerator::DebugScope dbgscope;
+        this->fid = ast->GetFile();
+        if (dibuilder) {
+            const clang::FileEntry* fe = sman->getFileEntryForID(this->fid);
+            dibuilder->createCompileUnit(llvm::dwarf::DW_LANG_C, fe->getName(), fe->getDir()->getName(), "idesc", false, "", 0);
+            diFile = dibuilder->createFile(fe->getName(), fe->getDir()->getName());
+            dbgscope.SetScope(dibuilder, diFile);
+        }
+        
         for (auto i = ast->begin(); i != ast->end(); ++i) {
-            i->second->Accept(this);
+            this->GetDecl(i->second);
         }
         
         auto initializerStruct = llvm::StructType::get(llvm::Type::getInt32Ty(lctx), llvm::FunctionType::get(llvm::Type::getVoidTy(lctx), false)->getPointerTo(), NULL);

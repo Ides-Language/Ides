@@ -76,6 +76,16 @@ namespace AST {
         Expression* initval;
     };
     
+    class ArgumentDeclaration : public VariableDeclaration {
+    public:
+        ArgumentDeclaration(VariableDeclaration::VarType vartype, Token* name, Type* type) : VariableDeclaration(vartype, name, type) {}
+        ArgumentDeclaration(VariableDeclaration::VarType vartype, Token* name, Expression* initval) : VariableDeclaration(vartype, name, initval) {}
+        ArgumentDeclaration(VariableDeclaration::VarType vartype, Token* name, Type* type, Expression* initval) : VariableDeclaration(vartype, name, type, initval) {}
+        
+        virtual void Accept(Visitor* v);
+        int argNum;
+    };
+    
     class GlobalVariableDeclaration : public VariableDeclaration {
     public:
         GlobalVariableDeclaration(VariableDeclaration::VarType vartype, Token* name, Type* type) : VariableDeclaration(vartype, name, type) {}
@@ -86,15 +96,29 @@ namespace AST {
         
     };
     
+    class FieldDeclaration : public VariableDeclaration {
+    public:
+        FieldDeclaration(VariableDeclaration::VarType vartype, Token* name, Type* type) : VariableDeclaration(vartype, name, type) {}
+        FieldDeclaration(VariableDeclaration::VarType vartype, Token* name, Expression* initval) : VariableDeclaration(vartype, name, initval) {}
+        FieldDeclaration(VariableDeclaration::VarType vartype, Token* name, Type* type, Expression* initval) : VariableDeclaration(vartype, name, type, initval) {}
+        
+        virtual void Accept(Visitor* v);
+    };
+    
     typedef std::list<VariableDeclaration*> VariableDeclarationList;
+    typedef std::list<ArgumentDeclaration*> ArgumentDeclarationList;
     
     class FunctionDeclaration : public ValueDeclaration, public HierarchicalConcreteDeclarationContext {
     public:
-        FunctionDeclaration(Token* name, VariableDeclarationList* a, Type* rettype) : ValueDeclaration(name),
+        FunctionDeclaration(Token* name, ArgumentDeclarationList* a, Type* rettype) : ValueDeclaration(name),
             val(NULL), body(NULL), functype(NULL), returntype(rettype), evaluatingtype(false)
             {
                 if (a != NULL) {
-                    std::copy(a->begin(), a->end(), std::back_inserter(this->args));
+                    int arg = 0;
+                    for (auto i = a->begin(); i != a->end(); ++i) {
+                        this->args.push_back(*i);
+                        (*i)->argNum = arg++;
+                    }
                     delete a;
                 }
             }
@@ -103,7 +127,9 @@ namespace AST {
         const Ides::Types::Type* GetReturnType(ASTContext& ctx);
         virtual const Ides::Types::Type* GetType(ASTContext& ctx);
         
-        const VariableDeclarationList& GetArgs() const { return args; }
+        const ArgumentDeclarationList& GetArgs() const { return args; }
+        
+        const Ides::String GetMangledName() const { return this->GetName(); }
         
         bool isVarArgs;
         Expression* val;
@@ -111,7 +137,7 @@ namespace AST {
     private:
         const Ides::Types::FunctionType* functype;
         
-        VariableDeclarationList args;
+        ArgumentDeclarationList args;
         
         Type* returntype;
         bool evaluatingtype;
@@ -146,20 +172,6 @@ namespace AST {
         }
         
         DeclarationList members;
-    };
-    
-    class FieldDeclaration : public VariableDeclaration {
-    public:
-        FieldDeclaration(VarType vartype, Token* name, Type* type) :
-            VariableDeclaration(vartype, name, type) {}
-        
-        FieldDeclaration(VarType vartype, Token* name, Expression* initval) :
-            VariableDeclaration(vartype, name, initval) {}
-        
-        FieldDeclaration(VarType vartype, Token* name, Type* type, Expression* initval) :
-            VariableDeclaration(vartype, name, initval) {}
-        
-        virtual void Accept(Visitor* v);
     };
     
     class Namespace : public NamedDeclaration, public DeclarationContext {

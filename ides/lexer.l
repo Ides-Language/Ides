@@ -2,6 +2,7 @@
     #include <string>
     #include <sstream>
     #include <ides/Parsing/ParserCommon.h>
+    #include <iostream>
     
     #include <parser.hpp>
     

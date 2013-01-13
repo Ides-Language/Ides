@@ -13,7 +13,8 @@
 
 #include <string>
 #include <cassert>
-#include <llvm/Support/IRBuilder.h>
+#include <llvm/IRBuilder.h>
+#include <llvm/DIBuilder.h>
 #include <llvm/Value.h>
 #include <llvm/Type.h>
 #include <llvm/Module.h>

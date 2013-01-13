@@ -24,6 +24,9 @@
 #include <ides/Diagnostics/Diagnostics.h>
 
 #include <ides/CodeGen/LLVMTypeVisitor.h>
+#include <ides/CodeGen/DIGen.h>
+#include <llvm/Support/Debug.h>
+#include <llvm/Support/DebugLoc.h>
 
 namespace Ides {
     
@@ -52,7 +55,12 @@ namespace CodeGen {
     class CodeGen : public Ides::AST::Visitor {
         friend struct FSM;
     public:
-        CodeGen(llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diags, llvm::LLVMContext& lctx, Ides::AST::ASTContext& actx);
+        CodeGen(llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diags,
+                llvm::LLVMContext& lctx,
+                Ides::AST::ASTContext& actx,
+                clang::FileManager* fman,
+                clang::SourceManager* sman);
+        
         ~CodeGen();
         
         void Compile(Ides::AST::CompilationUnit* ast);
@@ -76,6 +84,7 @@ namespace CodeGen {
         virtual void Visit(Ides::AST::FunctionDeclaration* ast);
         virtual void Visit(Ides::AST::VariableDeclaration* ast);
         virtual void Visit(Ides::AST::GlobalVariableDeclaration* ast);
+        virtual void Visit(Ides::AST::ArgumentDeclaration* ast);
         virtual void Visit(Ides::AST::StructDeclaration* ast);
         
         virtual void Visit(Ides::AST::AddressOfExpression* ast);
@@ -129,17 +138,51 @@ namespace CodeGen {
         virtual void Visit(Ides::AST::BinaryExpression<OP_GE>* ast);
         
     private:
+        clang::FileManager* fman;
+        clang::SourceManager* sman;
+        
+        class DeclarationGuard {
+        public:
+            DeclarationGuard(bool& decl, bool newVal) : declStatus(decl) {
+                oldVal = declStatus;
+                declStatus = newVal;
+            }
+            
+            ~DeclarationGuard() {
+                declStatus = oldVal;
+            }
+        private:
+            bool& declStatus;
+            bool oldVal;
+        };
+        
+        enum StaticInitializerWeight {
+            WEIGHT_EXPRESSION_VAR = 20000000,
+            WEIGHT_CLASS_STATIC   = 40000000
+        };
+        
+        int GetInitializerWeight(StaticInitializerWeight w) {
+            return w + staticInitializerSequence++;
+        }
+        int staticInitializerSequence;
         
         llvm::Value* GetPtr(Ides::AST::Expression* ast);
+        llvm::Value* GetValue(Ides::AST::Statement* ast);
         llvm::Value* GetValue(Ides::AST::Expression* ast);
-        
         llvm::Value* GetValue(Ides::AST::Expression* ast, const Ides::Types::Type* toType);
+        llvm::Value* GetDecl(Ides::AST::Declaration* ast);
         
         llvm::Value* Cast(Ides::AST::Expression* ast, const Ides::Types::Type* toType);
         
         llvm::Type* GetLLVMType(const Ides::Types::Type* ty);
         
-        llvm::Function* GetEvaluatingLLVMFunction() { return this->functions[this->currentFunctions.top()]; }
+        llvm::DebugLoc GetDebugLoc(Ides::AST::AST* ast);
+        
+        llvm::Function* GetEvaluatingLLVMFunction() { return static_cast<llvm::Function*>(this->values[this->currentFunctions.top()]); }
+        
+        bool IsEvaluatingDecl() const { return this->isDeclaration; }
+        
+        bool isDeclaration;
         
         llvm::LLVMContext& lctx;
         Ides::AST::ASTContext& actx;
@@ -148,18 +191,19 @@ namespace CodeGen {
         
         llvm::IRBuilder<>* builder;
         llvm::Module* module;
+        DIGenerator* dibuilder;
         
-        boost::unordered_map<Ides::AST::FunctionDeclaration*, llvm::Function*> functions;
-        boost::unordered_map<Ides::AST::VariableDeclaration*, llvm::Value*> variables;
-        boost::unordered_map<Ides::AST::GlobalVariableDeclaration*, llvm::GlobalVariable*> globalVariables;
+        boost::unordered_map<Ides::AST::AST*, llvm::Value*> values;
         std::vector<std::pair<int32_t, llvm::Function*> > globalInitializers;
         
         std::stack<Ides::AST::FunctionDeclaration*> currentFunctions;
         
-        
         llvm::Value* last;
+        llvm::MDNode* diFile;
+        clang::FileID fid;
         
         llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag;
+        
     };
     
 }

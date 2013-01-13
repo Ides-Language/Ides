@@ -44,34 +44,34 @@ namespace Types {
     
     class TypeVisitor {
     public:
-        virtual void Visit(const Ides::Types::VoidType* ty) = 0;
-        virtual void Visit(const Ides::Types::UnitType* ty) = 0;
+        virtual void Visit(const Ides::Types::VoidType* ty) { }
+        virtual void Visit(const Ides::Types::UnitType* ty) { }
         
-        virtual void Visit(const Ides::Types::PointerType* ty) = 0;
-        virtual void Visit(const Ides::Types::FunctionType* ty) = 0;
-        virtual void Visit(const Ides::Types::OverloadedFunctionType* ty) = 0;
+        virtual void Visit(const Ides::Types::PointerType* ty) { }
+        virtual void Visit(const Ides::Types::FunctionType* ty) { }
+        virtual void Visit(const Ides::Types::OverloadedFunctionType* ty) { }
         
-        virtual void Visit(const Ides::Types::StructType* ty) = 0;
-        virtual void Visit(const Ides::Types::ClassType* ty) = 0;
-        virtual void Visit(const Ides::Types::ReferenceType* ty) = 0;
+        virtual void Visit(const Ides::Types::StructType* ty) { }
+        virtual void Visit(const Ides::Types::ClassType* ty) { }
+        virtual void Visit(const Ides::Types::ReferenceType* ty) { }
         
-        virtual void Visit(const Ides::Types::Integer1Type* ty) = 0;
-        virtual void Visit(const Ides::Types::Integer8Type* ty) = 0;
-        virtual void Visit(const Ides::Types::UInteger8Type* ty) = 0;
-        virtual void Visit(const Ides::Types::Integer16Type* ty) = 0;
-        virtual void Visit(const Ides::Types::UInteger16Type* ty) = 0;
-        virtual void Visit(const Ides::Types::Integer32Type* ty) = 0;
-        virtual void Visit(const Ides::Types::UInteger32Type* ty) = 0;
-        virtual void Visit(const Ides::Types::Integer64Type* ty) = 0;
-        virtual void Visit(const Ides::Types::UInteger64Type* ty) = 0;
+        virtual void Visit(const Ides::Types::Integer1Type* ty) { }
+        virtual void Visit(const Ides::Types::Integer8Type* ty) { }
+        virtual void Visit(const Ides::Types::UInteger8Type* ty) { }
+        virtual void Visit(const Ides::Types::Integer16Type* ty) { }
+        virtual void Visit(const Ides::Types::UInteger16Type* ty) { }
+        virtual void Visit(const Ides::Types::Integer32Type* ty) { }
+        virtual void Visit(const Ides::Types::UInteger32Type* ty) { }
+        virtual void Visit(const Ides::Types::Integer64Type* ty) { }
+        virtual void Visit(const Ides::Types::UInteger64Type* ty) { }
         
-        virtual void Visit(const Ides::Types::Float32Type* ty) = 0;
-        virtual void Visit(const Ides::Types::Float64Type* ty) = 0;
+        virtual void Visit(const Ides::Types::Float32Type* ty) { }
+        virtual void Visit(const Ides::Types::Float64Type* ty) { }
         
-        virtual void Visit(const Ides::Types::IntegerLiteralType<8>* ty) = 0;
-        virtual void Visit(const Ides::Types::IntegerLiteralType<16>* ty) = 0;
-        virtual void Visit(const Ides::Types::IntegerLiteralType<32>* ty) = 0;
-        virtual void Visit(const Ides::Types::IntegerLiteralType<64>* ty) = 0;
+        virtual void Visit(const Ides::Types::IntegerLiteralType<8>* ty) { }
+        virtual void Visit(const Ides::Types::IntegerLiteralType<16>* ty) { }
+        virtual void Visit(const Ides::Types::IntegerLiteralType<32>* ty) { }
+        virtual void Visit(const Ides::Types::IntegerLiteralType<64>* ty) { }
         
     };
     

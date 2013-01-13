@@ -52,6 +52,9 @@ namespace Types {
         virtual bool IsIntegerType() const { return false; }
         virtual bool IsFloatType() const { return false; }
         
+        virtual unsigned int GetAlignment() const { return 1; }
+        virtual uint64_t GetSize() const = 0;
+        
         
         virtual const Ides::String ToString() const { return type_name; }
         
@@ -73,6 +76,8 @@ namespace Types {
         virtual bool IsSubtypeOf(const Type* other) const {
             return false; // VoidType is the universal subtype
         }
+        
+        virtual uint64_t GetSize() const { return 0; }
     };
     
     class UnitType : public Type, public Ides::Util::Singleton<UnitType> {
@@ -87,6 +92,8 @@ namespace Types {
         virtual bool IsSubtypeOf(const Type* other) const {
             return true; // Unit is a subtype of all other types.
         }
+        
+        virtual uint64_t GetSize() const { return 0; }
         
     };
     
@@ -113,6 +120,8 @@ namespace Types {
         typedef boost::unordered_set<FunctionType*> FunctionTypeSet;
         static const FunctionType* Get(const Ides::Types::Type* retType, const std::vector<const Ides::Types::Type*>& argTypes, bool isVarArgs = false);
         
+        virtual uint64_t GetSize() const { return 64; }
+        
         virtual const Ides::String ToString() const;
 
         const Ides::Types::Type* retType;
@@ -128,6 +137,8 @@ namespace Types {
         OverloadedFunctionType() : Type("overloaded fn()", VoidType::GetSingletonPtr()) { }
         virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
         
+        virtual uint64_t GetSize() const { return 0; }
+        
     };
     
     class PointerType : public Type {
@@ -141,6 +152,8 @@ namespace Types {
         const Ides::Types::Type* GetTargetType() const { return this->targetType; }
         
         virtual bool IsPtrType() const { return true; }
+        virtual uint64_t GetSize() const { return 64; }
+        virtual unsigned int GetAlignment() const { return GetSize(); }
     private:
         const Ides::Types::Type* targetType;
         static PointerTypeMap types;
@@ -159,6 +172,14 @@ namespace Types {
         
         const Ides::Types::Type* GetMemberType(Ides::StringRef str) const;
         int GetMemberIndex(Ides::StringRef str) const;
+        
+        virtual uint64_t GetSize() const {
+            uint64_t size = 0;
+            for (auto i = type_members.begin(); i != type_members.end(); ++i) {
+                size += i->second->GetSize();
+            }
+            return size;
+        }
         
         void SetMembers(ParseContext& ctx, const std::vector<std::pair<Ides::String, const Type*> >& members);
         const std::vector<std::pair<Ides::String, const Type*> >& GetMembers() const { return type_members; }
@@ -204,9 +225,9 @@ namespace Types {
         };
         
         virtual NumberClass GetNumberClass() const = 0;
-        virtual uint8_t GetSize() const = 0;
         
         bool IsSigned() const { return this->GetNumberClass() == N_SINT; }
+        virtual unsigned int GetAlignment() const { return GetSize(); }
     private:
         boost::unordered_map<Ides::String, NumericOperator> operators;
     };
@@ -219,7 +240,7 @@ namespace Types {
         virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
         
         virtual NumberClass GetNumberClass() const { return NumberType::N_SINT; }
-        virtual uint8_t GetSize() const { return size; }
+        virtual uint64_t GetSize() const { return size; }
         virtual bool IsIntegerType() const { return true; }
         virtual bool IsSigned() const { return false; }
         virtual bool HasImplicitConversionTo(const Type* other) const {
@@ -237,7 +258,7 @@ namespace Types {
         Integer##size##Type() : NumberType("int" #size, VoidType::GetSingletonPtr()) { } \
         ~Integer##size##Type() { } \
         virtual NumberType::NumberClass GetNumberClass() const { return NumberType::N_SINT; } \
-        virtual uint8_t GetSize() const { return size; } \
+        virtual uint64_t GetSize() const { return size; } \
         virtual bool HasImplicitConversionTo(const Type* other) const; \
         virtual bool IsIntegerType() const { return true; } \
     }
@@ -249,7 +270,7 @@ namespace Types {
         UInteger##size##Type() : NumberType("uint" #size, VoidType::GetSingletonPtr()) { } \
         ~UInteger##size##Type() { } \
         virtual NumberType::NumberClass GetNumberClass() const { return NumberType::N_UINT; } \
-        virtual uint8_t GetSize() const { return size; } \
+        virtual uint64_t GetSize() const { return size; } \
         virtual bool HasImplicitConversionTo(const Type* other) const; \
         virtual bool IsIntegerType() const { return true; } \
     }
@@ -271,7 +292,7 @@ namespace Types {
         virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
         
         virtual NumberType::NumberClass GetNumberClass() const { return NumberType::N_FLOAT; }
-        virtual uint8_t GetSize() const { return 32; }
+        virtual uint64_t GetSize() const { return 32; }
         virtual bool HasImplicitConversionTo(const Type* other) const;
         virtual bool IsFloatType() const { return true; }
     };
@@ -283,7 +304,7 @@ namespace Types {
         virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
         
         virtual NumberType::NumberClass GetNumberClass() const { return NumberType::N_FLOAT; }
-        virtual uint8_t GetSize() const { return 64; }
+        virtual uint64_t GetSize() const { return 64; }
         virtual bool HasImplicitConversionTo(const Type* other) const;
         virtual bool IsFloatType() const { return true; }
     };

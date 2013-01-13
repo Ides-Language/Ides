@@ -164,6 +164,11 @@ namespace AST {
     class CompilationUnit : public AST, public ConcreteDeclarationContext {
     public:
         virtual void Accept(Visitor* v);
+        
+        void SetFile(clang::FileID f) { this->file = f; }
+        clang::FileID GetFile() const { return this->file; }
+    private:
+        clang::FileID file;
     };
     
 } // namespace AST

@@ -11,6 +11,7 @@
 #include <boost/filesystem.hpp>
 
 #include <ides/Parsing/ParseContext.h>
+#include <ides/CodeGen/CodeGen.h>
 
 namespace Ides {
 namespace Project {
@@ -37,6 +38,12 @@ namespace Project {
     Ides::AST::AST* Project::ParseFile(llvm::StringRef srcfile) {
         Ides::Parsing::ParseContext ctx(diag, *sman, fman->getFile(srcfile));
         return ctx.Parse();
+    }
+    
+    llvm::Module* Project::Compile(Ides::AST::CompilationUnit* cu) {
+        Ides::CodeGen::CodeGen compiler(diag, llvm::getGlobalContext(), actx, fman, sman);
+        compiler.Compile(cu);
+        return compiler.GetModule();
     }
     
 }

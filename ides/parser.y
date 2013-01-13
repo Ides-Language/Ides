@@ -37,6 +37,7 @@
     Ides::AST::ExpressionList* expr_list;
     Ides::AST::DeclarationList* decl_list;
     Ides::AST::VariableDeclarationList* var_decl_list;
+    Ides::AST::ArgumentDeclarationList* arg_decl_list;
     Ides::AST::TypeList* type_list;
     
     Ides::AST::CompilationUnit* ast_prog;
@@ -109,10 +110,9 @@
 //%type <ast_list> dictionary_expression dictionary_val_list array_expression
 %type <expr_list> arg_val_list
 %type <decl_list> member_decl_list
-%type <var_decl_list> arg_decl_list
+%type <arg_decl_list> arg_decl_list
 
-%type <var_decl> global_var_decl global_val_decl
-%type <var_decl> var_decl val_decl arg_decl
+%type <var_decl> var_decl val_decl global_var_decl global_val_decl arg_var_decl arg_val_decl arg_decl
 %type <ast_type> var_type
 %type <type_list> var_type_list
 
@@ -155,8 +155,8 @@ program_decl : fn_def
              | struct_def
 ;
 
-program_decl_list : program_decl { $$ = new Ides::AST::CompilationUnit(); $$->AddMember($1->GetName(), $1); }
-                  | program_decl_list program_decl { $$ = $1; $$->AddMember($2->GetName(), $2); }
+program_decl_list : program_decl { $$ = new Ides::AST::CompilationUnit(); $$->AddMember($1->GetName(), $1); SET_EXPRLOC($$, @$); }
+                  | program_decl_list program_decl { $$ = $1; $$->AddMember($2->GetName(), $2); SET_EXPRLOC($$, @$); }
 ;
 
 primary_expression : TIDENTIFIER { $$ = new Ides::AST::IdentifierExpression($1); SET_EXPRLOC($$, @$); }
@@ -300,13 +300,23 @@ global_val_decl : KW_VAL TIDENTIFIER OP_ASSIGN expression { $$ = new Ides::AST::
                 | KW_VAL TIDENTIFIER ':' var_type OP_ASSIGN expression { $$ = new Ides::AST::GlobalVariableDeclaration(Ides::AST::VariableDeclaration::DECL_VAL, $2, $4, $6); SET_EXPRLOC($$, @$); }
 ;
 
-
-arg_decl : var_decl
-         | val_decl
+arg_var_decl : KW_VAR TIDENTIFIER OP_ASSIGN expression { $$ = new Ides::AST::ArgumentDeclaration(Ides::AST::VariableDeclaration::DECL_VAR, $2, $4); SET_EXPRLOC($$, @$); }
+             | KW_VAR TIDENTIFIER ':' var_type { $$ = new Ides::AST::ArgumentDeclaration(Ides::AST::VariableDeclaration::DECL_VAR, $2, $4); SET_EXPRLOC($$, @$); }
+             | KW_VAR TIDENTIFIER ':' var_type OP_ASSIGN expression { $$ = new Ides::AST::ArgumentDeclaration(Ides::AST::VariableDeclaration::DECL_VAR, $2, $4, $6); SET_EXPRLOC($$, @$); }
 ;
 
-arg_decl_list : arg_decl { $$ = new Ides::AST::VariableDeclarationList(); $$->push_back($1); }
-              | arg_decl_list ',' arg_decl { $$ = $1; $$->push_back($3); }
+arg_val_decl : KW_VAL TIDENTIFIER OP_ASSIGN expression { $$ = new Ides::AST::ArgumentDeclaration(Ides::AST::VariableDeclaration::DECL_VAL, $2, $4); SET_EXPRLOC($$, @$); }
+             | KW_VAL TIDENTIFIER ':' var_type { $$ = new Ides::AST::ArgumentDeclaration(Ides::AST::VariableDeclaration::DECL_VAL, $2, $4); SET_EXPRLOC($$, @$); }
+             | KW_VAL TIDENTIFIER ':' var_type OP_ASSIGN expression { $$ = new Ides::AST::ArgumentDeclaration(Ides::AST::VariableDeclaration::DECL_VAL, $2, $4, $6); SET_EXPRLOC($$, @$); }
+;
+
+
+arg_decl : arg_var_decl
+         | arg_val_decl
+;
+
+arg_decl_list : arg_decl { $$ = new Ides::AST::ArgumentDeclarationList(); $$->push_back((Ides::AST::ArgumentDeclaration*)$1); }
+              | arg_decl_list ',' arg_decl { $$ = $1; $$->push_back((Ides::AST::ArgumentDeclaration*)$3); }
 ;
 
 arg_val_list : expression { $$ = new Ides::AST::ExpressionList(); $$->push_back($1); }

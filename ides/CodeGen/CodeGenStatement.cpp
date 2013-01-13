@@ -27,12 +27,11 @@ namespace CodeGen {
         
         bool blockReturn[2];
         
-        ast->condition->Accept(this);
-        builder->CreateCondBr(last, ifblock, elseblock);
+        builder->CreateCondBr(GetValue(ast->condition, Ides::Types::Integer1Type::GetSingletonPtr()), ifblock, elseblock);
         
         builder->SetInsertPoint(ifblock);
         try {
-            ast->iftrue->Accept(this);
+            GetValue(ast->iftrue);
             builder->CreateBr(resumeBlock);
             blockReturn[0] = false;
         } catch (const detail::UnitValueException&) {
@@ -43,7 +42,7 @@ namespace CodeGen {
         builder->SetInsertPoint(elseblock);
         if (ast->iffalse) {
             try {
-                ast->iffalse->Accept(this);
+                GetValue(ast->iffalse);
                 builder->CreateBr(resumeBlock);
                 blockReturn[1] = false;
             } catch (const detail::UnitValueException&) {
@@ -74,7 +73,7 @@ namespace CodeGen {
         
         builder->SetInsertPoint(whileblock);
         try {
-            ast->body->Accept(this);
+            GetValue(ast->body);
             builder->CreateCondBr(GetValue(ast->condition), whileblock, resumeblock);
         } catch (const detail::UnitValueException& ex) {
             // Block early-exits function.
@@ -89,13 +88,13 @@ namespace CodeGen {
         llvm::BasicBlock* forblock = llvm::BasicBlock::Create(lctx, "for", GetEvaluatingLLVMFunction());
         llvm::BasicBlock* resumeblock = llvm::BasicBlock::Create(lctx, "endfor", GetEvaluatingLLVMFunction());
         
-        if (ast->startexpr) ast->startexpr->Accept(this);
+        if (ast->startexpr) GetValue(ast->startexpr);
         
         builder->CreateCondBr(GetValue(ast->endexpr), forblock, resumeblock);
         
         builder->SetInsertPoint(forblock);
         try {
-            ast->body->Accept(this);
+            GetValue(ast->body);
             if (ast->eachexpr) GetValue(ast->eachexpr);
             builder->CreateCondBr(GetValue(ast->endexpr), forblock, resumeblock);
         } catch (const detail::UnitValueException& ex) {
@@ -108,6 +107,18 @@ namespace CodeGen {
     
     void CodeGen::Visit(Ides::AST::Block* ast) { SETTRACE("CodeGen::Visit(Block)")
         Ides::AST::ASTContext::DeclScope typescope(actx, ast);
+        DIGenerator::DebugScope dbgscope;
+        
+        if (this->dibuilder) {
+            auto offset = sman->getFileOffset(ast->exprloc.getBegin());
+            llvm::DILexicalBlock block = dibuilder->createLexicalBlock(llvm::DIDescriptor(dibuilder->GetCurrentScope()),
+                                                                       llvm::DIFile(dibuilder->getCU()),
+                                                                       sman->getLineNumber(sman->getMainFileID(), offset),
+                                                                       sman->getColumnNumber(sman->getMainFileID(), offset));
+            assert(block.Verify());
+            
+            dbgscope.SetScope(dibuilder, block);
+        }
         
         //ParseContext::ScopedLocalScope localScope(ctx);
         
@@ -116,7 +127,7 @@ namespace CodeGen {
         builder->SetInsertPoint(scope);
         for (auto i = ast->statements.begin(); i != ast->statements.end(); ++i) {
             try {
-                (*i)->Accept(this);
+                GetValue(*i);
             }
             catch (const detail::UnitValueException& ex) {
                 if (++i != ast->statements.end()) {

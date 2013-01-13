@@ -58,7 +58,6 @@ target_link_libraries(ides
 	clangFrontend
 	clangEdit
 	clangLex
-	xerces-c
 	)
 
 INSTALL(TARGETS ides

@@ -19,7 +19,8 @@ namespace AST {
    
     class ASTContext {
     public:
-        ASTContext(llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag) : diag(diag) { }
+        ASTContext(llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag) :
+            diag(diag) { }
         
         llvm::LLVMContext& GetContext() { return llvm::getGlobalContext(); }
         

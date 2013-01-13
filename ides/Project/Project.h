@@ -22,6 +22,8 @@ namespace Project {
         
         Ides::AST::AST* ParseFile(llvm::StringRef srcfile);
         
+        llvm::Module* Compile(Ides::AST::CompilationUnit* cu);
+        
     private:
         void InitManagers();
         

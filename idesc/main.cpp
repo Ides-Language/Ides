@@ -150,12 +150,9 @@ int main(int argc, const char* argv[])
             return 1;
         }
         
-        Ides::CodeGen::CodeGen compiler(diag, llvm::getGlobalContext(), actx);
-        compiler.Compile((Ides::AST::CompilationUnit*)ast);
+        modules.push_back(proj.Compile((Ides::AST::CompilationUnit*)ast));
         
         diag->getClient()->EndSourceFile();
-        
-        modules.push_back(compiler.GetModule());
     }
     
     llvm::Linker linker(output_name, output_name, llvm::getGlobalContext());
@@ -167,9 +164,11 @@ int main(int argc, const char* argv[])
     }
     llvm::Module* linkermod = linker.getModule();
     
+    linkermod->dump();
+    
     fs::ofstream outfile(output_file);
     llvm::raw_os_ostream llvm_outfile(outfile);
-    llvm::WriteBitcodeToFile(linker.getModule(), llvm_outfile);
+    llvm::WriteBitcodeToFile(linkermod, llvm_outfile);
     
 
 	return 0;
