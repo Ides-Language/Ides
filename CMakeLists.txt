@@ -9,7 +9,7 @@ set(IDES_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
 
 set(Boost_USE_STATIC_LIBS        ON)
-find_package(Boost 1.50.0 COMPONENTS system filesystem program_options regex serialization REQUIRED)
+find_package(Boost 1.48.0 COMPONENTS system filesystem program_options regex serialization REQUIRED)
 
 include_directories(${Boost_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARY_DIRS})
