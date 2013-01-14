@@ -7,6 +7,7 @@ set(CMAKE_PROJECT_NAME Ides)
 set(IDES_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
+set(CMAKE_PREFIX_PATH ${CMAKE_PROGRAM_PATH} "${CMAKE_SOURCE_DIR}/deps")
 
 set(Boost_USE_STATIC_LIBS        ON)
 find_package(Boost 1.48.0 COMPONENTS system filesystem program_options regex serialization REQUIRED)
@@ -32,7 +33,8 @@ set(CMAKE_CXX_FLAGS ${LLVM_CFLAGS})
 
 #add_definitions("-std=c++11" "-stdlib=libc++")
 
-include_directories(${CMAKE_SOURCE_DIR})
+include_directories(${CMAKE_SOURCE_DIR} "${CMAKE_SOURCE_DIR}/deps/include")
+link_directories("${CMAKE_SOURCE_DIR}/deps/lib")
 
 add_subdirectory(ides)
 add_subdirectory(idesc)

@@ -5,7 +5,7 @@ before_install:
 # Unfortunately this is currently the only decent way to get LLVM 3.2 on Ubuntu. :(
   - wget "http://llvm.org/releases/3.2/clang+llvm-3.2-x86-linux-ubuntu-12.04.tar.gz"
   - tar -xzf "clang+llvm-3.2-x86-linux-ubuntu-12.04.tar.gz"
-  - sudo rsync -r "clang+llvm-3.2-x86-linux-ubuntu-12.04/*" /
+  - mv "clang+llvm-3.2-x86-linux-ubuntu-12.04" deps
 
 notifications:
   email: false
