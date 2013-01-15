@@ -34,7 +34,7 @@ namespace CodeGen {
     }
     
     CodeGen::~CodeGen() {
-        delete dibuilder;
+        if (dibuilder) delete dibuilder;
         delete builder;
         //delete module;
     }
@@ -43,7 +43,7 @@ namespace CodeGen {
         try {
             this->module->setModuleIdentifier(sman->getFileEntryForID(ast->GetFile())->getName());
             ast->Accept(this);
-            dibuilder->finalize();
+            if (dibuilder) dibuilder->finalize();
             llvm::verifyModule(*this->module);
         }
         catch (const std::exception&) {
@@ -122,6 +122,7 @@ namespace CodeGen {
     
     
     llvm::DebugLoc CodeGen::GetDebugLoc(Ides::AST::AST* ast) {
+        assert(dibuilder != NULL);
         auto offset = sman->getFileOffset(ast->exprloc.getBegin());
         return llvm::DebugLoc::get(sman->getLineNumber(sman->getMainFileID(), offset),
                                    sman->getColumnNumber(sman->getMainFileID(), offset),
@@ -181,6 +182,9 @@ namespace CodeGen {
             if (toType->IsIntegerType()) {
                 return builder->CreatePtrToInt(GetValue(ast), GetLLVMType(toType));
             }
+            else if (toType->IsPtrType()) {
+                return builder->CreateBitCast(GetValue(ast), GetLLVMType(toType));
+            }
         }
         
         if (ret == NULL) {
@@ -206,7 +210,13 @@ namespace CodeGen {
         }
         
         for (auto i = ast->begin(); i != ast->end(); ++i) {
-            this->GetDecl(i->second);
+            if (dynamic_cast<Ides::AST::StructDeclaration*>(i->second))
+                this->GetDecl(i->second);
+        }
+        
+        for (auto i = ast->begin(); i != ast->end(); ++i) {
+            if (!dynamic_cast<Ides::AST::StructDeclaration*>(i->second))
+                this->GetDecl(i->second);
         }
         
         auto initializerStruct = llvm::StructType::get(llvm::Type::getInt32Ty(lctx), llvm::FunctionType::get(llvm::Type::getVoidTy(lctx), false)->getPointerTo(), NULL);

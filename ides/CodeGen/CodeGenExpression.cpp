@@ -61,7 +61,7 @@ namespace CodeGen {
             // Returning from function with return type.
             last = builder->CreateRet(GetValue(ast->GetRetVal(), funcrettype));
         }
-        llvm::cast<llvm::Instruction>(last)->setDebugLoc(GetDebugLoc(ast));
+        if (dibuilder) llvm::cast<llvm::Instruction>(last)->setDebugLoc(GetDebugLoc(ast));
         throw detail::UnitValueException();
     }
     

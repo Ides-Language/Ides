@@ -21,10 +21,14 @@ namespace Types {
     
     class PointerType;
     
-    class Type : public Ides::AST::ConcreteDeclarationContext {
+    class Type {
     public:
-        Type(Ides::StringRef type_name, Type* supertype) : type_name(type_name), supertype(supertype) {
-            typenames.GetOrCreateValue(type_name, this);
+        Type(Ides::StringRef type_name, Type* supertype) :
+            type_name(type_name), supertype(supertype),
+            static_members(supertype ? supertype->static_members : NULL),
+            instance_members(supertype ? supertype->instance_members : NULL)
+        {
+            typenames.insert(std::make_pair(type_name, this));
         }
         virtual void Accept(Ides::Types::TypeVisitor* visitor) const = 0;
         
@@ -58,11 +62,29 @@ namespace Types {
         
         virtual const Ides::String ToString() const { return type_name; }
         
+        Ides::AST::Declaration* GetStaticMember(Ides::AST::ASTContext& ctx, Ides::StringRef name) const {
+            return static_members.GetMember(ctx, name);
+        }
+        
+        Ides::AST::Declaration* GetInstanceMember(Ides::AST::ASTContext& ctx, Ides::StringRef name) const {
+            return instance_members.GetMember(ctx, name);
+        }
+        
+        void AddStaticMember(Ides::StringRef name, Ides::AST::Declaration* ast) {
+            static_members.AddMember(name, ast);
+        }
+        
+        void AddInstanceMember(Ides::StringRef name, Ides::AST::Declaration* ast) {
+            instance_members.AddMember(name, ast);
+        }
     protected:
         Ides::String type_name;
         const Type* supertype;
         
-        static llvm::StringMap<const Ides::Types::Type*> typenames;
+        static boost::unordered_map<Ides::String, const Ides::Types::Type*> typenames;
+        
+        Ides::AST::HierarchicalConcreteDeclarationContext static_members;
+        Ides::AST::HierarchicalConcreteDeclarationContext instance_members;
     };
     
     class VoidType : public Type, public Ides::Util::Singleton<VoidType> {
@@ -187,7 +209,7 @@ namespace Types {
         llvm::StructType* type;
         Ides::String name;
         std::vector<std::pair<Ides::String, const Type*> > type_members;
-        static llvm::StringMap<StructType*> types;
+        static boost::unordered_map<Ides::String, StructType*> types;
     };
     
     

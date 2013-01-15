@@ -53,11 +53,13 @@ add_library(ides STATIC
 
 target_link_libraries(ides
 	${Boost_LIBRARIES}
-	${LLVM_MODULE_LIBS}
-	clangBasic
 	clangFrontend
-	clangEdit
 	clangLex
+	clangEdit
+	clangBasic
+	${LLVM_MODULE_LIBS}
+	pthread
+	dl
 	)
 
 INSTALL(TARGETS ides

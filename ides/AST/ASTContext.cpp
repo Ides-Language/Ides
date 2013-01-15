@@ -16,11 +16,15 @@ namespace AST {
         HierarchicalConcreteDeclarationContext* hdecl = dynamic_cast<HierarchicalConcreteDeclarationContext*>(dctx);
         if (hdecl) {
             hdecl->SetParent(ctx.GetCurrentScope());
+            LOG("Hierarchical DeclScope Push");
+        } else {
+            LOG("DeclScope Push");
         }
         ctx.GetScopeStack().push(dctx);
     }
     
     ASTContext::DeclScope::~DeclScope() throw() {
+        LOG("DeclScope Pop");
         ctx.GetScopeStack().pop();
     }
     

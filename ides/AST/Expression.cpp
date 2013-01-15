@@ -19,7 +19,7 @@ namespace AST {
     
     const Ides::Types::Type* DotExpression::GetType(ASTContext& ctx) const {
         const Ides::Types::Type* lhstype = lhs->GetType(ctx);
-        Declaration* decl = lhstype->GetMember(ctx, **rhs);
+        Declaration* decl = (Ides::AST::Declaration*)lhstype->GetInstanceMember(ctx, **rhs);
         if (decl) return decl->GetType(ctx);
         throw Ides::AST::TypeEvalError(ctx.GetDiagnostics(), Ides::Diagnostics::UNKNOWN_MEMBER, rhs->exprloc) << lhstype->ToString() << **rhs;
     }

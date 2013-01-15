@@ -18,9 +18,41 @@
 namespace Ides {
 namespace AST {
     
+    class Attribute : public AST {
+    public:
+        Attribute(Token* tok, ExpressionList* args) : identifier(tok) {
+            std::copy(args->begin(), args->end(), std::back_inserter(this->args));
+        }
+        
+        Attribute(Token* tok) : identifier(tok) { }
+        virtual void Accept(Visitor* v);
+        
+        Ides::StringRef GetName() const { return **identifier; }
+        const ExpressionList& GetArgs() const { return args; }
+    private:
+        boost::scoped_ptr<Token> identifier;
+        ExpressionList args;
+    };
+    
+    typedef std::vector<Attribute*> AttributeList;
+    
     class Declaration : public AST {
     public:
         virtual const Ides::Types::Type* GetType(ASTContext& ctx) = 0;
+        
+        Attribute* GetAttribute(Ides::StringRef str) const {
+            auto i = attributes.find(str);
+            if (i == attributes.end()) return NULL;
+            return i->second;
+        }
+        
+        void SetAttributes(AttributeList* attrs) {
+            for (auto i = attrs->begin(); i != attrs->end(); ++i) {
+                attributes.insert(std::make_pair((*i)->GetName(), *i));
+            }
+        }
+    private:
+        boost::unordered_map<Ides::String, Attribute*> attributes;
     };
     
     typedef std::list<Declaration*> DeclarationList;
@@ -129,7 +161,7 @@ namespace AST {
         
         const ArgumentDeclarationList& GetArgs() const { return args; }
         
-        const Ides::String GetMangledName() const { return this->GetName(); }
+        Ides::String GetMangledName() const;
         
         bool isVarArgs;
         Expression* val;
@@ -158,7 +190,7 @@ namespace AST {
     
     class StructDeclaration : public TypeDeclaration {
     public:
-        StructDeclaration(Token* name, DeclarationList* members) : TypeDeclaration(name)
+        StructDeclaration(Token* name, DeclarationList* members) : TypeDeclaration(name), st(NULL)
         {
             if (members != NULL) {
                 std::copy(members->begin(), members->end(), std::back_inserter(this->members));
@@ -168,10 +200,23 @@ namespace AST {
         virtual void Accept(Visitor* v);
         
         virtual const Ides::Types::Type* GetType(ASTContext& ctx) {
-            return Ides::Types::StructType::GetOrCreate(ctx, this->GetName());
+            if (st != NULL) return st;
+            st = Ides::Types::StructType::GetOrCreate(ctx, this->GetName());
+            
+            std::vector<std::pair<Ides::String, const Ides::Types::Type*> > membertypes;
+            for (auto i = this->members.begin(); i != this->members.end(); ++i) {
+                Ides::AST::NamedDeclaration* decl = (Ides::AST::NamedDeclaration*)*i;
+                const Ides::Types::Type* memberType = decl->GetType(ctx);
+                membertypes.push_back(std::make_pair(decl->GetName(), memberType));
+                st->AddInstanceMember(decl->GetName(), decl);
+            }
+            st->SetMembers(ctx, membertypes);
+            return st;
         }
         
         DeclarationList members;
+    private:
+        Ides::Types::StructType* st;
     };
     
     class Namespace : public NamedDeclaration, public DeclarationContext {

@@ -62,6 +62,21 @@ namespace AST {
         return this->functype;
     }
     
+    Ides::String FunctionDeclaration::GetMangledName() const {
+        if (Attribute* nomangle = this->GetAttribute("NoMangle")) {
+            return this->GetName();
+        }
+        if (Attribute* mangle = this->GetAttribute("Mangle")) {
+            if (mangle->GetArgs().size() == 1) {
+                if (ConstantStringExpression* expr = dynamic_cast<ConstantStringExpression*>(mangle->GetArgs()[0])) {
+                    return expr->GetString();
+                }
+            }
+        }
+        return "Ides$" + this->GetName();
+    }
+    
+    void Attribute::Accept(Visitor* v) { v->Visit(this); }
     void ValueDeclaration::Accept(Visitor* v) { v->Visit(this); }
     void VariableDeclaration::Accept(Visitor* v) { v->Visit(this); }
     void GlobalVariableDeclaration::Accept(Visitor* v) { v->Visit(this); }

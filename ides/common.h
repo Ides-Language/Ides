@@ -13,6 +13,7 @@
 
 #include <string>
 #include <cassert>
+#include <iostream>
 #include <llvm/IRBuilder.h>
 #include <llvm/DIBuilder.h>
 #include <llvm/Value.h>
@@ -38,6 +39,11 @@
 
 #include <ides/Diagnostics/Diagnostics.h>
 
+//#define LOG(x) std::cerr << "Debug: " << x << std::endl;
+
+#ifndef LOG
+#define LOG(x)
+#endif
 
 #define xppstr(s) #s
 #define ppstr(s) xppstr(s)

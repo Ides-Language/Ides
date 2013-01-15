@@ -14,7 +14,11 @@ namespace AST {
     
     Declaration* ConcreteDeclarationContext::GetMember(ASTContext& ctx, Ides::StringRef name) const {
         auto i = this->members.find(name);
-        if (i != this->members.end()) return i->second;
+        if (i != this->members.end()) {
+            LOG(name << " found.");
+            return i->second;
+        }
+        LOG(name << " not found.");
         return NULL;
     }
     
@@ -32,13 +36,21 @@ namespace AST {
                 return;
             }
         }
+        LOG(name << " added to DeclarationContext.");
         members.insert(std::make_pair(name, decl));
     }
     
     Declaration* HierarchicalConcreteDeclarationContext::GetMember(ASTContext& ctx, Ides::StringRef name) const {
+        LOG("Hierarchical GetMember " << name);
         Ides::AST::Declaration* decl = ConcreteDeclarationContext::GetMember(ctx, name);
-        if (decl) return decl;
-        else if (this->parentContext) return this->parentContext->GetMember(ctx, name);
+        if (decl) {
+            return decl;
+        }
+        else if (this->parentContext) {
+            LOG(name << " lookup: Examining parent scope.");
+            return this->parentContext->GetMember(ctx, name);
+        }
+        LOG(name << " lookup failed.");
         return NULL;
     }
 }

@@ -32,8 +32,10 @@
     /***** AST Elements *****/
     Ides::AST::AST* ast_base;
     Ides::AST::Token* ast_ident;
+    Ides::AST::Attribute* ast_attr;
     
     Ides::AST::ASTList* ast_list;
+    Ides::AST::AttributeList* attr_list;
     Ides::AST::ExpressionList* expr_list;
     Ides::AST::DeclarationList* decl_list;
     Ides::AST::VariableDeclarationList* var_decl_list;
@@ -106,6 +108,8 @@
 %type <ast_prog> program program_decl_list
 %type <ast_named_decl> program_decl member_decl
 
+%type <ast_attr> attribute
+%type <attr_list> attribute_list
 %type <ast_fn> fn_decl fn_def extern_def
 //%type <ast_list> dictionary_expression dictionary_val_list array_expression
 %type <expr_list> arg_val_list
@@ -150,6 +154,8 @@ program : program_decl_list
 
 program_decl : fn_def
              | extern_def
+             | attribute_list global_var_decl ';' { $$ = $2; $$->SetAttributes($1); }
+             | attribute_list global_val_decl ';' { $$ = $2; $$->SetAttributes($1); }
              | global_var_decl ';'
              | global_val_decl ';'
              | struct_def
@@ -189,6 +195,7 @@ postfix_expression : primary_expression
                    | postfix_expression '(' arg_val_list ')' { $$ = Ides::AST::FunctionCallExpression::Create($1, $3); SET_EXPRLOC($$, @$); }
                    //| postfix_expression '[' arg_val_list ']' { $$ = new Ides::AST::BracketCall($1, $3); SET_EXPRLOC($$, @$); }
                    | postfix_expression '.' TIDENTIFIER { $$ = new Ides::AST::DotExpression($1, $3); SET_EXPRLOC($$, @$); }
+                   | postfix_expression OP_RARROW TIDENTIFIER { $$ = new Ides::AST::DotExpression(new Ides::AST::DereferenceExpression($1), $3); SET_EXPRLOC($$, @$); }
                    | postfix_expression OP_INC { $$ = NEW_POSTFIX("++", $1); SET_EXPRLOC($$, @$); }
                    | postfix_expression OP_DEC { $$ = NEW_POSTFIX("--", $1); SET_EXPRLOC($$, @$); }
 ;
@@ -280,6 +287,15 @@ var_type_list : var_type { $$ = new Ides::AST::TypeList(); $$->push_back($1); }
               | var_type_list ',' var_type { $$ = $1; $$->push_back($3); }
 ;
 
+attribute : '@' TIDENTIFIER { $$ = new Ides::AST::Attribute($2); SET_EXPRLOC($$, @$); }
+          | '@' TIDENTIFIER '(' ')' { $$ = new Ides::AST::Attribute($2); SET_EXPRLOC($$, @$); }
+          | '@' TIDENTIFIER '(' arg_val_list ')' { $$ = new Ides::AST::Attribute($2, $4); SET_EXPRLOC($$, @$); }
+;
+
+attribute_list : attribute { $$ = new Ides::AST::AttributeList(); $$->push_back($1); }
+               | attribute_list attribute { $$ = $1; $$->push_back($2); }
+;
+
 var_decl : KW_VAR TIDENTIFIER OP_ASSIGN expression { $$ = new Ides::AST::VariableDeclaration(Ides::AST::VariableDeclaration::DECL_VAR, $2, $4); SET_EXPRLOC($$, @$); }
          | KW_VAR TIDENTIFIER ':' var_type { $$ = new Ides::AST::VariableDeclaration(Ides::AST::VariableDeclaration::DECL_VAR, $2, $4); SET_EXPRLOC($$, @$); }
          | KW_VAR TIDENTIFIER ':' var_type OP_ASSIGN expression { $$ = new Ides::AST::VariableDeclaration(Ides::AST::VariableDeclaration::DECL_VAR, $2, $4, $6); SET_EXPRLOC($$, @$); }
@@ -311,7 +327,9 @@ arg_val_decl : KW_VAL TIDENTIFIER OP_ASSIGN expression { $$ = new Ides::AST::Arg
 ;
 
 
-arg_decl : arg_var_decl
+arg_decl : attribute_list arg_var_decl { $$ = $2; $$->SetAttributes($1); }
+         | attribute_list arg_val_decl { $$ = $2; $$->SetAttributes($1); }
+         | arg_var_decl
          | arg_val_decl
 ;
 
@@ -338,6 +356,14 @@ fn_decl : KW_DEF TIDENTIFIER '(' arg_decl_list ')' { $$ = new Ides::AST::Functio
 fn_def  : fn_decl '{' stmt_list '}' { $$ = $1; $$->body = $3; }
         | fn_decl '{' '}'
         | fn_decl OP_ASSIGN expression ';' { $$ = $1; $$->val = $3; }
+        
+        | attribute_list fn_decl '{' stmt_list '}' { $$ = $2; $$->body = $4; $$->SetAttributes($1); }
+        | attribute_list fn_decl '{' '}' { $$ = $2; $$->SetAttributes($1); }
+        | attribute_list fn_decl OP_ASSIGN expression ';' { $$ = $2; $$->val = $4; $$->SetAttributes($1); }
+;
+
+extern_def : attribute_list KW_EXTERN fn_decl ';' { $$ = $3; $$->SetAttributes($1); }
+           | KW_EXTERN fn_decl ';' { $$ = $2; }
 ;
 
 member_decl : fn_def
@@ -359,9 +385,6 @@ struct_def : KW_STRUCT TIDENTIFIER '{' member_decl_list '}' { $$ = new Ides::AST
 class_def : KW_CLASS TIDENTIFIER '{' member_decl_list '}' { $$ = new Ides::AST::ASTClass($4); SET_EXPRLOC($$, @$); }
           | KW_CLASS TIDENTIFIER '{' '}' { $$ = new Ides::AST::ASTClass(NULL); SET_EXPRLOC($$, @$); }
 ;*/
-
-extern_def : KW_EXTERN fn_decl ';' { $$ = $2; }
-;
 
 if_stmt : KW_IF '(' expression ')' stmt KW_ELSE stmt { $$ = new Ides::AST::IfStatement($3, $5, $7); SET_EXPRLOC($$, @$); }
         | KW_IF '(' expression ')' stmt { $$ = new Ides::AST::IfStatement($3, $5, NULL); SET_EXPRLOC($$, @$); }

@@ -38,7 +38,7 @@ namespace AST {
         
     };
     
-    typedef std::list<Expression*> ExpressionList;
+    typedef std::vector<Expression*> ExpressionList;
     
     class UnitTypeExpression : public Expression {
     public:

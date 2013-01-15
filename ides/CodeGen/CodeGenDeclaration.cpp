@@ -160,7 +160,7 @@ namespace CodeGen {
             values.insert(std::make_pair(ast, var));
             if (ast->initval != NULL) {
                 llvm::Instruction* instr = llvm::cast<llvm::Instruction>(builder->CreateStore(GetValue(ast->initval, varType), var));
-                instr->setDebugLoc(GetDebugLoc(ast));
+                if (dibuilder) instr->setDebugLoc(GetDebugLoc(ast));
             }
             
             actx.GetCurrentScope()->AddMember(ast->GetName(), ast);
@@ -186,17 +186,16 @@ namespace CodeGen {
     void CodeGen::Visit(Ides::AST::StructDeclaration* ast) { SETTRACE("CodeGen::Visit(StructDeclaration)")
         Ides::Types::StructType* st = Ides::Types::StructType::GetOrCreate(actx, ast->GetName());
         
-        std::vector<llvm::Type*> memberLLVMtypes;
-        std::vector<std::pair<Ides::String, const Ides::Types::Type*> > membertypes;
-        for (auto i = ast->members.begin(); i != ast->members.end(); ++i) {
-            Ides::AST::NamedDeclaration* decl = (Ides::AST::NamedDeclaration*)*i;
-            const Ides::Types::Type* memberType = decl->GetType(actx);
-            membertypes.push_back(std::make_pair(decl->GetName(), memberType));
-            st->AddMember(decl->GetName(), decl);
-            memberLLVMtypes.push_back(this->GetLLVMType(memberType));
+        llvm::StructType* llvmst = llvm::cast<llvm::StructType>(this->GetLLVMType(st));
+        if (llvmst->isOpaque()) {
+            std::vector<llvm::Type*> memberLLVMtypes;
+            for (auto i = ast->members.begin(); i != ast->members.end(); ++i) {
+                Ides::AST::NamedDeclaration* decl = (Ides::AST::NamedDeclaration*)*i;
+                const Ides::Types::Type* memberType = decl->GetType(actx);
+                memberLLVMtypes.push_back(this->GetLLVMType(memberType));
+            }
+            static_cast<llvm::StructType*>(this->GetLLVMType(st))->setBody(memberLLVMtypes, false);
         }
-        st->SetMembers(actx, membertypes);
-        static_cast<llvm::StructType*>(this->GetLLVMType(st))->setBody(memberLLVMtypes, false);
     }
     
     void CodeGen::Visit(Ides::AST::FunctionDeclaration* ast) { SETTRACE("CodeGen::Visit(FunctionDeclaration)")
@@ -221,6 +220,7 @@ namespace CodeGen {
         }
         
         if ((ast->val || ast->body) && this->IsEvaluatingDecl()) {
+            LOG(">>>>>>>> Building function " << ast->GetName());
             if (dibuilder) {
                 auto offset = sman->getFileOffset(ast->exprloc.getBegin());
                 
@@ -282,7 +282,7 @@ namespace CodeGen {
                 ai->setName(decl->GetName());
                 this->GetDecl(decl);
                 llvm::Instruction* instr = llvm::cast<llvm::Instruction>(builder->CreateStore(ai, last));
-                instr->setDebugLoc(GetDebugLoc(decl));
+                if (dibuilder) instr->setDebugLoc(GetDebugLoc(decl));
             }
             assert (i == ast->GetArgs().end() && ai == func->arg_end());
             
@@ -311,7 +311,7 @@ namespace CodeGen {
                     if (ast->GetReturnType(actx)->IsEquivalentType(Ides::Types::VoidType::GetSingletonPtr())) {
                         // Function didn't return, but it's void, so NBD.
                         llvm::Instruction* instr = (llvm::Instruction*)builder->CreateRetVoid();
-                        instr->setDebugLoc(GetDebugLoc(ast));
+                        if (dibuilder) instr->setDebugLoc(GetDebugLoc(ast));
                     } else {
                         func->removeFromParent();
                         throw detail::CodeGenError(*diag, FUNCTION_NO_RETURN, ast->exprloc);
@@ -321,6 +321,7 @@ namespace CodeGen {
                 }
             }
             
+            LOG("<<<<<<<< Done building function " << ast->GetName());
             llvm::verifyFunction(*func);
         }
         

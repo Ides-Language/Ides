@@ -3,8 +3,8 @@
 
 namespace Ides {
 namespace Types {
-    llvm::StringMap<const Ides::Types::Type*> Type::typenames;
-    llvm::StringMap<Ides::Types::StructType*> StructType::types;
+    boost::unordered_map<Ides::String, const Ides::Types::Type*> Type::typenames;
+    boost::unordered_map<Ides::String, StructType*> StructType::types;
 }
     
 namespace Util {
@@ -74,13 +74,14 @@ namespace Types {
     }
     
     StructType* StructType::GetOrCreate(ParseContext& ctx, Ides::StringRef name) {
-        auto i = StructType::types.GetOrCreateValue(name);
-        if (!i.getValue()) {
+        auto i = StructType::types.find(name);
+        if (i == StructType::types.end()) {
             StructType* t = new StructType(name);
             t->type = llvm::StructType::create(ctx.GetContext(), name);
-            i.setValue(t);
+            StructType::types.insert(std::make_pair(name, t));
+            return t;
         }
-        return i.getValue();
+        return i->second;
     }
     
     void StructType::SetMembers(ParseContext& ctx, const std::vector<std::pair<Ides::String, const Type*> >& members) {
