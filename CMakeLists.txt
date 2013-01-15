@@ -31,7 +31,9 @@ message(STATUS "LLVM Libraries: ${LLVM_MODULE_LIBS}")
 
 set(CMAKE_CXX_FLAGS ${LLVM_CFLAGS})
 
-#add_definitions("-std=c++11" "-stdlib=libc++")
+if (CMAKE_COMPILER_IS_GNUCC)
+	add_definitions("-std=c++0x")
+endif (CMAKE_COMPILER_IS_GNUCC)
 
 include_directories(${CMAKE_SOURCE_DIR} "${CMAKE_SOURCE_DIR}/deps/include")
 link_directories("${CMAKE_SOURCE_DIR}/deps/lib")
