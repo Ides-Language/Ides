@@ -5,27 +5,23 @@ add_executable(ides-headergen
 
 # Finally, we link the LLVM libraries to our executable:
 target_link_libraries(ides-headergen
-	clang
-	clangARCMigrate
-	clangAST
-	clangAnalysis
-	clangBasic
-	clangCodeGen
-	clangDriver
-	clangEdit
-	clangFrontend
 	clangFrontendTool
+	clangFrontend
+	clangSerialization
+	clangDriver
 	clangLex
 	clangParse
-	clangRewrite
 	clangSema
-	clangSerialization
-	clangStaticAnalyzerCheckers
-	clangStaticAnalyzerCore
-	clangStaticAnalyzerFrontend
 	clangTooling
+	clangAST
+	clangAnalysis
+	clangEdit
+	clangBasic
+	clang
 	${Boost_LIBRARIES}
 	${LLVM_MODULE_LIBS}
+	pthread
+	dl
 	)
 
 

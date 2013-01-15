@@ -40,7 +40,7 @@ link_directories("${CMAKE_SOURCE_DIR}/deps/lib")
 
 add_subdirectory(ides)
 add_subdirectory(idesc)
-add_subdirectory(ides-headergen)
+#add_subdirectory(ides-headergen)
 
 find_package(Doxygen)
 

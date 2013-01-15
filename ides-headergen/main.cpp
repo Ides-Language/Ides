@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include <boost/unordered_map.hpp>
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
