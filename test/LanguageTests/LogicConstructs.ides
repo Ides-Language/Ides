@@ -1,0 +1,24 @@
+/* [test]
+stdout=^0123443210$
+stderr=^$
+exit=0
+*/
+
+@NoMangle
+extern def printf(val str: int8*, ...) : int32;
+
+@NoMangle
+def main() : int32 {
+	var x = 0;
+	for (x = 0; x < 5; x = x + 1) {
+		printf(C"%d", x);
+	}
+
+	while (x > 0) {
+		printf(C"%d", x);
+		x = x - 1;
+	}
+	
+	return 0;
+}
+

@@ -25,7 +25,7 @@ def test(ic, lli, x):
 		m = cfgregex.search(src)
 		if m == None:
 			print "No test definition found in %s" % x
-			return False
+			return True
 		cfgfile = ConfigParser.SafeConfigParser()
 		cfgfile.readfp(StringIO.StringIO(m.group(1)))
 

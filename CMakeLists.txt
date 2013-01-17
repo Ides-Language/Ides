@@ -9,7 +9,7 @@ set(CMAKE_PROJECT_NAME Ides)
 set(IDES_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules")
-set(CMAKE_PREFIX_PATH ${CMAKE_PROGRAM_PATH} "${CMAKE_SOURCE_DIR}/deps")
+set(CMAKE_PREFIX_PATH ${CMAKE_PROGRAM_PATH} "${CMAKE_SOURCE_DIR}/deps" "${CMAKE_BINARY_DIR}")
 
 set(Boost_USE_STATIC_LIBS        ON)
 find_package(Boost 1.48.0 COMPONENTS system filesystem program_options regex serialization REQUIRED)

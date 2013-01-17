@@ -64,6 +64,7 @@ namespace Types {
                         break;
                     }
                 }
+                if (thisai != (*i)->argTypes.end() || wantai != argTypes.end()) found = false;
                 if (found && isVarArgs == (*i)->isVarArgs) return *i;
             }
         }
