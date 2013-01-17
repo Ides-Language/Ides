@@ -6,10 +6,7 @@ before_install:
   - wget "http://llvm.org/releases/3.2/clang+llvm-3.2-x86-linux-ubuntu-12.04.tar.gz"
   - tar -xzf "clang+llvm-3.2-x86-linux-ubuntu-12.04.tar.gz"
   - mv "clang+llvm-3.2-x86-linux-ubuntu-12.04" deps
-
-before_script:
-  - setenv CTEST_OUTPUT_ON_FAILURE 1
-  - setenv PATH "${PATH}:./deps/bin"
+  - sudo cp "deps/bin/*" "/usr/local/bin/"
 
 notifications:
   email: false
@@ -24,4 +21,4 @@ compiler:
   - clang
 
 script: cmake . && make && make test && sudo make install
-
+env: CTEST_OUTPUT_ON_FAILURE=1
