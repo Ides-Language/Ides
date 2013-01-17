@@ -8,8 +8,8 @@ before_install:
   - mv "clang+llvm-3.2-x86-linux-ubuntu-12.04" deps
 
 before_script:
-  - setenv CTEST_OUTPUT_ON_FAILURE=1
-  - setenv PATH="${PATH}:./deps/bin"
+  - setenv CTEST_OUTPUT_ON_FAILURE 1
+  - setenv PATH "${PATH}:./deps/bin"
 
 notifications:
   email: false
