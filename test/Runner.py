@@ -19,7 +19,7 @@ def cfg_default(cfgfile, section, option, default):
 		return cfgfile.get(section, option)
 	return default
 
-def test(ic, x):
+def test(ic, lli, x):
 	with file(os.path.expanduser(x)) as f:
 		src = f.read()
 		m = cfgregex.search(src)
@@ -65,7 +65,7 @@ def test(ic, x):
 			return True # We expected the compile to fail. Everything is OK.
 		
 
-		proc = subprocess.Popen(["lli", ilibfile], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+		proc = subprocess.Popen([lli, ilibfile], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 		data = proc.communicate()
 
 		if not re.match(stdout_re, data[0]):
@@ -82,10 +82,15 @@ def test(ic, x):
 		return success
 
 
+if len(sys.argv) != 4:
+	print "Usage: %s <idesc> <lli> <testfile.ides>" % sys.argv[0]
 
-srcfile = sys.argv[1]
-compiler = sys.argv[2]
-if test(srcfile, compiler) == False:
+compiler = sys.argv[1]
+interpreter = sys.argv[2]
+srcfile = sys.argv[3]
+
+
+if test(compiler, interpreter, srcfile) == False:
 	print "Test of %s failed." % srcfile
 	sys.exit(1)
 else:
