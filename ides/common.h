@@ -14,6 +14,9 @@
 #include <string>
 #include <cassert>
 #include <iostream>
+extern "C" {
+#include <stdint.h>
+}
 #include <llvm/IRBuilder.h>
 #include <llvm/DIBuilder.h>
 #include <llvm/Value.h>

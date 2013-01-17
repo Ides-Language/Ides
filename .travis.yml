@@ -19,5 +19,5 @@ compiler:
   - gcc
   - clang
 
-script: cmake . && make && sudo make install
+script: cmake . && make && make test && sudo make install
 

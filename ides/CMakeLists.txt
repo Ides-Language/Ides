@@ -19,14 +19,15 @@ foreach (DIR ${MODULES})
 		set(F "${CMAKE_CURRENT_SOURCE_DIR}/${DIR}")
 
 		source_group("" FILES ${F})
-
+		
 		get_filename_component(EXTENSION ${F} EXT)
-		if (${EXTENSION} STREQUAL ".h")
-			set(LIBIDES_HEADERS ${LIBIDES_HEADERS} ${F})
-			INSTALL(FILES ${F} DESTINATION "include/ides")
-		else()
-			set(LIBIDES_SOURCES ${LIBIDES_SOURCES} ${F})
-
+		if (${EXTENSION})
+			if (${EXTENSION} STREQUAL ".h")
+				set(LIBIDES_HEADERS ${LIBIDES_HEADERS} ${F})
+				INSTALL(FILES ${F} DESTINATION "include/ides")
+			else()
+				set(LIBIDES_SOURCES ${LIBIDES_SOURCES} ${F})
+			endif()
 		endif()
 	endif()
 endforeach(DIR ${MODULES})

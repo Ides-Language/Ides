@@ -1,0 +1,17 @@
+/* [test]
+
+exit = 100
+stdout = ^Hello, testworld!\n$
+
+*/
+
+@NoMangle
+extern def printf(val str: int8*, ...) : int32;
+
+@NoMangle
+def main() : int32 {
+	// A simple test, mostly to make sure the test runner is working.
+	printf(C"Hello, testworld!\n");
+	return 100;
+}
+

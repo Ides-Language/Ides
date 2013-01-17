@@ -41,7 +41,7 @@ int main(int argc, const char* argv[])
 	po::options_description genericdesc("Options");
 	genericdesc.add_options()
 		("help,h", "Show help message")
-		("output,o", po::value<fs::path>(), "Output path")
+    ("output,o", po::value<std::string>(), "Output path")
 		("interactive,i", "Run in interactive mode")
         ("name", po::value<std::string>()->default_value("Ides Module"), "Module name")
 		;
@@ -104,8 +104,8 @@ int main(int argc, const char* argv[])
     std::string output_name = args["name"].as<std::string>();
 
 	std::string output_file = output_name + ".ilib";
-	if (args.count("output-file")) {
-		output_file = args["output-file"].as<std::string>();
+	if (args.count("output")) {
+		output_file = args["output"].as<std::string>();
 	}
 
 	if (boost::filesystem::exists(output_file)) {
