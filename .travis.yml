@@ -19,7 +19,5 @@ compiler:
   - gcc
   - clang
 
-script: cmake . && make && make test && sudo make install
-
-env: CTEST_OUTPUT_ON_FAILURE=1 # Make CMake actually tell us what broke.
+script: CTEST_OUTPUT_ON_FAILURE=1 PATH="${PATH}:./deps/bin" cmake . && make && make test && sudo make install
 
