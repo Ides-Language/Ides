@@ -25,11 +25,6 @@ script:
   - cmake .
   - make
   - sudo make install
-  - ctest -D ContinuousConfigure -C Release
-  - ctest -D ContinuousBuild -C Release
-  - ctest -D ContinuousSubmit
-  - ctest -D ContinuousTest
-  - ctest -D ContinuousCoverage
-  - ctest -D ContinuousSubmit
-  - ctest -D ContinuousMemCheck
-  - ctest -D ContinuousSubmit
+
+after_success:
+  - ctest -V -D Continuous -C Release --output-on-failure .
