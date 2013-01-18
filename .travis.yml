@@ -21,9 +21,9 @@ compiler:
 
 env: CTEST_OUTPUT_ON_FAILURE=1
 
-script: cmake . && make && make install
+script: cmake . && make && sudo make install
 
-after_script:
+after_success:
   - ctest -D ContinuousStart
   - ctest -D ContinuousConfigure
   - ctest -D ContinuousBuild
