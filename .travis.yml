@@ -21,10 +21,10 @@ compiler:
 
 env: CTEST_OUTPUT_ON_FAILURE=1
 
-script: cmake . && make && sudo make install
-
-after_success:
-#  - ctest -D Continuous -C Release
+script:
+  - cmake .
+  - make
+  - sudo make install
   - ctest -D ContinuousConfigure -C Release
   - ctest -D ContinuousBuild -C Release
   - ctest -D ContinuousSubmit
