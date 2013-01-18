@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 project(ides)
 
-set(UPDATE_TYPE "None")
 include(CTest)
 
 set(IDES_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
