@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 project(ides)
 
-enable_testing()
+include(CTest)
 
 set(IDES_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 

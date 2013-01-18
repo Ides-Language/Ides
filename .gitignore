@@ -1,14 +1,6 @@
 build
 *.build
 
-*CMakeScripts
-CMakeFiles
-cmake_install.cmake
-CMakeCache.txt
-*/Debug
-*/Release
-*/RelWithDbgInfo
-
 *.xcodeproj
 docs
 deps/*
