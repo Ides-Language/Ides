@@ -24,12 +24,12 @@ env: CTEST_OUTPUT_ON_FAILURE=1
 script: cmake . && make && sudo make install
 
 after_success:
-  - ctest -D ContinuousStart
-  - ctest -D ContinuousConfigure
-  - ctest -D ContinuousBuild
-  - ctest -D ContinuousSubmit
-  - ctest -D ContinuousTest
-  - ctest -D ContinuousCoverage
-  - ctest -D ContinuousSubmit
-  - ctest -D ContinuousMemCheck
-  - ctest -D ContinuousSubmit
+  - ctest -D Continuous -C Release
+#  - ctest -D ContinuousConfigure
+#  - ctest -D ContinuousBuild
+#  - ctest -D ContinuousSubmit
+#  - ctest -D ContinuousTest
+#  - ctest -D ContinuousCoverage
+#  - ctest -D ContinuousSubmit
+#  - ctest -D ContinuousMemCheck
+#  - ctest -D ContinuousSubmit
