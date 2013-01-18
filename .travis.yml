@@ -19,6 +19,6 @@ compiler:
   - gcc
   - clang
 
-script: cmake . && make && make test && sudo make install
+script: ctest -v -C Release -D Continuous
 env: CTEST_OUTPUT_ON_FAILURE=1
 

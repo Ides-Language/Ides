@@ -227,8 +227,8 @@ namespace CodeGen {
         
         if (resultType->IsNumericType()) {
             auto nt = static_cast<const Ides::Types::NumberType*>(resultType);
-            llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
-            llvm::Value* rhsresult = Cast(ast->rhs.get(), resultType);
+            llvm::Value* lhsresult = GetValue(ast->lhs.get());
+            llvm::Value* rhsresult = GetValue(ast->rhs.get(), ast->lhs->GetType(actx));
             
             if (nt->IsIntegerType())
                 last = builder->CreateICmpEQ(lhsresult, rhsresult, "OP_EQ");
@@ -242,8 +242,8 @@ namespace CodeGen {
         
         if (resultType->IsNumericType()) {
             auto nt = static_cast<const Ides::Types::NumberType*>(resultType);
-            llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
-            llvm::Value* rhsresult = Cast(ast->rhs.get(), resultType);
+            llvm::Value* lhsresult = GetValue(ast->lhs.get());
+            llvm::Value* rhsresult = GetValue(ast->rhs.get(), ast->lhs->GetType(actx));
             
             if (nt->IsIntegerType())
                 last = builder->CreateICmpNE(lhsresult, rhsresult, "OP_NE");
@@ -257,8 +257,8 @@ namespace CodeGen {
         
         if (resultType->IsNumericType()) {
             auto nt = static_cast<const Ides::Types::NumberType*>(resultType);
-            llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
-            llvm::Value* rhsresult = Cast(ast->rhs.get(), resultType);
+            llvm::Value* lhsresult = GetValue(ast->lhs.get());
+            llvm::Value* rhsresult = GetValue(ast->rhs.get(), ast->lhs->GetType(actx));
             
             if (nt->IsIntegerType())
                 last = nt->IsSigned() ? builder->CreateICmpSLT(lhsresult, rhsresult, "OP_LT") : builder->CreateICmpULT(lhsresult, rhsresult, "OP_LT");
@@ -272,8 +272,8 @@ namespace CodeGen {
         
         if (resultType->IsNumericType()) {
             auto nt = static_cast<const Ides::Types::NumberType*>(resultType);
-            llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
-            llvm::Value* rhsresult = Cast(ast->rhs.get(), resultType);
+            llvm::Value* lhsresult = GetValue(ast->lhs.get());
+            llvm::Value* rhsresult = GetValue(ast->rhs.get(), ast->lhs->GetType(actx));
             
             if (nt->IsIntegerType())
                 last = nt->IsSigned() ? builder->CreateICmpSLE(lhsresult, rhsresult, "OP_LE") : builder->CreateICmpULE(lhsresult, rhsresult, "OP_LE");
@@ -287,8 +287,8 @@ namespace CodeGen {
         
         if (resultType->IsNumericType()) {
             auto nt = static_cast<const Ides::Types::NumberType*>(resultType);
-            llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
-            llvm::Value* rhsresult = Cast(ast->rhs.get(), resultType);
+            llvm::Value* lhsresult = GetValue(ast->lhs.get());
+            llvm::Value* rhsresult = GetValue(ast->rhs.get(), ast->lhs->GetType(actx));
             
             if (nt->IsIntegerType())
                 last = nt->IsSigned() ? builder->CreateICmpSGT(lhsresult, rhsresult, "OP_GT") : builder->CreateICmpUGT(lhsresult, rhsresult, "OP_GT");
@@ -302,8 +302,8 @@ namespace CodeGen {
         
         if (resultType->IsNumericType()) {
             auto nt = static_cast<const Ides::Types::NumberType*>(resultType);
-            llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
-            llvm::Value* rhsresult = Cast(ast->rhs.get(), resultType);
+            llvm::Value* lhsresult = GetValue(ast->lhs.get());
+            llvm::Value* rhsresult = GetValue(ast->rhs.get(), ast->lhs->GetType(actx));
             
             if (nt->IsIntegerType())
                 last = nt->IsSigned() ? builder->CreateICmpSGE(lhsresult, rhsresult, "OP_GE") : builder->CreateICmpUGE(lhsresult, rhsresult, "OP_GE");
