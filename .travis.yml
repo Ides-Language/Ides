@@ -27,4 +27,4 @@ script:
   - sudo make install
 
 after_success:
-  - ctest -V -D Continuous -C Release --output-on-failure .
+  - ctest -V -D Experimental -C Release --output-on-failure .
