@@ -10,12 +10,12 @@ extern def printf(val str: int8*, ...) : int32;
 @NoMangle
 def main() : int32 {
 	var x : int32 = 0;
-	for (x = 0; x < 5; x = x + 1)
+	for (x = 0; x < 5; x++)
 		printf(C"%d", x);
 
 	while (x > 0) {
 		printf(C"%d", x);
-		x = x - 1;
+		x--;
 	}
 	return x;
 }

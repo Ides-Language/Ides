@@ -12,9 +12,6 @@
 	}
     
     #define SET_EXPRLOC(x, loc) (x)->exprloc = (loc)
-    #define NEW_INFIX(op, lhs, rhs) new Ides::AST::InfixExpression(new Ides::AST::Token(op), lhs, rhs)
-    #define NEW_PREFIX(op, arg) new Ides::AST::UnaryExpression(Ides::AST::UnaryExpression::UNARY_PREFIX, new Ides::AST::Token(op), arg)
-    #define NEW_POSTFIX(op, arg) new Ides::AST::UnaryExpression(Ides::AST::UnaryExpression::UNARY_POSTFIX, new Ides::AST::Token(op), arg)
 %}
 
 %pure-parser
@@ -196,19 +193,19 @@ postfix_expression : primary_expression
                    //| postfix_expression '[' arg_val_list ']' { $$ = new Ides::AST::BracketCall($1, $3); SET_EXPRLOC($$, @$); }
                    | postfix_expression '.' TIDENTIFIER { $$ = new Ides::AST::DotExpression($1, $3); SET_EXPRLOC($$, @$); }
                    | postfix_expression OP_RARROW TIDENTIFIER { $$ = new Ides::AST::DotExpression(new Ides::AST::DereferenceExpression($1), $3); SET_EXPRLOC($$, @$); }
-                   | postfix_expression OP_INC { $$ = NEW_POSTFIX("++", $1); SET_EXPRLOC($$, @$); }
-                   | postfix_expression OP_DEC { $$ = NEW_POSTFIX("--", $1); SET_EXPRLOC($$, @$); }
+                   | postfix_expression OP_INC { $$ = new Ides::AST::UnaryExpression<OP_INC>(Ides::AST::UnaryExpression<OP_INC>::UNARY_POSTFIX, $1); SET_EXPRLOC($$, @$); }
+                   | postfix_expression OP_DEC { $$ = new Ides::AST::UnaryExpression<OP_DEC>(Ides::AST::UnaryExpression<OP_DEC>::UNARY_POSTFIX, $1); SET_EXPRLOC($$, @$); }
 ;
 
 prefix_expression : postfix_expression
                   | OP_STAR prefix_expression { $$ = new Ides::AST::DereferenceExpression($2); SET_EXPRLOC($$, @$); }
                   | OP_BAND prefix_expression { $$ = new Ides::AST::AddressOfExpression($2); SET_EXPRLOC($$, @$); }
                   
-                  | OP_NOT prefix_expression { $$ = NEW_PREFIX("!", $2); SET_EXPRLOC($$, @$); }
-                  | OP_BNOT prefix_expression { $$ = NEW_PREFIX("~", $2); SET_EXPRLOC($$, @$); }
-                  | OP_MINUS prefix_expression { $$ = NEW_PREFIX("-", $2); SET_EXPRLOC($$, @$); }
-                  | OP_INC prefix_expression { $$ = NEW_PREFIX("++", $2); SET_EXPRLOC($$, @$); }
-                  | OP_DEC prefix_expression { $$ = NEW_PREFIX("--", $2); SET_EXPRLOC($$, @$); }
+                  | OP_NOT prefix_expression { $$ = new Ides::AST::UnaryExpression<OP_NOT>(Ides::AST::UnaryExpression<OP_NOT>::UNARY_PREFIX, $2); SET_EXPRLOC($$, @$); }
+                  | OP_BNOT prefix_expression { $$ = new Ides::AST::UnaryExpression<OP_BNOT>(Ides::AST::UnaryExpression<OP_BNOT>::UNARY_PREFIX, $2); SET_EXPRLOC($$, @$); }
+                  | OP_MINUS prefix_expression { $$ = new Ides::AST::UnaryExpression<OP_MINUS>(Ides::AST::UnaryExpression<OP_MINUS>::UNARY_PREFIX, $2); SET_EXPRLOC($$, @$); }
+                  | OP_INC prefix_expression { $$ = new Ides::AST::UnaryExpression<OP_INC>(Ides::AST::UnaryExpression<OP_INC>::UNARY_PREFIX, $2); SET_EXPRLOC($$, @$); }
+                  | OP_DEC prefix_expression { $$ = new Ides::AST::UnaryExpression<OP_DEC>(Ides::AST::UnaryExpression<OP_DEC>::UNARY_PREFIX, $2); SET_EXPRLOC($$, @$); }
 ;
 
 infix_expression : prefix_expression

@@ -130,6 +130,33 @@ namespace CodeGen {
         last = Cast(ast->lhs.get(), ast->GetType(actx));
     }
     
+    void CodeGen::Visit(Ides::AST::UnaryExpression<OP_INC>* ast) {
+        const Ides::Types::Type* exprType = ast->GetType(actx);
+        llvm::Value* ptr = this->GetPtr(ast->arg.get());
+        llvm::Value* oldVal = builder->CreateLoad(ptr);
+        llvm::Value* newVal = builder->CreateAdd(oldVal, llvm::ConstantInt::get(GetLLVMType(exprType), 1));
+        builder->CreateStore(newVal, ptr);
+        
+        if (ast->type == Ides::AST::UnaryExpression<OP_INC>::UNARY_POSTFIX)
+            last = oldVal;
+        else
+            last = newVal;
+    
+    }
+    
+    void CodeGen::Visit(Ides::AST::UnaryExpression<OP_DEC>* ast) {
+        const Ides::Types::Type* exprType = ast->GetType(actx);
+        llvm::Value* ptr = this->GetPtr(ast->arg.get());
+        llvm::Value* oldVal = builder->CreateLoad(ptr);
+        llvm::Value* newVal = builder->CreateSub(oldVal, llvm::ConstantInt::get(GetLLVMType(exprType), 1));
+        builder->CreateStore(newVal, ptr);
+        
+        if (ast->type == Ides::AST::UnaryExpression<OP_DEC>::UNARY_POSTFIX)
+            last = oldVal;
+        else
+            last = newVal;
+    }
+    
 #define CREATE_BINARY_EXPRESSION(op, generator) \
     void CodeGen::Visit(Ides::AST::BinaryExpression<op>* ast) { \
         const Ides::Types::Type* resultType = ast->GetType(actx); \

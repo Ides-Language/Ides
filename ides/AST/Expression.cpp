@@ -45,7 +45,6 @@ namespace AST {
     void ReturnExpression::Accept(Visitor* v) { v->Visit(this); }
     void FunctionCallExpression::Accept(Visitor* v) { v->Visit(this); }
     void DotExpression::Accept(Visitor* v) { v->Visit(this); }
-    void UnaryExpression::Accept(Visitor* v) { v->Visit(this); }
     void AddressOfExpression::Accept(Visitor* v) { v->Visit(this); }
     void DereferenceExpression::Accept(Visitor* v) { v->Visit(this); }
     void InfixExpression::Accept(Visitor* v) { v->Visit(this); }
@@ -67,6 +66,12 @@ namespace AST {
     template<> const Ides::Types::Type* BinaryExpression<OP_LE>::GetType(Ides::AST::ASTContext &ctx) const { return Ides::Types::Integer1Type::GetSingletonPtr(); }
     template<> const Ides::Types::Type* BinaryExpression<OP_GT>::GetType(Ides::AST::ASTContext &ctx) const { return Ides::Types::Integer1Type::GetSingletonPtr(); }
     template<> const Ides::Types::Type* BinaryExpression<OP_GE>::GetType(Ides::AST::ASTContext &ctx) const { return Ides::Types::Integer1Type::GetSingletonPtr(); }
+    
+    template<> void UnaryExpression<OP_MINUS>::Accept(Visitor* v) { v->Visit(this); }
+    template<> void UnaryExpression<OP_NOT>::Accept(Visitor* v) { v->Visit(this); }
+    template<> void UnaryExpression<OP_BNOT>::Accept(Visitor* v) { v->Visit(this); }
+    template<> void UnaryExpression<OP_INC>::Accept(Visitor* v) { v->Visit(this); }
+    template<> void UnaryExpression<OP_DEC>::Accept(Visitor* v) { v->Visit(this); }
     
     template<> void BinaryExpression<0>::Accept(Visitor* v) { }
     

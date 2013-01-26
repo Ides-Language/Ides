@@ -113,23 +113,6 @@ namespace AST {
         boost::scoped_ptr<Token> rhs;
     };
     
-    class UnaryExpression : public Expression {
-    public:
-        enum UnaryExpressionType {
-            UNARY_POSTFIX,
-            UNARY_PREFIX
-        };
-        
-        UnaryExpression(UnaryExpressionType type, Token* func, Expression* arg) : type(type), func(func), arg(arg) { }
-        virtual void Accept(Visitor* v);
-        
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const { return NULL; }
-        
-        UnaryExpressionType type;
-        boost::scoped_ptr<Token> func;
-        boost::scoped_ptr<Expression> arg;
-    };
-    
     class AddressOfExpression : public Expression {
     public:
         AddressOfExpression(Expression* exp) : arg(exp) { }
@@ -171,6 +154,24 @@ namespace AST {
         boost::scoped_ptr<Type> rhs;
         
     };
+    
+    template<int op>
+    class UnaryExpression : public Expression {
+    public:
+        enum UnaryExpressionType {
+            UNARY_POSTFIX,
+            UNARY_PREFIX
+        };
+        
+        UnaryExpression(UnaryExpressionType type, Expression* arg) : type(type), arg(arg) { }
+        virtual void Accept(Visitor* v);
+        
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const { return arg->GetType(ctx); }
+        
+        UnaryExpressionType type;
+        boost::scoped_ptr<Expression> arg;
+    };
+    
     
     template<int op>
     class BinaryExpression : public Expression {

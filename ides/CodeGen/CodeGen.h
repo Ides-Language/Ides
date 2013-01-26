@@ -112,6 +112,12 @@ namespace CodeGen {
         
         virtual void Visit(Ides::AST::CastExpression* ast);
         
+        //virtual void Visit(Ides::AST::UnaryExpression<OP_MINUS>* ast);
+        //virtual void Visit(Ides::AST::UnaryExpression<OP_BNOT>* ast);
+        //virtual void Visit(Ides::AST::UnaryExpression<OP_NOT>* ast);
+        virtual void Visit(Ides::AST::UnaryExpression<OP_INC>* ast);
+        virtual void Visit(Ides::AST::UnaryExpression<OP_DEC>* ast);
+        
         virtual void Visit(Ides::AST::BinaryExpression<OP_PLUS>* ast);
         virtual void Visit(Ides::AST::BinaryExpression<OP_MINUS>* ast);
         virtual void Visit(Ides::AST::BinaryExpression<OP_STAR>* ast);
