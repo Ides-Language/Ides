@@ -68,6 +68,9 @@ namespace AST {
         virtual void Visit(Ides::AST::UnaryExpression<OP_INC>* ast) { }
         virtual void Visit(Ides::AST::UnaryExpression<OP_DEC>* ast) { }
         
+        virtual void Visit(Ides::AST::BinaryExpression<OP_RARROW>* ast) { }
+        virtual void Visit(Ides::AST::BinaryExpression<OP_LARROW>* ast) { }
+        
         virtual void Visit(Ides::AST::BinaryExpression<OP_PLUS>* ast) { }
         virtual void Visit(Ides::AST::BinaryExpression<OP_MINUS>* ast) { }
         virtual void Visit(Ides::AST::BinaryExpression<OP_STAR>* ast) { }

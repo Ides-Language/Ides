@@ -26,6 +26,9 @@ def test(ic, lli, x):
 		if m == None:
 			print "No test definition found in %s" % x
 			return True
+
+		print "Running test source: \n%s" % src
+
 		cfgfile = ConfigParser.SafeConfigParser()
 		cfgfile.readfp(StringIO.StringIO(m.group(1)))
 

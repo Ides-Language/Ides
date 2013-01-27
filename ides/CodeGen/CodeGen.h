@@ -112,11 +112,14 @@ namespace CodeGen {
         
         virtual void Visit(Ides::AST::CastExpression* ast);
         
-        //virtual void Visit(Ides::AST::UnaryExpression<OP_MINUS>* ast);
-        //virtual void Visit(Ides::AST::UnaryExpression<OP_BNOT>* ast);
-        //virtual void Visit(Ides::AST::UnaryExpression<OP_NOT>* ast);
+        virtual void Visit(Ides::AST::UnaryExpression<OP_MINUS>* ast);
+        virtual void Visit(Ides::AST::UnaryExpression<OP_BNOT>* ast);
+        virtual void Visit(Ides::AST::UnaryExpression<OP_NOT>* ast);
         virtual void Visit(Ides::AST::UnaryExpression<OP_INC>* ast);
         virtual void Visit(Ides::AST::UnaryExpression<OP_DEC>* ast);
+        
+        virtual void Visit(Ides::AST::BinaryExpression<OP_RARROW>* ast);
+        virtual void Visit(Ides::AST::BinaryExpression<OP_LARROW>* ast);
         
         virtual void Visit(Ides::AST::BinaryExpression<OP_PLUS>* ast);
         virtual void Visit(Ides::AST::BinaryExpression<OP_MINUS>* ast);
@@ -163,6 +166,9 @@ namespace CodeGen {
         };
         
         enum StaticInitializerWeight {
+            // These determine the order of static initialization.
+            // Smaller values first. See also: http://llvm.org/docs/LangRef.html#the-llvm-global-ctors-global-variable
+            // NEVER CHANGE THESE EVER.
             WEIGHT_EXPRESSION_VAR = 20000000,
             WEIGHT_CLASS_STATIC   = 40000000
         };
@@ -200,6 +206,8 @@ namespace CodeGen {
         DIGenerator* dibuilder;
         
         boost::unordered_map<Ides::AST::AST*, llvm::Value*> values;
+        boost::unordered_map<llvm::Value*, llvm::MDNode*> dbgvalues;
+        
         std::vector<std::pair<int32_t, llvm::Function*> > globalInitializers;
         
         std::stack<Ides::AST::FunctionDeclaration*> currentFunctions;

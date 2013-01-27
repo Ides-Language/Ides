@@ -1,0 +1,24 @@
+/* [test]
+stdout=^1 2 1 2$
+stderr=^$
+exit=3
+*/
+
+@NoMangle
+extern def printf(val str: int8*, ...) : int32;
+
+struct TestStruct {
+    var i : int32;
+    var j : int32;
+}
+
+@NoMangle
+def main() : int32 {
+	val x : TestStruct;
+	val y = &x;
+	x.i = 1;
+	y->j = 2;
+	printf(C"%d %d %d %d", y->i, y->j, x.i, x.j);
+	return x.i + y->j;
+}
+

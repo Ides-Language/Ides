@@ -71,7 +71,7 @@ namespace CodeGen {
         virtual void Visit(const Ides::Types::FunctionType* ty);
         virtual void Visit(const Ides::Types::OverloadedFunctionType* ty) { }
         
-        virtual void Visit(const Ides::Types::StructType* ty) { }
+        virtual void Visit(const Ides::Types::StructType* ty);
         virtual void Visit(const Ides::Types::ClassType* ty) { }
         virtual void Visit(const Ides::Types::ReferenceType* ty) { }
         

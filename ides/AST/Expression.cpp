@@ -52,6 +52,20 @@ namespace AST {
     
     void CastExpression::Accept(Visitor* v) { v->Visit(this); }
     
+    template<> const Ides::Types::Type* BinaryExpression<OP_RARROW>::GetType(Ides::AST::ASTContext &ctx) const {
+        const Ides::Types::Type* lhstype = lhs->GetType(ctx);
+        if (const Ides::Types::PointerType* ptype = dynamic_cast<const Ides::Types::PointerType*>(lhstype)) {
+            const Ides::Types::Type* valType = ptype->GetTargetType();
+            if (Ides::AST::IdentifierExpression* expr = dynamic_cast<Ides::AST::IdentifierExpression*>(rhs.get())) {
+                Declaration* decl = valType->GetInstanceMember(ctx, expr->GetName());
+                if (decl) return decl->GetType(ctx);
+                throw Ides::AST::TypeEvalError(ctx.GetDiagnostics(), Ides::Diagnostics::UNKNOWN_MEMBER, rhs->exprloc) << valType->ToString() << expr->GetName();
+            }
+        }
+        throw Ides::AST::TypeEvalError(ctx.GetDiagnostics(), Ides::Diagnostics::OP_NO_SUCH_OPERATOR, this->exprloc) << "->" << lhstype->ToString();
+    }
+    template<> const Ides::Types::Type* BinaryExpression<OP_LARROW>::GetType(Ides::AST::ASTContext &ctx) const { return lhs->GetType(ctx); }
+    
     template<> const Ides::Types::Type* BinaryExpression<OP_ASHL>::GetType(Ides::AST::ASTContext &ctx) const { return lhs->GetType(ctx); }
     template<> const Ides::Types::Type* BinaryExpression<OP_ASHR>::GetType(Ides::AST::ASTContext &ctx) const { return lhs->GetType(ctx); }
     template<> const Ides::Types::Type* BinaryExpression<OP_LSHL>::GetType(Ides::AST::ASTContext &ctx) const { return lhs->GetType(ctx); }
@@ -74,6 +88,9 @@ namespace AST {
     template<> void UnaryExpression<OP_DEC>::Accept(Visitor* v) { v->Visit(this); }
     
     template<> void BinaryExpression<0>::Accept(Visitor* v) { }
+    
+    template<> void BinaryExpression<OP_RARROW>::Accept(Visitor* v) { v->Visit(this); }
+    template<> void BinaryExpression<OP_LARROW>::Accept(Visitor* v) { v->Visit(this); }
     
     template<> void BinaryExpression<OP_PLUS>::Accept(Visitor* v) { v->Visit(this); }
     template<> void BinaryExpression<OP_MINUS>::Accept(Visitor* v) { v->Visit(this); }

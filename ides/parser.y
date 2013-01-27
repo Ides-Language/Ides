@@ -131,12 +131,18 @@
 
 /* Operator precedence for mathematical operators */
 %nonassoc KW_THROW KW_RETURN
-%left '='
+%left OP_ASSIGN
+%left OP_OR
+%left OP_AND
+%left OP_BOR
+%left OP_BXOR
+%left OP_BAND
 %left OP_COALESCE
 %left OP_EQ OP_NE
 %left OP_LT OP_LE OP_GT OP_GE
-%left '+' '-'
-%left '*' '/' '%'
+%left OP_PLUS OP_MINUS
+%left OP_STAR OP_SLASH OP_MOD
+%left OP_DOT OP_LARROW OP_RARROW
 %right OP_CAST KW_NEW 
 
 %start root
@@ -192,7 +198,6 @@ postfix_expression : primary_expression
                    | postfix_expression '(' arg_val_list ')' { $$ = Ides::AST::FunctionCallExpression::Create($1, $3); SET_EXPRLOC($$, @$); }
                    //| postfix_expression '[' arg_val_list ']' { $$ = new Ides::AST::BracketCall($1, $3); SET_EXPRLOC($$, @$); }
                    | postfix_expression '.' TIDENTIFIER { $$ = new Ides::AST::DotExpression($1, $3); SET_EXPRLOC($$, @$); }
-                   | postfix_expression OP_RARROW TIDENTIFIER { $$ = new Ides::AST::DotExpression(new Ides::AST::DereferenceExpression($1), $3); SET_EXPRLOC($$, @$); }
                    | postfix_expression OP_INC { $$ = new Ides::AST::UnaryExpression<OP_INC>(Ides::AST::UnaryExpression<OP_INC>::UNARY_POSTFIX, $1); SET_EXPRLOC($$, @$); }
                    | postfix_expression OP_DEC { $$ = new Ides::AST::UnaryExpression<OP_DEC>(Ides::AST::UnaryExpression<OP_DEC>::UNARY_POSTFIX, $1); SET_EXPRLOC($$, @$); }
 ;
@@ -210,6 +215,8 @@ prefix_expression : postfix_expression
 
 infix_expression : prefix_expression
                  | infix_expression OP_ASSIGN infix_expression { $$ = new Ides::AST::AssignmentExpression($1, $3); SET_EXPRLOC($$, @$); }
+                 
+                 | infix_expression OP_RARROW infix_expression { $$ = new Ides::AST::BinaryExpression<OP_RARROW>($1, $3); SET_EXPRLOC($$, @$); }
 
                  | infix_expression OP_PLUS infix_expression { $$ = new Ides::AST::BinaryExpression<OP_PLUS>($1, $3); SET_EXPRLOC($$, @$); }
                  | infix_expression OP_MINUS infix_expression { $$ = new Ides::AST::BinaryExpression<OP_MINUS>($1, $3); SET_EXPRLOC($$, @$); }

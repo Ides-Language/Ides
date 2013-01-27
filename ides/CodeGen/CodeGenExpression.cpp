@@ -23,7 +23,19 @@ namespace CodeGen {
     
     void CodeGen::Visit(Ides::AST::AssignmentExpression* ast) { SETTRACE("CodeGen::Visit(AssignmentExpression)")
         llvm::Value* toExpr = GetPtr(ast->GetLHS());
-        builder->CreateStore(GetValue(ast->GetRHS(), ast->GetLHS()->GetType(actx)), toExpr);
+        llvm::Value* fromExpr = GetValue(ast->GetRHS(), ast->GetLHS()->GetType(actx));
+        auto inst = builder->CreateStore(fromExpr, toExpr);
+        if (this->dibuilder) {
+            inst->setDebugLoc(this->GetDebugLoc(ast));
+            
+            auto i = this->dbgvalues.find(toExpr);
+            if (i != this->dbgvalues.end()) {
+                dibuilder->insertDbgValueIntrinsic(toExpr,
+                                                   0,
+                                                   llvm::DIVariable(i->second),
+                                                   builder->GetInsertBlock());
+            }
+        }
         last = toExpr;
     }
     
@@ -83,6 +95,30 @@ namespace CodeGen {
     }
     
     
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_RARROW>* ast) {
+        const Ides::Types::Type* lhstype = ast->lhs->GetType(actx);
+        
+        llvm::Value* ptr = GetPtr(ast->lhs.get());
+        
+        if (const Ides::Types::PointerType* pt = dynamic_cast<const Ides::Types::PointerType*>(lhstype)) {
+            if (const Ides::Types::StructType* st = dynamic_cast<const Ides::Types::StructType*>(pt->GetTargetType())) {
+                if (Ides::AST::IdentifierExpression* expr = dynamic_cast<Ides::AST::IdentifierExpression*>(ast->rhs.get())) {
+                    int memberidx = st->GetMemberIndex(expr->GetName());
+                    if (memberidx == -1) throw detail::CodeGenError(*diag, UNKNOWN_MEMBER, ast->rhs->exprloc) << lhstype->ToString(), expr->GetName();
+                    
+                    ptr = builder->CreateLoad(ptr, "arrowderef");
+                    last = builder->CreateStructGEP(ptr, memberidx, lhstype->ToString() + "->" + expr->GetName());
+                    return;
+                }
+            }
+        }
+        this->Diag(Ides::Diagnostics::COMPILER_NOT_IMPLEMENTED, ast);
+    }
+    
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_LARROW>* ast) {
+        this->Diag(Ides::Diagnostics::COMPILER_NOT_IMPLEMENTED, ast);
+    }
+    
     void CodeGen::Visit(Ides::AST::FunctionCallExpression* ast) { SETTRACE("CodeGen::Visit(FunctionCallExpression)")
         const Ides::Types::FunctionType* function = static_cast<const Ides::Types::FunctionType*>(ast->GetFunction()->GetType(actx));
         
@@ -111,9 +147,9 @@ namespace CodeGen {
     
     void CodeGen::Visit(Ides::AST::AddressOfExpression* ast) { SETTRACE("CodeGen::Visit(AddressOfExpression)")
         const Ides::Types::Type* argType = ast->arg->GetType(actx);
-        llvm::AllocaInst* ptr = builder->CreateAlloca(GetLLVMType(argType), 0, "addrof");
+        llvm::AllocaInst* ptr = builder->CreateAlloca(GetLLVMType(argType->PtrType()), 0, "addrof");
         ptr->setAlignment(argType->GetAlignment());
-        builder->CreateStore(GetValue(ast->arg.get()), ptr);
+        builder->CreateStore(GetPtr(ast->arg.get()), ptr);
         last = ptr;
     }
     
@@ -130,7 +166,7 @@ namespace CodeGen {
         last = Cast(ast->lhs.get(), ast->GetType(actx));
     }
     
-    void CodeGen::Visit(Ides::AST::UnaryExpression<OP_INC>* ast) {
+    void CodeGen::Visit(Ides::AST::UnaryExpression<OP_INC>* ast) { SETTRACE("CodeGen::Visit(UnaryExpression<OP_INC>)")
         const Ides::Types::Type* exprType = ast->GetType(actx);
         llvm::Value* ptr = this->GetPtr(ast->arg.get());
         llvm::Value* oldVal = builder->CreateLoad(ptr);
@@ -144,7 +180,7 @@ namespace CodeGen {
     
     }
     
-    void CodeGen::Visit(Ides::AST::UnaryExpression<OP_DEC>* ast) {
+    void CodeGen::Visit(Ides::AST::UnaryExpression<OP_DEC>* ast) { SETTRACE("CodeGen::Visit(UnaryExpression<OP_DEC>)")
         const Ides::Types::Type* exprType = ast->GetType(actx);
         llvm::Value* ptr = this->GetPtr(ast->arg.get());
         llvm::Value* oldVal = builder->CreateLoad(ptr);
@@ -156,6 +192,21 @@ namespace CodeGen {
         else
             last = newVal;
     }
+    
+    void CodeGen::Visit(Ides::AST::UnaryExpression<OP_NOT>* ast) { SETTRACE("CodeGen::Visit(UnaryExpression<OP_NOT>)")
+        llvm::Value* expr = this->GetValue(ast->arg.get(), Ides::Types::Integer1Type::GetSingletonPtr());
+        last = builder->CreateNot(expr);
+    }
+    
+    void CodeGen::Visit(Ides::AST::UnaryExpression<OP_MINUS>* ast) { SETTRACE("CodeGen::Visit(UnaryExpression<OP_MINUS>)")
+        this->Diag(Ides::Diagnostics::COMPILER_NOT_IMPLEMENTED, ast);
+    }
+    
+    void CodeGen::Visit(Ides::AST::UnaryExpression<OP_BNOT>* ast) { SETTRACE("CodeGen::Visit(UnaryExpression<OP_BNOT>)")
+        llvm::Value* expr = this->GetValue(ast->arg.get(), Ides::Types::Integer1Type::GetSingletonPtr());
+        last = builder->CreateNot(expr);
+    }
+    
     
 #define CREATE_BINARY_EXPRESSION(op, generator) \
     void CodeGen::Visit(Ides::AST::BinaryExpression<op>* ast) { \
@@ -172,7 +223,7 @@ namespace CodeGen {
     CREATE_BINARY_EXPRESSION(OP_MINUS, CreateSub)
     CREATE_BINARY_EXPRESSION(OP_STAR, CreateMul)
     
-    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_SLASH>* ast) {
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_SLASH>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_SLASH>)")
         const Ides::Types::Type* resultType = ast->GetType(actx);
         
         if (resultType->IsNumericType()) {
@@ -188,7 +239,7 @@ namespace CodeGen {
         }
     }
     
-    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_MOD>* ast) {
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_MOD>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_MOD>)")
         const Ides::Types::Type* resultType = ast->GetType(actx);
         
         if (resultType->IsNumericType()) {
@@ -211,7 +262,7 @@ namespace CodeGen {
     CREATE_BINARY_EXPRESSION(OP_AND, CreateAnd);
     CREATE_BINARY_EXPRESSION(OP_OR, CreateOr);
     
-    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_ASHL>* ast) {
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_ASHL>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_ASHL>)")
         const Ides::Types::Type* resultType = ast->GetType(actx);
         if (resultType->IsNumericType()) {
             llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
@@ -220,7 +271,7 @@ namespace CodeGen {
             return;
         }
     }
-    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_LSHL>* ast) {
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_LSHL>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_LSHL>)")
         const Ides::Types::Type* resultType = ast->GetType(actx);
         if (resultType->IsNumericType()) {
             llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
@@ -229,7 +280,7 @@ namespace CodeGen {
             return;
         }
     }
-    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_ASHR>* ast) {
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_ASHR>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_ASHR>)")
         const Ides::Types::Type* resultType = ast->GetType(actx);
         if (resultType->IsNumericType()) {
             llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
@@ -238,7 +289,7 @@ namespace CodeGen {
             return;
         }
     }
-    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_LSHR>* ast) {
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_LSHR>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_LSHR>)")
         const Ides::Types::Type* resultType = ast->GetType(actx);
         if (resultType->IsNumericType()) {
             llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
@@ -249,7 +300,7 @@ namespace CodeGen {
     }
     
     
-    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_EQ>* ast) {
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_EQ>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_EQ>)")
         const Ides::Types::Type* resultType = ast->GetType(actx);
         
         if (resultType->IsNumericType()) {
@@ -264,7 +315,7 @@ namespace CodeGen {
             return;
         }
     }
-    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_NE>* ast) {
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_NE>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_NE>)")
         const Ides::Types::Type* resultType = ast->GetType(actx);
         
         if (resultType->IsNumericType()) {
@@ -279,7 +330,7 @@ namespace CodeGen {
             return;
         }
     }
-    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_LT>* ast) {
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_LT>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_LT>)")
         const Ides::Types::Type* resultType = ast->GetType(actx);
         
         if (resultType->IsNumericType()) {
@@ -294,7 +345,7 @@ namespace CodeGen {
             return;
         }
     }
-    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_LE>* ast) {
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_LE>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_LE>)")
         const Ides::Types::Type* resultType = ast->GetType(actx);
         
         if (resultType->IsNumericType()) {
@@ -309,7 +360,7 @@ namespace CodeGen {
             return;
         }
     }
-    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_GT>* ast) {
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_GT>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_GT>)")
         const Ides::Types::Type* resultType = ast->GetType(actx);
         
         if (resultType->IsNumericType()) {
@@ -324,7 +375,7 @@ namespace CodeGen {
             return;
         }
     }
-    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_GE>* ast) {
+    void CodeGen::Visit(Ides::AST::BinaryExpression<OP_GE>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_GE>)")
         const Ides::Types::Type* resultType = ast->GetType(actx);
         
         if (resultType->IsNumericType()) {
@@ -342,31 +393,31 @@ namespace CodeGen {
     
     
     
-    void CodeGen::Visit(Ides::AST::ConstantStringExpression* ast) {
-        
+    void CodeGen::Visit(Ides::AST::ConstantStringExpression* ast) { SETTRACE("CodeGen::Visit(ConstantStringExpression)")
+        this->Diag(Ides::Diagnostics::COMPILER_NOT_IMPLEMENTED, ast);
     }
     
-    void CodeGen::Visit(Ides::AST::ConstantCStringExpression* ast) {
+    void CodeGen::Visit(Ides::AST::ConstantCStringExpression* ast) { SETTRACE("CodeGen::Visit(ConstantCStringExpression)")
         last = builder->CreateGlobalStringPtr(ast->GetBuffer().str());
     }
     
-    void CodeGen::Visit(Ides::AST::ConstantWCStringExpression* ast) {
-        
+    void CodeGen::Visit(Ides::AST::ConstantWCStringExpression* ast) { SETTRACE("CodeGen::Visit(ConstantWCStringExpression)")
+        this->Diag(Ides::Diagnostics::COMPILER_NOT_IMPLEMENTED, ast);
     }
     
-    void CodeGen::Visit(Ides::AST::ConstantLCStringExpression* ast) {
-        
+    void CodeGen::Visit(Ides::AST::ConstantLCStringExpression* ast) { SETTRACE("CodeGen::Visit(ConstantLCStringExpression)")
+        this->Diag(Ides::Diagnostics::COMPILER_NOT_IMPLEMENTED, ast);
     }
     
-    void CodeGen::Visit(Ides::AST::ConstantBoolExpression* ast) {
+    void CodeGen::Visit(Ides::AST::ConstantBoolExpression* ast) { SETTRACE("CodeGen::Visit(ConstantBoolExpression)")
         last = ast->GetValue() ? llvm::ConstantInt::getTrue(lctx) : llvm::ConstantInt::getFalse(lctx);
     }
     
-    void CodeGen::Visit(Ides::AST::ConstantIntExpression* ast) {
+    void CodeGen::Visit(Ides::AST::ConstantIntExpression* ast) { SETTRACE("CodeGen::Visit(ConstantIntExpression)")
         last = llvm::ConstantInt::get(this->GetLLVMType(ast->GetType(actx)), ast->GetValue());
     }
     
-    void CodeGen::Visit(Ides::AST::ConstantFloatExpression* ast) {
+    void CodeGen::Visit(Ides::AST::ConstantFloatExpression* ast) { SETTRACE("CodeGen::Visit(ConstantFloatExpression)")
         last = llvm::ConstantFP::get(this->GetLLVMType(ast->GetType(actx)), ast->GetValue());
     }
 

@@ -15,6 +15,7 @@
 namespace Ides {
 namespace Diagnostics {
     enum DiagIDs {
+        COMPILER_NOT_IMPLEMENTED,
         IMPOSSIBLE_ERROR,
         
         NOTE_FROM,

@@ -22,6 +22,7 @@ namespace Diagnostics {
     
     
     void InitAllDiagnostics(clang::DiagnosticsEngine& diags) {
+        CreateDiagnostic(diags, COMPILER_NOT_IMPLEMENTED, clang::DiagnosticsEngine::Fatal, "feature not yet implemented");
         CreateDiagnostic(diags, IMPOSSIBLE_ERROR, clang::DiagnosticsEngine::Fatal, "logic error: %0");
         
         CreateDiagnostic(diags, NOTE_FROM, clang::DiagnosticsEngine::Note, "from here");

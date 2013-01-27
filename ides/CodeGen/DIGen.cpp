@@ -15,5 +15,21 @@ namespace CodeGen {
         
     }
     
+    void DIGenerator::Visit(const Ides::Types::StructType* ty) {
+        std::vector<llvm::Value*> membersDI;
+        for (auto i = ty->GetMembers().begin(); i != ty->GetMembers().end(); ++i) {
+            membersDI.push_back(GetType(i->second));
+        }
+        
+        createStructType(llvm::DIDescriptor(GetCurrentScope()),
+                         ty->GetName(),
+                         llvm::DIFile(),
+                         0,
+                         ty->GetSize(),
+                         ty->GetAlignment(),
+                         0,
+                         getOrCreateArray(membersDI));
+    }
+    
 }
 }

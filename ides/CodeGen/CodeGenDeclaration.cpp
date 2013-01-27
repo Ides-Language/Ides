@@ -138,6 +138,7 @@ namespace CodeGen {
                                                                         argNum);
                 assert(diVar.Verify());
                 auto declInst = dibuilder->insertDeclare(var, diVar, builder->GetInsertBlock());
+                this->dbgvalues.insert(std::make_pair(alloca, diVar));
                 declInst->setDebugLoc(GetDebugLoc(ast));
             }
         }
@@ -177,6 +178,7 @@ namespace CodeGen {
                                                                         dibuilder->GetType(varType));
                 
                 dibuilder->insertDeclare(var, diVar, builder->GetInsertBlock());
+                this->dbgvalues.insert(std::make_pair(alloca, diVar));
             }
         }
         

@@ -28,6 +28,7 @@ extern "C" {
 #include <llvm/Support/PrettyStackTrace.h>
 #include <boost/unordered_map.hpp>
 #include <boost/unordered_set.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
