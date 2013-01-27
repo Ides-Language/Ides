@@ -92,6 +92,7 @@ namespace CodeGen {
         }
         else {
         }
+        this->Diag(Ides::Diagnostics::COMPILER_NOT_IMPLEMENTED, ast);
     }
     
     
@@ -146,9 +147,9 @@ namespace CodeGen {
     
     
     void CodeGen::Visit(Ides::AST::AddressOfExpression* ast) { SETTRACE("CodeGen::Visit(AddressOfExpression)")
-        const Ides::Types::Type* argType = ast->arg->GetType(actx);
-        llvm::AllocaInst* ptr = builder->CreateAlloca(GetLLVMType(argType->PtrType()), 0, "addrof");
-        ptr->setAlignment(argType->GetAlignment());
+        const Ides::Types::Type* exprType = ast->GetType(actx);
+        llvm::AllocaInst* ptr = builder->CreateAlloca(GetLLVMType(exprType), 0, "addrof");
+        ptr->setAlignment(exprType->GetAlignment());
         builder->CreateStore(GetPtr(ast->arg.get()), ptr);
         last = ptr;
     }
@@ -187,10 +188,7 @@ namespace CodeGen {
         llvm::Value* newVal = builder->CreateSub(oldVal, llvm::ConstantInt::get(GetLLVMType(exprType), 1));
         builder->CreateStore(newVal, ptr);
         
-        if (ast->type == Ides::AST::UnaryExpression<OP_DEC>::UNARY_POSTFIX)
-            last = oldVal;
-        else
-            last = newVal;
+        last = (ast->type == Ides::AST::UnaryExpression<OP_DEC>::UNARY_POSTFIX) ? oldVal : newVal;
     }
     
     void CodeGen::Visit(Ides::AST::UnaryExpression<OP_NOT>* ast) { SETTRACE("CodeGen::Visit(UnaryExpression<OP_NOT>)")
@@ -208,8 +206,8 @@ namespace CodeGen {
     }
     
     
-#define CREATE_BINARY_EXPRESSION(op, generator) \
-    void CodeGen::Visit(Ides::AST::BinaryExpression<op>* ast) { \
+#define CREATE_BINARY_EXPRESSION(op, generator, optxt) \
+    void CodeGen::Visit(Ides::AST::BinaryExpression<op>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<" #op ">)") \
         const Ides::Types::Type* resultType = ast->GetType(actx); \
         if (resultType->IsNumericType()) { \
             llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType); \
@@ -217,11 +215,12 @@ namespace CodeGen {
             last = builder->generator(lhsresult, rhsresult, #op); \
             return; \
         } \
+        throw detail::CodeGenError(*diag, OP_NO_SUCH_OPERATOR, ast->exprloc) << optxt << resultType->ToString(); \
     }
     
-    CREATE_BINARY_EXPRESSION(OP_PLUS, CreateAdd)
-    CREATE_BINARY_EXPRESSION(OP_MINUS, CreateSub)
-    CREATE_BINARY_EXPRESSION(OP_STAR, CreateMul)
+    CREATE_BINARY_EXPRESSION(OP_PLUS, CreateAdd, "+")
+    CREATE_BINARY_EXPRESSION(OP_MINUS, CreateSub, "-")
+    CREATE_BINARY_EXPRESSION(OP_STAR, CreateMul, "*")
     
     void CodeGen::Visit(Ides::AST::BinaryExpression<OP_SLASH>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_SLASH>)")
         const Ides::Types::Type* resultType = ast->GetType(actx);
@@ -255,12 +254,12 @@ namespace CodeGen {
         }
     }
     
-    CREATE_BINARY_EXPRESSION(OP_BAND, CreateAnd);
-    CREATE_BINARY_EXPRESSION(OP_BOR, CreateOr);
-    CREATE_BINARY_EXPRESSION(OP_BXOR, CreateXor);
+    CREATE_BINARY_EXPRESSION(OP_BAND, CreateAnd, "&");
+    CREATE_BINARY_EXPRESSION(OP_BOR, CreateOr, "|");
+    CREATE_BINARY_EXPRESSION(OP_BXOR, CreateXor, "^");
     
-    CREATE_BINARY_EXPRESSION(OP_AND, CreateAnd);
-    CREATE_BINARY_EXPRESSION(OP_OR, CreateOr);
+    CREATE_BINARY_EXPRESSION(OP_AND, CreateAnd, "&&");
+    CREATE_BINARY_EXPRESSION(OP_OR, CreateOr, "||");
     
     void CodeGen::Visit(Ides::AST::BinaryExpression<OP_ASHL>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_ASHL>)")
         const Ides::Types::Type* resultType = ast->GetType(actx);

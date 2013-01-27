@@ -19,7 +19,9 @@ compiler:
   - gcc
   - clang
 
-env: CTEST_OUTPUT_ON_FAILURE=1
+env:
+  global:
+    - CTEST_OUTPUT_ON_FAILURE=1
 
 script:
   - cmake .
