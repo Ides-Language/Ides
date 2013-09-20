@@ -1,6 +1,22 @@
 build
 *.build
 
+CMakeFiles
+CMakeScripts
+Testing
+
+CMakeCache.txt
+DartConfiguration.tcl
+CTestTestfile.cmake
+cmake_install.cmake
+
+*.ilib
+*.bak
+*.swp
+
+*/Debug
+*/Release
+
 *.xcodeproj
 docs
 deps/*

@@ -4,8 +4,8 @@ before_install:
   - sudo apt-get install -qq cmake flex bison libboost1.48-dev libboost1.48-all-dev git
 # Unfortunately this is currently the only decent way to get LLVM 3.3 on Ubuntu. :(
   - wget "http://llvm.org/releases/3.3/clang+llvm-3.3-amd64-Ubuntu-12.04.2.tar.gz"
-  - tar -xzf "clang+llvm-3.3-amd64-linux-ubuntu-12.04.tar.gz"
-  - mv "clang+llvm-3.3-amd64-linux-ubuntu-12.04" deps
+  - tar -xzf "clang+llvm-3.3-amd64-Ubuntu-12.04.2.tar.gz"
+  - mv "clang+llvm-3.3-amd64-Ubuntu-12.04.2" deps
 
 notifications:
   email: false
