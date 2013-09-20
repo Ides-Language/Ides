@@ -11,8 +11,8 @@
 #include <ides/Diagnostics/Diagnostics.h>
 
 #include <ides/AST/Statement.h>
-#include <llvm/BasicBlock.h>
-#include <llvm/Attributes.h>
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Attributes.h>
 
 
 namespace Ides {
@@ -196,7 +196,7 @@ namespace CodeGen {
                 const Ides::Types::Type* memberType = decl->GetType(actx);
                 memberLLVMtypes.push_back(this->GetLLVMType(memberType));
             }
-            static_cast<llvm::StructType*>(this->GetLLVMType(st))->setBody(memberLLVMtypes, false);
+            llvmst->setBody(memberLLVMtypes, false);
         }
     }
     
@@ -215,7 +215,7 @@ namespace CodeGen {
             //func->setGC("shadow-stack");
             
             if (ast->GetReturnType(actx)->IsEquivalentType(Ides::Types::UnitType::GetSingletonPtr())) {
-                func->addFnAttr(llvm::Attributes::NoReturn);
+                func->addFnAttr(llvm::Attribute::NoReturn);
             }
             
             values.insert(std::make_pair(ast, func));

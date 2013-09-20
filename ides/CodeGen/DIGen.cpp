@@ -28,6 +28,7 @@ namespace CodeGen {
                          ty->GetSize(),
                          ty->GetAlignment(),
                          0,
+                         llvm::DIType(),
                          getOrCreateArray(membersDI));
     }
     

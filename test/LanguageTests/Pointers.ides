@@ -20,5 +20,6 @@ def main() : int32 {
 	y->j = 2;
 	printf(C"%d %d %d %d", y->i, y->j, x.i, x.j);
 	return x.i + y->j;
+	return 0;
 }
 

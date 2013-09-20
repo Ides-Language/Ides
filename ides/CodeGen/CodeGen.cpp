@@ -25,7 +25,7 @@ namespace CodeGen {
                      Ides::AST::ASTContext& actx,
                      clang::FileManager* fman,
                      clang::SourceManager* sman)
-    : fman(fman), sman(sman), lctx(lctx), typeVisitor(lctx), actx(actx), diag(diags)
+    : fman(fman), sman(sman), lctx(lctx), typeVisitor(lctx), actx(actx), diag(diags), last(NULL)
     {
         this->staticInitializerSequence = 0;
         this->module = new llvm::Module("Ides Module", lctx);
@@ -54,9 +54,7 @@ namespace CodeGen {
         DeclarationGuard _guard(this->isDeclaration, false);
         ast->Accept(this);
         
-        if (last != NULL && llvm::isa<llvm::Instruction>(last) && dibuilder != NULL) {
-            llvm::cast<llvm::Instruction>(last)->setDebugLoc(this->GetDebugLoc(ast));
-        }
+        EmitDebugLoc(ast);
         return last;
     }
     
@@ -75,9 +73,7 @@ namespace CodeGen {
         if (valType->isPointerTy())
             last = builder->CreateLoad(last, "autoderef");
         
-        if (llvm::isa<llvm::Instruction>(last) && dibuilder != NULL) {
-            llvm::cast<llvm::Instruction>(last)->setDebugLoc(this->GetDebugLoc(ast));
-        }
+        EmitDebugLoc(ast);
         return last;
     }
     
@@ -114,10 +110,14 @@ namespace CodeGen {
     llvm::Value* CodeGen::GetDecl(Ides::AST::Declaration* ast) {
         DeclarationGuard _guard(this->isDeclaration, true);
         ast->Accept(this);
-        if (llvm::isa<llvm::Instruction>(last) && dibuilder != NULL) {
+        EmitDebugLoc(ast);
+        return last;
+    }
+    
+    void CodeGen::EmitDebugLoc(Ides::AST::AST* ast) {
+        if (last != NULL && llvm::isa<llvm::Instruction>(last) && dibuilder != NULL) {
             llvm::cast<llvm::Instruction>(last)->setDebugLoc(this->GetDebugLoc(ast));
         }
-        return last;
     }
     
     
@@ -191,9 +191,7 @@ namespace CodeGen {
             throw detail::CodeGenError(*diag, NO_EXPLICIT_CAST, ast->exprloc) << exprtype->ToString() << toType->ToString();
         }
         
-        if (llvm::isa<llvm::Instruction>(ret) && dibuilder != NULL) {
-            llvm::cast<llvm::Instruction>(ret)->setDebugLoc(this->GetDebugLoc(ast));
-        }
+        EmitDebugLoc(ast);
         return ret;
     }
     

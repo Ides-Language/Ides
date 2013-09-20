@@ -11,7 +11,7 @@
 
 #include <ides/AST/ConstantExpression.h>
 #include <ides/AST/Expression.h>
-#include <llvm/BasicBlock.h>
+#include <llvm/IR/BasicBlock.h>
 
 
 namespace Ides {

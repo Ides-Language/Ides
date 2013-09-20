@@ -114,7 +114,7 @@
 %type <arg_decl_list> arg_decl_list
 
 %type <var_decl> var_decl val_decl global_var_decl global_val_decl arg_var_decl arg_val_decl arg_decl
-%type <ast_type> var_type
+%type <ast_type> var_type builtin_type
 %type <type_list> var_type_list
 
 %type <ast_struct> struct_def
@@ -258,30 +258,31 @@ specifier : KW_PUBLIC { $$ = Ides::AST::PUBLIC; }
           | KW_PRIVATE { $$ = Ides::AST::PRIVATE; }
 ;
 
-var_type : var_type OP_STAR { $$ = new Ides::AST::PtrType($1); SET_EXPRLOC($$, @$); }
-
-         | KW_VOID   { $$ = new Ides::AST::VoidType(); SET_EXPRLOC($$, @$); }
-         | KW_UNIT   { $$ = new Ides::AST::UnitType(); SET_EXPRLOC($$, @$); }
+builtin_type : KW_VOID   { $$ = new Ides::AST::VoidType(); SET_EXPRLOC($$, @$); }
+             | KW_UNIT   { $$ = new Ides::AST::UnitType(); SET_EXPRLOC($$, @$); }
          
-         | KW_BOOL   { $$ = new Ides::AST::BoolType(); SET_EXPRLOC($$, @$); }
+             | KW_BOOL   { $$ = new Ides::AST::BoolType(); SET_EXPRLOC($$, @$); }
 
-         | KW_INT8   { $$ = new Ides::AST::Integer8Type();  SET_EXPRLOC($$, @$); }
-         | KW_UINT8  { $$ = new Ides::AST::UInteger8Type();  SET_EXPRLOC($$, @$); }
-         | KW_INT16  { $$ = new Ides::AST::Integer16Type(); SET_EXPRLOC($$, @$); }
-         | KW_UINT16 { $$ = new Ides::AST::UInteger16Type(); SET_EXPRLOC($$, @$); }
-         | KW_INT32  { $$ = new Ides::AST::Integer32Type(); SET_EXPRLOC($$, @$); }
-         | KW_UINT32 { $$ = new Ides::AST::UInteger32Type(); SET_EXPRLOC($$, @$); }
-         | KW_INT64  { $$ = new Ides::AST::Integer64Type(); SET_EXPRLOC($$, @$); }
-         | KW_UINT64 { $$ = new Ides::AST::UInteger64Type(); SET_EXPRLOC($$, @$); }
+             | KW_INT8   { $$ = new Ides::AST::Integer8Type();  SET_EXPRLOC($$, @$); }
+             | KW_UINT8  { $$ = new Ides::AST::UInteger8Type();  SET_EXPRLOC($$, @$); }
+             | KW_INT16  { $$ = new Ides::AST::Integer16Type(); SET_EXPRLOC($$, @$); }
+             | KW_UINT16 { $$ = new Ides::AST::UInteger16Type(); SET_EXPRLOC($$, @$); }
+             | KW_INT32  { $$ = new Ides::AST::Integer32Type(); SET_EXPRLOC($$, @$); }
+             | KW_UINT32 { $$ = new Ides::AST::UInteger32Type(); SET_EXPRLOC($$, @$); }
+             | KW_INT64  { $$ = new Ides::AST::Integer64Type(); SET_EXPRLOC($$, @$); }
+             | KW_UINT64 { $$ = new Ides::AST::UInteger64Type(); SET_EXPRLOC($$, @$); }
 
-         | KW_FLOAT32 { $$ = new Ides::AST::Float32Type(); SET_EXPRLOC($$, @$); }
-         | KW_FLOAT64 { $$ = new Ides::AST::Float64Type(); SET_EXPRLOC($$, @$); }
+             | KW_FLOAT32 { $$ = new Ides::AST::Float32Type(); SET_EXPRLOC($$, @$); }
+             | KW_FLOAT64 { $$ = new Ides::AST::Float64Type(); SET_EXPRLOC($$, @$); }
          
-         | KW_FN '(' ')' ':' var_type { $$ = new Ides::AST::FunctionType(NULL, $5); SET_EXPRLOC($$, @$); }
-         | KW_FN '(' var_type_list ')' ':' var_type { $$ = new Ides::AST::FunctionType($3, $6); SET_EXPRLOC($$, @$); }
-         | KW_FN '(' ')' { $$ = new Ides::AST::FunctionType(NULL, NULL); SET_EXPRLOC($$, @$); }
-         | KW_FN '(' var_type_list ')' { $$ = new Ides::AST::FunctionType($3, NULL); SET_EXPRLOC($$, @$); }
-         
+             | KW_FN '(' ')' ':' var_type { $$ = new Ides::AST::FunctionType(NULL, $5); SET_EXPRLOC($$, @$); }
+             | KW_FN '(' var_type_list ')' ':' var_type { $$ = new Ides::AST::FunctionType($3, $6); SET_EXPRLOC($$, @$); }
+             | KW_FN '(' ')' { $$ = new Ides::AST::FunctionType(NULL, NULL); SET_EXPRLOC($$, @$); }
+             | KW_FN '(' var_type_list ')' { $$ = new Ides::AST::FunctionType($3, NULL); SET_EXPRLOC($$, @$); }
+;
+
+var_type : builtin_type
+         | var_type OP_STAR { $$ = new Ides::AST::PtrType($1); SET_EXPRLOC($$, @$); }
          | TIDENTIFIER { $$ = new Ides::AST::TypeName($1); SET_EXPRLOC($$, @$); }
 
          //| KW_CONST var_type { $$ = $2; $$->SetConst(true); }

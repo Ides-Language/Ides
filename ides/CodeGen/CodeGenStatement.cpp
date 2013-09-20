@@ -10,7 +10,7 @@
 #include <ides/Diagnostics/Diagnostics.h>
 
 #include <ides/AST/Statement.h>
-#include <llvm/BasicBlock.h>
+#include <llvm/IR/BasicBlock.h>
 
 
 namespace Ides {

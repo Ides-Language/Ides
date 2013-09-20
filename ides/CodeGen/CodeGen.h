@@ -178,6 +178,8 @@ namespace CodeGen {
         }
         int staticInitializerSequence;
         
+        void EmitDebugLoc(Ides::AST::AST*);
+        
         llvm::Value* GetPtr(Ides::AST::Expression* ast);
         llvm::Value* GetValue(Ides::AST::Statement* ast);
         llvm::Value* GetValue(Ides::AST::Expression* ast);

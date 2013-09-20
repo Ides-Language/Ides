@@ -155,14 +155,15 @@ int main(int argc, const char* argv[])
         diag->getClient()->EndSourceFile();
     }
     
-    llvm::Linker linker(output_name, output_name, llvm::getGlobalContext());
+    llvm::Module* linkermod = new llvm::Module(output_name, llvm::getGlobalContext());
+    llvm::Linker linker(linkermod);
     
     for (auto modi = modules.begin(); modi != modules.end(); ++modi) {
-        if (linker.LinkInModule(*modi)) {
-            std::cerr << linker.getLastError() << std::endl;
+        std::string err;
+        if (linker.linkInModule(*modi, &err)) {
+            std::cerr << err << std::endl;
         }
     }
-    llvm::Module* linkermod = linker.getModule();
     
     linkermod->dump();
     

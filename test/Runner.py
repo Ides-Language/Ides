@@ -27,7 +27,7 @@ def test(ic, lli, x):
 			print "No test definition found in %s" % x
 			return True
 
-		print "Running test source: \n%s" % src
+		print "Running test source with %s: \n%s" % (ic, src)
 
 		cfgfile = ConfigParser.SafeConfigParser()
 		cfgfile.readfp(StringIO.StringIO(m.group(1)))
@@ -59,7 +59,7 @@ def test(ic, lli, x):
 			success = False
 
 		if proc.returncode != compiler_exitcode:
-			print "Bad return code from compiler. Expected %s, got %s." % (compiler_exitcode, proc.returncode)
+			print "Bad return code from compiler (%s). Expected %s, got %s." % (ic, compiler_exitcode, proc.returncode)
 			success = False
 
 		if not success:
@@ -88,9 +88,9 @@ def test(ic, lli, x):
 if len(sys.argv) != 4:
 	print "Usage: %s <idesc> <lli> <testfile.ides>" % sys.argv[0]
 
-compiler = sys.argv[1]
-interpreter = sys.argv[2]
-srcfile = sys.argv[3]
+compiler = os.path.abspath(sys.argv[1])
+interpreter = os.path.abspath(sys.argv[2])
+srcfile = os.path.abspath(sys.argv[3])
 
 
 if test(compiler, interpreter, srcfile) == False:

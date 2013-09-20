@@ -1,15 +1,23 @@
+execute_process(
+  COMMAND ${LLVM_CONFIG_EXECUTABLE} --version
+  OUTPUT_VARIABLE LLVM_VERSION
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 
-find_program(LLVM_LLI_EXECUTABLE NAMES lli DOC "lli executable")
+find_program(LLVM_LLI_EXECUTABLE NAMES lli "lli-${LLVM_VERSION}" DOC "lli executable")
+#get_property(IDESC_EXECUTABLE TARGET idesc PROPERTY LOCATION)
 #find_program(IDESC_EXECUTABLE NAMES idesc DOC "idesc executable")
-set(IDESC_EXECUTABLE "idesc")
+set(IDESC_EXECUTABLE "idesc/Debug/idesc")
 
 file(GLOB_RECURSE TESTFILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.ides)
+
+message(STATUS "Using: idesc=${IDESC_EXECUTABLE}; lli=${LLVM_LLI_EXECUTABLE}")
 
 foreach (TESTFILE ${TESTFILES})
 	message(STATUS "Adding test for ${TESTFILE}")
 	add_test(NAME ${TESTFILE} COMMAND /usr/bin/env python 
 		"${CMAKE_CURRENT_SOURCE_DIR}/Runner.py" 
-		"${IDESC_EXECUTABLE}"
+		"${CMAKE_BINARY_DIR}/${IDESC_EXECUTABLE}"
 		"${LLVM_LLI_EXECUTABLE}"
 		"${CMAKE_CURRENT_SOURCE_DIR}/${TESTFILE}")
 endforeach()
