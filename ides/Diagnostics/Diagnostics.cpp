@@ -39,6 +39,7 @@ namespace Diagnostics {
         
         CreateDiagnostic(diags, UNKNOWN_IDENTIFIER, clang::DiagnosticsEngine::Error, "unrecognized identifier %0");
         CreateDiagnostic(diags, UNKNOWN_MEMBER, clang::DiagnosticsEngine::Error, "%0 has no member named %1");
+        CreateDiagnostic(diags, UNKNOWN_TYPE, clang::DiagnosticsEngine::Error, "no type %0 exists");
         
         CreateDiagnostic(diags, CALL_NON_FUNCTION, clang::DiagnosticsEngine::Error, "cannot call expression of type %0");
         CreateDiagnostic(diags, CALL_TOO_MANY_ARGS, clang::DiagnosticsEngine::Error, "too many arguments to function: expected %0, got %1");

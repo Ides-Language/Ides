@@ -28,7 +28,7 @@ namespace AST {
         if (decl) {
             return decl->GetType(ctx);
         }
-        //throw Ides::AST::TypeEvalError("no such type", this->exprloc);
+        throw Ides::AST::TypeEvalError(ctx.GetDiagnostics(), Ides::Diagnostics::UNKNOWN_TYPE, this->exprloc) << typen;
     }
     
     

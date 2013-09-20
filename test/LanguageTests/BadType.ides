@@ -1,0 +1,12 @@
+/* [test]
+[compiler]
+exit=1
+stderr=no type TestStruct exists
+*/
+
+@NoMangle
+def main() : int32 {
+	val x : TestStruct;
+	return 0;
+}
+

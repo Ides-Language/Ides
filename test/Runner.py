@@ -25,7 +25,7 @@ def test(ic, lli, x):
 		m = cfgregex.search(src)
 		if m == None:
 			print "No test definition found in %s" % x
-			return True
+			return False
 
 		print "Running test source with %s: \n%s" % (ic, src)
 
@@ -37,7 +37,7 @@ def test(ic, lli, x):
 		exitcode = 0
 		compiler_exitcode = 0
 		if cfgfile.has_option("compiler", "exit"):
-			exitcode = cfgfile.getint("compiler", "exit")
+			compiler_exitcode = cfgfile.getint("compiler", "exit")
 
 		compiler_stdout_re = string.strip(cfg_default(cfgfile, "compiler", "stdout", ""))
 		compiler_stderr_re = string.strip(cfg_default(cfgfile, "compiler", "stderr", ""))
@@ -51,15 +51,15 @@ def test(ic, lli, x):
 		proc = subprocess.Popen([ic, "-o", ilibfile, x], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 		data = proc.communicate()
 
-		if not re.match(compiler_stdout_re, data[0]):
-			print "compiler stdout did not match regex '%s':\n%s" % (compiler_stdout_re, data[0])
-			success = False
-		if not re.match(compiler_stderr_re, data[1]):
-			print "compiler stderr did not match regex '%s':\n%s" % (stderr_re, data[1])
-			success = False
-
 		if proc.returncode != compiler_exitcode:
 			print "Bad return code from compiler (%s). Expected %s, got %s." % (ic, compiler_exitcode, proc.returncode)
+			success = False
+
+		if not re.search(compiler_stdout_re, data[0]):
+			print "compiler stdout did not match regex '%s':\n%s" % (compiler_stdout_re, data[0])
+			success = False
+		if not re.search(compiler_stderr_re, data[1]):
+			print "compiler stderr did not match regex '%s':\n%s" % (compiler_stderr_re, data[1])
 			success = False
 
 		if not success:
@@ -71,15 +71,15 @@ def test(ic, lli, x):
 		proc = subprocess.Popen([lli, ilibfile], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 		data = proc.communicate()
 
-		if not re.match(stdout_re, data[0]):
-			print "stdout did not match regex '%s':\n%s" % (stdout_re, data[0])
-			success = False
-		if not re.match(stderr_re, data[1]):
-			print "stderr did not match regex '%s':\n%s" % (stderr_re, data[1])
-			success = False
-
 		if proc.returncode != exitcode:
 			print "Bad return code from process. Expected %s, got %s." % (exitcode, proc.returncode)
+			success = False
+
+		if not re.search(stdout_re, data[0]):
+			print "stdout did not match regex '%s':\n%s" % (stdout_re, data[0])
+			success = False
+		if not re.search(stderr_re, data[1]):
+			print "stderr did not match regex '%s':\n%s" % (stderr_re, data[1])
 			success = False
 
 		return success

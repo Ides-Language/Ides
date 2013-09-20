@@ -32,6 +32,7 @@ namespace Diagnostics {
         
         UNKNOWN_IDENTIFIER,
         UNKNOWN_MEMBER,
+        UNKNOWN_TYPE,
         
         CALL_NON_FUNCTION,
         CALL_TOO_MANY_ARGS,

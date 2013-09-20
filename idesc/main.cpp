@@ -146,11 +146,10 @@ int main(int argc, const char* argv[])
         Ides::AST::AST* ast = NULL;
         try {
             ast = proj.ParseFile(current_file);
+            modules.push_back(proj.Compile((Ides::AST::CompilationUnit*)ast));
         } catch (const std::exception&) {
             return 1;
         }
-        
-        modules.push_back(proj.Compile((Ides::AST::CompilationUnit*)ast));
         
         diag->getClient()->EndSourceFile();
     }

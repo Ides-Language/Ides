@@ -45,10 +45,12 @@ namespace CodeGen {
             ast->Accept(this);
             if (dibuilder) dibuilder->finalize();
             llvm::verifyModule(*this->module);
+            values.clear();
         }
-        catch (const std::exception&) {
+        catch (const std::exception& ex) {
+            throw ex;
+            values.clear();
         }
-        values.clear();
     }
     llvm::Value* CodeGen::GetValue(Ides::AST::Statement* ast) {
         DeclarationGuard _guard(this->isDeclaration, false);
