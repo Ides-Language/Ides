@@ -24,6 +24,7 @@ namespace Diagnostics {
     void InitAllDiagnostics(clang::DiagnosticsEngine& diags) {
         CreateDiagnostic(diags, COMPILER_NOT_IMPLEMENTED, clang::DiagnosticsEngine::Fatal, "feature not yet implemented");
         CreateDiagnostic(diags, IMPOSSIBLE_ERROR, clang::DiagnosticsEngine::Fatal, "logic error: %0");
+        CreateDiagnostic(diags, BUILD_FAILED_ERRORS, clang::DiagnosticsEngine::Fatal, "build failed due to errors");
         
         CreateDiagnostic(diags, NOTE_FROM, clang::DiagnosticsEngine::Note, "from here");
         
@@ -45,7 +46,8 @@ namespace Diagnostics {
         CreateDiagnostic(diags, CALL_TOO_MANY_ARGS, clang::DiagnosticsEngine::Error, "too many arguments to function: expected %0, got %1");
         CreateDiagnostic(diags, CALL_INSUFFICIENT_ARGS, clang::DiagnosticsEngine::Error, "not enough arguments to function: expected %0, got %1");
         
-        CreateDiagnostic(diags, OP_NO_SUCH_OPERATOR, clang::DiagnosticsEngine::Error, "no such operator %0 on type %1");
+        CreateDiagnostic(diags, OP_NO_SUCH_UNARY_OPERATOR, clang::DiagnosticsEngine::Error, "no such operator %0 on type %1");
+        CreateDiagnostic(diags, OP_NO_SUCH_BINARY_OPERATOR, clang::DiagnosticsEngine::Error, "no such operator %0 on types %1, %2");
         
         CreateDiagnostic(diags, INVALID_TEMPORARY_VALUE, clang::DiagnosticsEngine::Error, "invalid use of temporary value");
         

@@ -230,6 +230,19 @@ namespace Types {
         virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
         
     };
+
+    class Integer1Type : public Type, public Ides::Util::Singleton<Integer1Type> {
+    public:
+        Integer1Type() : Type("bool", VoidType::GetSingletonPtr()) { }
+
+        virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
+
+        virtual bool HasImplicitConversionTo(const Type* other) const {
+            return false;
+        }
+
+        virtual uint64_t GetSize() const { return 1; }
+    };
     
     class NumberType : public Type {
         friend class VoidType;
@@ -297,7 +310,6 @@ namespace Types {
         virtual bool IsIntegerType() const { return true; } \
     }
     
-    IntegerType(1);
     IntegerType(8);
     UIntegerType(8);
     IntegerType(16);

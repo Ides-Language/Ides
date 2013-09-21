@@ -13,10 +13,15 @@ namespace AST {
     
     
     void MetadataSerializer::Visit(Ides::AST::FunctionDeclaration* ast) {
-        last = llvm::MDString::get(lctx, "function");
+        std::vector<llvm::Value*> args;
+
+        args.push_back(llvm::MDString::get(lctx, ast->GetName()));
+
+        last = llvm::MDNode::get(lctx, args);
     }
     
-    llvm::Value* MetadataSerializer::GetMDValue(AST* ast) {
+    llvm::MDNode* MetadataSerializer::GetMDValue(AST* ast) {
+        last = NULL;
         auto i = mdnodes.find(ast);
         if (i != mdnodes.end()) return i->second;
         

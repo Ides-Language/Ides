@@ -9,7 +9,7 @@ find_program(LLVM_LLI_EXECUTABLE NAMES lli "lli-${LLVM_VERSION}" DOC "lli execut
 #find_program(IDESC_EXECUTABLE NAMES idesc DOC "idesc executable")
 set(IDESC_EXECUTABLE "idesc/Debug/idesc")
 
-file(GLOB_RECURSE TESTFILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.ides)
+file(GLOB_RECURSE TESTFILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *Test.ides)
 
 message(STATUS "Using: idesc=${IDESC_EXECUTABLE}; lli=${LLVM_LLI_EXECUTABLE}")
 

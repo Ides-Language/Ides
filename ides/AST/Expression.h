@@ -135,7 +135,7 @@ namespace AST {
             if (const Ides::Types::PointerType* pt = dynamic_cast<const Ides::Types::PointerType*>(argType)) {
                 return pt->GetTargetType();
             }
-            throw TypeEvalError(ctx.GetDiagnostics(), Ides::Diagnostics::OP_NO_SUCH_OPERATOR, this->exprloc) << "*" << argType->ToString();
+            throw TypeEvalError(ctx.GetDiagnostics(), Ides::Diagnostics::OP_NO_SUCH_UNARY_OPERATOR, this->exprloc) << "*" << argType->ToString();
         }
         
         boost::scoped_ptr<Expression> arg;

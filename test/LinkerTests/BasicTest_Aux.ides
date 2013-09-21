@@ -1,0 +1,4 @@
+
+@NoMangle
+extern def printf(val str: int8*, ...) : int32;
+

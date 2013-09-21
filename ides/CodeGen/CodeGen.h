@@ -44,12 +44,15 @@ namespace CodeGen {
         };
         
         class UnitValueException { };
+        class ErrorsReceivedException {};
         
         class DiagnosticsEmittedException : public std::exception {
         public:
             const char* what() const throw() { return "Code generation completed with errors."; }
             
         };
+
+        
     }
     
     class CodeGen : public Ides::AST::Visitor {

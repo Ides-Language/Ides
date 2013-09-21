@@ -172,7 +172,7 @@ primary_expression : TIDENTIFIER { $$ = new Ides::AST::IdentifierExpression($1);
                    | TINTEGER { SET_EXPRLOC($$, @$); }
                    | KW_TRUE { SET_EXPRLOC($$, @$); }
                    | KW_FALSE { SET_EXPRLOC($$, @$); }
-                   | TSTRING { SET_EXPRLOC($$, @$); }
+                   | TSTRING {  }
                    | TDOUBLE { SET_EXPRLOC($$, @$); }
                    | TCHAR { SET_EXPRLOC($$, @$); }
                    | KW_NULL { $$ = Ides::AST::NullExpression::Create(); SET_EXPRLOC($$, @$); }

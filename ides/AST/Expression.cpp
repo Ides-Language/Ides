@@ -62,7 +62,7 @@ namespace AST {
                 throw Ides::AST::TypeEvalError(ctx.GetDiagnostics(), Ides::Diagnostics::UNKNOWN_MEMBER, rhs->exprloc) << valType->ToString() << expr->GetName();
             }
         }
-        throw Ides::AST::TypeEvalError(ctx.GetDiagnostics(), Ides::Diagnostics::OP_NO_SUCH_OPERATOR, this->exprloc) << "->" << lhstype->ToString();
+        throw Ides::AST::TypeEvalError(ctx.GetDiagnostics(), Ides::Diagnostics::OP_NO_SUCH_UNARY_OPERATOR, this->exprloc) << "->" << lhstype->ToString();
     }
     template<> const Ides::Types::Type* BinaryExpression<OP_LARROW>::GetType(Ides::AST::ASTContext &ctx) const { return lhs->GetType(ctx); }
     

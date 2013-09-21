@@ -128,10 +128,10 @@ namespace Types {
     }
     
     bool UInteger64Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
-        return false; //Float32Type::GetSingletonPtr()->IsEquivalentType(other) || Float32Type::GetSingletonPtr()->HasImplicitConversionTo(other);
+        return Float32Type::GetSingletonPtr()->IsEquivalentType(other) || Float32Type::GetSingletonPtr()->HasImplicitConversionTo(other);
     }
     bool Integer64Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
-        return false; //Float32Type::GetSingletonPtr()->IsEquivalentType(other) || Float32Type::GetSingletonPtr()->HasImplicitConversionTo(other);
+        return Float32Type::GetSingletonPtr()->IsEquivalentType(other) || Float32Type::GetSingletonPtr()->HasImplicitConversionTo(other);
     }
     
     bool UInteger32Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
@@ -158,9 +158,6 @@ namespace Types {
         return Integer16Type::GetSingletonPtr()->IsEquivalentType(other) || Integer16Type::GetSingletonPtr()->HasImplicitConversionTo(other);
     }
     
-    bool Integer1Type::HasImplicitConversionTo(const Ides::Types::Type *other) const {
-        return false;
-    }
     
 }
     

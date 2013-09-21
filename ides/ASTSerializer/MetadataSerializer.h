@@ -23,11 +23,11 @@ namespace AST {
         
         virtual void Visit(Ides::AST::FunctionDeclaration* ast);
         
-        llvm::Value* GetMDValue(AST* ast);
+        llvm::MDNode* GetMDValue(AST* ast);
     private:
-        llvm::Value* last;
+        llvm::MDNode* last;
         
-        boost::unordered_map<AST*, llvm::Value*> mdnodes;
+        boost::unordered_map<AST*, llvm::MDNode*> mdnodes;
         
         llvm::LLVMContext& lctx;
     };

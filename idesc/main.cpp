@@ -127,7 +127,9 @@ int main(int argc, const char* argv[])
     Ides::AST::ASTContext actx(diag);
     
     Ides::Diagnostics::InitAllDiagnostics(*diag);
-    
+
+    bool fileErrors = false;
+
     Ides::Project::Project proj(diag, actx);
 	const std::vector<fs::path> files = args["input-file"].as<std::vector<fs::path> >();
 	for (std::vector<fs::path>::const_iterator i = files.begin(); i != files.end(); ++i) {
@@ -148,11 +150,13 @@ int main(int argc, const char* argv[])
             ast = proj.ParseFile(current_file);
             modules.push_back(proj.Compile((Ides::AST::CompilationUnit*)ast));
         } catch (const std::exception&) {
-            return 1;
+            fileErrors = true;
         }
         
         diag->getClient()->EndSourceFile();
     }
+
+    if (fileErrors) return 1;
     
     llvm::Module* linkermod = new llvm::Module(output_name, llvm::getGlobalContext());
     llvm::Linker linker(linkermod);

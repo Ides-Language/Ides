@@ -1,0 +1,14 @@
+/* notest [test]
+stdout=^Hello, world!$
+stderr=^$
+exit=0
+
+*/
+
+
+@NoMangle
+def main(val argc : int32, val argv : int8**) : int32 {
+	printf("Hello, world!\n");
+	return 0;
+}
+

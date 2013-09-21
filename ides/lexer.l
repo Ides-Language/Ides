@@ -42,6 +42,7 @@
 
 [ \t\v\r\f\n]           ; // Ignore whitespace, but advance the location
 
+<INITIAL>{
 
 [0-9]+\.[0-9]*          { yylval->ast_base = new Ides::AST::ConstantFloatExpression(strtod(yytext, NULL)); return TDOUBLE; }
 
@@ -137,14 +138,19 @@
 
 "\.\.\."             return KW_VARARGS;
 
+"/*"           BEGIN(IN_BLOCKCOMMENT);
+"//"           BEGIN(IN_SINGLELINECOMMENT);
 
+"\""           { yylval->ast_str = new Ides::AST::ConstantStringExpression(); yylval->ast_str->exprloc.setBegin(yylloc->getBegin()); BEGIN(IN_STRING); }
+"C\""          { yylval->ast_str = new Ides::AST::ConstantCStringExpression(); yylval->ast_str->exprloc.setBegin(yylloc->getBegin()); BEGIN(IN_CSTRING); }
+"WC\""         { yylval->ast_str = new Ides::AST::ConstantWCStringExpression(); yylval->ast_str->exprloc.setBegin(yylloc->getBegin()); BEGIN(IN_WCSTRING); }
+"LC\""         { yylval->ast_str = new Ides::AST::ConstantLCStringExpression(); yylval->ast_str->exprloc.setBegin(yylloc->getBegin()); BEGIN(IN_LCSTRING); }
 
-<INITIAL>"/*"           BEGIN(IN_BLOCKCOMMENT);
-<INITIAL>"//"           BEGIN(IN_SINGLELINECOMMENT);
-<INITIAL>"\""           { yylval->ast_str = new Ides::AST::ConstantStringExpression(); BEGIN(IN_STRING); }
-<INITIAL>"C\""          { yylval->ast_str = new Ides::AST::ConstantCStringExpression(); BEGIN(IN_CSTRING); }
-<INITIAL>"WC\""         { yylval->ast_str = new Ides::AST::ConstantWCStringExpression(); BEGIN(IN_WCSTRING); }
-<INITIAL>"LC\""         { yylval->ast_str = new Ides::AST::ConstantLCStringExpression(); BEGIN(IN_LCSTRING); }
+\'.\'                   { yylval->ast_base = new Ides::AST::ConstantIntExpression(yytext[1]); return TCHAR; }
+
+[a-zA-Z_][a-zA-Z0-9_]*  { yylval->ast_ident = new Ides::AST::Token(yytext); return TIDENTIFIER; }
+
+}
 
 <IN_BLOCKCOMMENT>{
     "*/"                BEGIN(INITIAL);
@@ -169,17 +175,9 @@
     \\\"                { strbuf << '"'; }
     \\.                 { std::cerr << "invalid escape sequence" << std::endl; yyterminate(); }
     <<EOF>>             { std::cerr << "unterminated quote" << std::endl; yyterminate(); }
+    
+    \"                  { BEGIN(INITIAL); yylval->ast_str->exprloc.setEnd(yylloc->getEnd()); return TSTRING; }
 }
-
-<IN_STRING>\"           { BEGIN(INITIAL); yylval->ast_str->exprloc.setEnd(yylloc->getBegin()); return TSTRING; }
-<IN_CSTRING>\"          { BEGIN(INITIAL); yylval->ast_str->exprloc.setEnd(yylloc->getBegin()); return TSTRING; }
-<IN_WCSTRING>\"         { BEGIN(INITIAL); yylval->ast_str->exprloc.setEnd(yylloc->getBegin()); return TSTRING; }
-<IN_LCSTRING>\"         { BEGIN(INITIAL); yylval->ast_str->exprloc.setEnd(yylloc->getBegin()); return TSTRING; }
-
-
-\'.\'                   { yylval->ast_base = new Ides::AST::ConstantIntExpression(yytext[1]); return TCHAR; }
-
-[a-zA-Z_][a-zA-Z0-9_]*  { yylval->ast_ident = new Ides::AST::Token(yytext); yylval->ast_ident->exprloc = *yylloc; return TIDENTIFIER; }
 
 <<EOF>>                 { yyterminate(); }
 

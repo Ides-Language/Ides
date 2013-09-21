@@ -8,6 +8,7 @@ import StringIO
 import os
 import subprocess
 import tempfile
+import shlex
 
 cfgregex = re.compile("/\\*\\s*(\\[test\\].*)\\*/", re.DOTALL)
 assert(cfgregex != None)
@@ -25,7 +26,7 @@ def test(ic, lli, x):
 		m = cfgregex.search(src)
 		if m == None:
 			print "No test definition found in %s" % x
-			return False
+			return True
 
 		print "Running test source with %s: \n%s" % (ic, src)
 
@@ -41,14 +42,16 @@ def test(ic, lli, x):
 
 		compiler_stdout_re = string.strip(cfg_default(cfgfile, "compiler", "stdout", ""))
 		compiler_stderr_re = string.strip(cfg_default(cfgfile, "compiler", "stderr", ""))
+		compiler_args = string.strip(cfg_default(cfgfile, "compiler", "args", ""))
 
 		if cfgfile.has_option("test", "exit"):
 			exitcode = cfgfile.getint("test", "exit")
 
 		stdout_re = string.strip(cfg_default(cfgfile, "test", "stdout", ""))
 		stderr_re = string.strip(cfg_default(cfgfile, "test", "stderr", ""))
+		args = string.strip(cfg_default(cfgfile, "test", "args", ""))
 
-		proc = subprocess.Popen([ic, "-o", ilibfile, x], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+		proc = subprocess.Popen([ic, "-o", ilibfile, x] + shlex.split(compiler_args), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 		data = proc.communicate()
 
 		if proc.returncode != compiler_exitcode:
@@ -67,8 +70,7 @@ def test(ic, lli, x):
 		elif compiler_exitcode != 0:
 			return True # We expected the compile to fail. Everything is OK.
 		
-
-		proc = subprocess.Popen([lli, ilibfile], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+		proc = subprocess.Popen([lli, ilibfile] + shlex.split(args), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 		data = proc.communicate()
 
 		if proc.returncode != exitcode:

@@ -44,11 +44,12 @@ namespace AST {
         virtual void Accept(Visitor* v);
         
         virtual const Ides::Types::Type* GetType(ASTContext& ctx) const {
-            if (val <= INT8_MAX) return Ides::Types::IntegerLiteralType<8>::GetSingletonPtr();
+            return Ides::Types::Integer32Type::GetSingletonPtr();
+            /*if (val <= INT8_MAX) return Ides::Types::IntegerLiteralType<8>::GetSingletonPtr();
             else if (val <= INT16_MAX) return Ides::Types::IntegerLiteralType<16>::GetSingletonPtr();
             else if (val <= INT32_MAX) return Ides::Types::IntegerLiteralType<32>::GetSingletonPtr();
             else if (val <= INT64_MAX) return Ides::Types::IntegerLiteralType<64>::GetSingletonPtr();
-            return Ides::Types::UInteger64Type::GetSingletonPtr();
+            return Ides::Types::UInteger64Type::GetSingletonPtr();*/
         }
         
         uint64_t GetValue() const { return val; }
@@ -64,7 +65,7 @@ namespace AST {
         Ides::String GetString() { return buf.str(); }
         
         virtual const Ides::Types::Type* GetType(ASTContext& ctx) const {
-            return NULL;
+            throw Ides::AST::TypeEvalError(ctx.GetDiagnostics(), Ides::Diagnostics::COMPILER_NOT_IMPLEMENTED, this->exprloc);
         }
         
         std::stringstream& GetBuffer() { return buf; }

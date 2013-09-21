@@ -17,6 +17,7 @@ namespace Diagnostics {
     enum DiagIDs {
         COMPILER_NOT_IMPLEMENTED,
         IMPOSSIBLE_ERROR,
+        BUILD_FAILED_ERRORS,
         
         NOTE_FROM,
         
@@ -38,7 +39,8 @@ namespace Diagnostics {
         CALL_TOO_MANY_ARGS,
         CALL_INSUFFICIENT_ARGS,
         
-        OP_NO_SUCH_OPERATOR,
+        OP_NO_SUCH_UNARY_OPERATOR,
+        OP_NO_SUCH_BINARY_OPERATOR,
         
         BLOCK_UNREACHABLE_CODE,
         

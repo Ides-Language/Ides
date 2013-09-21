@@ -125,9 +125,14 @@ namespace CodeGen {
         llvm::BasicBlock* scope = llvm::BasicBlock::Create(lctx, "scope", GetEvaluatingLLVMFunction());
         builder->CreateBr(scope);
         builder->SetInsertPoint(scope);
+
+        bool stmtsFailed = false;
         for (auto i = ast->statements.begin(); i != ast->statements.end(); ++i) {
             try {
                 GetValue(*i);
+            }
+            catch (const Ides::Util::DiagnosticsError& ex) {
+                stmtsFailed = true;
             }
             catch (const detail::UnitValueException& ex) {
                 if (++i != ast->statements.end()) {
@@ -135,6 +140,10 @@ namespace CodeGen {
                 }
                 throw ex;
             }
+        }
+
+        if (stmtsFailed) {
+            throw detail::ErrorsReceivedException();
         }
     }
     

@@ -159,12 +159,12 @@ namespace CodeGen {
             var = alloca;
             
             values.insert(std::make_pair(ast, var));
+            actx.GetCurrentScope()->AddMember(ast->GetName(), ast);
+            
             if (ast->initval != NULL) {
                 llvm::Instruction* instr = llvm::cast<llvm::Instruction>(builder->CreateStore(GetValue(ast->initval, varType), var));
                 if (dibuilder) instr->setDebugLoc(GetDebugLoc(ast));
             }
-            
-            actx.GetCurrentScope()->AddMember(ast->GetName(), ast);
             
             if (dibuilder != NULL) {
                 auto offset = sman->getFileOffset(ast->exprloc.getBegin());
