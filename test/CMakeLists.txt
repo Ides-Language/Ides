@@ -6,8 +6,8 @@ execute_process(
 
 find_program(LLVM_LLI_EXECUTABLE NAMES lli "lli-${LLVM_VERSION}" DOC "lli executable")
 #get_property(IDESC_EXECUTABLE TARGET idesc PROPERTY LOCATION)
-#find_program(IDESC_EXECUTABLE NAMES idesc DOC "idesc executable")
-set(IDESC_EXECUTABLE "idesc/Debug/idesc")
+#find_program(IDESC_EXECUTABLE NAMES idesc PATHS ${CMAKE_BINARY_DIR} DOC "idesc executable" NO_DEFAULT_PATH)
+set(IDESC_EXECUTABLE "idesc")
 
 file(GLOB_RECURSE TESTFILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *Test.ides)
 
