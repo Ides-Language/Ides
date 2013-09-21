@@ -57,8 +57,8 @@ add_library(ides STATIC
 target_link_libraries(ides
 	${Boost_LIBRARIES}
 	clangFrontend
-	clangLex
 	clangEdit
+	clangLex
 	clangBasic
 	${LLVM_MODULE_LIBS}
 	pthread
