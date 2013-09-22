@@ -29,15 +29,26 @@ namespace AST {
         }
         auto i = this->members.find(name);
         if (i != this->members.end()) {
-            if (dynamic_cast<FunctionDeclaration*>(i->second)) {
-                OverloadedFunction* of = new OverloadedFunction();
+            OverloadedFunction* of;
+            if ((dynamic_cast<FunctionDeclaration*>(i->second)) && dynamic_cast<FunctionDeclaration*>(decl)) {
+                of = new OverloadedFunction();
                 of->push_back(i->second);
+                of->push_back(decl);
                 this->members[i->first] = of;
                 return;
             }
+            else if ((of = dynamic_cast<OverloadedFunction*>(i->second)) &&
+                     dynamic_cast<FunctionDeclaration*>(decl)) {
+                of->push_back(decl);
+                return;
+            }
+            else {
+                
+            }
+        } else {
+            LOG(name << " added to DeclarationContext.");
+            members.insert(std::make_pair(name, decl));
         }
-        LOG(name << " added to DeclarationContext.");
-        members.insert(std::make_pair(name, decl));
     }
     
     Declaration* HierarchicalConcreteDeclarationContext::GetMember(ASTContext& ctx, Ides::StringRef name) const {

@@ -16,6 +16,7 @@ cmake_install.cmake
 
 */Debug
 */Release
+bin
 
 *.xcodeproj
 docs

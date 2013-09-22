@@ -53,13 +53,6 @@ namespace CodeGen {
             throw ex;
         }
     }
-    llvm::Value* CodeGen::GetValue(Ides::AST::Statement* ast) {
-        DeclarationGuard _guard(this->isDeclaration, false);
-        ast->Accept(this);
-        
-        EmitDebugLoc(ast);
-        return last;
-    }
     
     llvm::Value* CodeGen::GetValue(Ides::AST::Expression* ast) { SETTRACE("CodeGen::GetValue")
         DeclarationGuard _guard(this->isDeclaration, false);
@@ -210,7 +203,7 @@ namespace CodeGen {
             dbgscope.SetScope(dibuilder, diFile);
         }
 
-        Ides::AST::MetadataSerializer md(this->lctx);
+        Ides::AST::MetadataSerializer md(this->actx, this->lctx);
 
         llvm::NamedMDNode* mdn = module->getOrInsertNamedMetadata("ides.link");
 
@@ -225,9 +218,10 @@ namespace CodeGen {
         
         for (auto i = ast->begin(); i != ast->end(); ++i) {
             try {
-                if (!dynamic_cast<Ides::AST::StructDeclaration*>(i->second)) {
-                this->GetDecl(i->second);
-                    llvm::MDNode* node = md.GetMDValue(i->second);
+                Ides::AST::Declaration* decl = i->second;
+                if (!dynamic_cast<Ides::AST::StructDeclaration*>(decl)) {
+                    this->GetDecl(decl);
+                    llvm::MDNode* node = md.GetMDValue(decl);
                     if (node != NULL) mdn->addOperand(node);
                 }
             }

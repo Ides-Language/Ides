@@ -10,7 +10,6 @@
 #ifndef __ides__Expression__
 #define __ides__Expression__
 
-#include <ides/AST/Statement.h>
 #include <ides/AST/DeclarationContext.h>
 #include <ides/AST/AST.h>
 
@@ -19,11 +18,13 @@
 namespace Ides {
 namespace AST {
     
-    class Expression : public Statement {
+    class Expression : public AST {
     public:
         virtual const Ides::Types::Type* GetType(ASTContext& ctx) const = 0;
 
     };
+
+    typedef Expression Statement;
     
     class IdentifierExpression : public Expression {
     public:
@@ -58,7 +59,7 @@ namespace AST {
             return Ides::Types::UnitType::GetSingletonPtr();
         }
     };
-    
+
     class ReturnExpression : public UnitTypeExpression {
         ReturnExpression() { }
         ReturnExpression(Expression* ret) : retVal(ret) { }
@@ -220,6 +221,52 @@ namespace AST {
     private:
         boost::scoped_ptr<Expression> lhs;
         boost::scoped_ptr<Expression> rhs;
+    };
+
+
+
+    class Block : public Expression, public HierarchicalConcreteDeclarationContext {
+    public:
+        virtual void Accept(Visitor* v);
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const {
+            return statements.back()->GetType(ctx);
+        }
+
+        std::list<Expression*> statements;
+    };
+
+    class IfStatement : public Expression, public HierarchicalConcreteDeclarationContext {
+    public:
+        IfStatement(Expression* expr, Statement* ift, Statement* iff) : condition(expr), iftrue(ift), iffalse(iff) { }
+        virtual void Accept(Visitor* v);
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const { return Ides::Types::VoidType::GetSingletonPtr(); }
+
+        Expression* condition;
+        Expression* iftrue;
+        Expression* iffalse;
+    };
+
+    class WhileStatement : public Expression, public HierarchicalConcreteDeclarationContext {
+    public:
+        WhileStatement(Expression* expr, Statement* body) : condition(expr), body(body) { }
+        virtual void Accept(Visitor* v);
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const { return Ides::Types::VoidType::GetSingletonPtr(); }
+
+        Expression* condition;
+        Expression* body;
+    };
+
+    class ForStatement : public Expression, public HierarchicalConcreteDeclarationContext {
+    public:
+        ForStatement(Statement* startexpr, Expression* endexpr, Expression* eachexpr, Statement* body) :
+        startexpr(startexpr), endexpr(endexpr), eachexpr(eachexpr), body(body) { }
+        virtual void Accept(Visitor* v);
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const { return Ides::Types::VoidType::GetSingletonPtr(); }
+
+        Expression* startexpr;
+        Expression* endexpr;
+        Expression* eachexpr;
+        Expression* body;
     };
 }
 }

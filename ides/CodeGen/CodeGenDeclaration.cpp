@@ -10,7 +10,6 @@
 #include "llvm/Analysis/Verifier.h"
 #include <ides/Diagnostics/Diagnostics.h>
 
-#include <ides/AST/Statement.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Attributes.h>
 
@@ -81,6 +80,7 @@ namespace CodeGen {
                                                                      llvm::GlobalValue::InternalLinkage,
                                                                      "init_" + ast->GetName(),
                                                                      module);
+                this->currentStaticInitializer = initializer;
                 
                 llvm::BasicBlock* oldBB = builder->GetInsertBlock();
                 
@@ -95,8 +95,9 @@ namespace CodeGen {
                 instr->setDebugLoc(GetDebugLoc(ast->initval));
                 
                 llvm::verifyFunction(*initializer);
-                
-                builder->SetInsertPoint(oldBB);
+
+                if (oldBB != NULL)
+                    builder->SetInsertPoint(oldBB);
                 
                 this->globalInitializers.push_back(std::make_pair(this->GetInitializerWeight(WEIGHT_EXPRESSION_VAR), initializer));
             }
@@ -199,7 +200,13 @@ namespace CodeGen {
             llvmst->setBody(memberLLVMtypes, false);
         }
     }
-    
+
+    void CodeGen::Visit(Ides::AST::OverloadedFunction* ast) { SETTRACE("CodeGen::Visit(OverloadedFunction)")
+        for (auto i = ast->begin(); i != ast->end(); ++i) {
+            this->GetDecl(*i);
+        }
+    }
+
     void CodeGen::Visit(Ides::AST::FunctionDeclaration* ast) { SETTRACE("CodeGen::Visit(FunctionDeclaration)")
         DIGenerator::DebugScope dbgscope;
         llvm::Function* func = NULL;
@@ -261,8 +268,8 @@ namespace CodeGen {
             }
             
             struct FSM {
-                FSM(CodeGen* cg, Ides::AST::FunctionDeclaration* ast) : cg(cg) {
-                    cg->currentFunctions.push(ast);
+                FSM(CodeGen* cg, Ides::AST::FunctionDeclaration* function) : cg(cg) {
+                    cg->currentFunctions.push(function);
                 }
                 
                 ~FSM() throw() {

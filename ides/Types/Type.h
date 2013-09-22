@@ -149,6 +149,10 @@ namespace Types {
         const Ides::Types::Type* retType;
         const std::vector<const Ides::Types::Type*> argTypes;
         const bool isVarArgs;
+
+        const Ides::Types::Type* GetReturnType() const { return this->retType; }
+        const std::vector<const Ides::Types::Type*> GetArgTypes() const { return this->argTypes; }
+        bool IsVarArgs() const { return isVarArgs; }
         
     private:
         static FunctionTypeSet types;

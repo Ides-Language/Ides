@@ -122,7 +122,7 @@
 
 %type <ast_expr> expression infix_expression prefix_expression postfix_expression primary_expression
 %type <ast_stmt> stmt if_stmt while_stmt for_stmt for_start
-%type <ast_block> stmt_list
+%type <ast_block> stmt_list compound_expression
 
 %type <ast_prog> root
 
@@ -180,6 +180,7 @@ primary_expression : TIDENTIFIER { $$ = new Ides::AST::IdentifierExpression($1);
                    //| array_expression
                    //| dictionary_expression
                    | '(' expression ')' { $$ = $2; }
+                    | compound_expression
 ;
 /*
 array_expression : '[' arg_val_list ']' { $$ = $2; }
@@ -244,6 +245,9 @@ infix_expression : prefix_expression
                  | infix_expression OP_GE infix_expression { $$ = new Ides::AST::BinaryExpression<OP_GE>($1, $3); SET_EXPRLOC($$, @$); }
                  
                  | infix_expression OP_CAST var_type { $$ = new Ides::AST::CastExpression($1, $3); SET_EXPRLOC($$, @$); }
+;
+
+compound_expression : '{' stmt_list '}' { $$ = $2; SET_EXPRLOC($$, @$); }
 ;
 
 expression : infix_expression
@@ -409,7 +413,6 @@ stmt : var_decl ';' { SET_EXPRLOC($$, @$); }
      | if_stmt { SET_EXPRLOC($$, @$); }
      | while_stmt { SET_EXPRLOC($$, @$); }
      | for_stmt { SET_EXPRLOC($$, @$); }
-     | '{' stmt_list '}' { $$ = (Ides::AST::Statement*)$2; SET_EXPRLOC($$, @$); }
 ;
 
 stmt_list : stmt { $$ = new Ides::AST::Block(); $$->statements.push_back($1); SET_EXPRLOC($$, @$); }

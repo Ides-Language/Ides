@@ -14,7 +14,6 @@
 
 #include <ides/AST/AST.h>
 #include <ides/AST/Declaration.h>
-#include <ides/AST/Statement.h>
 #include <ides/AST/Expression.h>
 
 #include <ides/ASTVisitor/ASTVisitor.h>
@@ -85,6 +84,7 @@ namespace CodeGen {
         virtual void Visit(Ides::AST::CompilationUnit* ast);
         
         virtual void Visit(Ides::AST::FunctionDeclaration* ast);
+        virtual void Visit(Ides::AST::OverloadedFunction* ast);
         virtual void Visit(Ides::AST::VariableDeclaration* ast);
         virtual void Visit(Ides::AST::GlobalVariableDeclaration* ast);
         virtual void Visit(Ides::AST::ArgumentDeclaration* ast);
@@ -184,7 +184,6 @@ namespace CodeGen {
         void EmitDebugLoc(Ides::AST::AST*);
         
         llvm::Value* GetPtr(Ides::AST::Expression* ast);
-        llvm::Value* GetValue(Ides::AST::Statement* ast);
         llvm::Value* GetValue(Ides::AST::Expression* ast);
         llvm::Value* GetValue(Ides::AST::Expression* ast, const Ides::Types::Type* toType);
         llvm::Value* GetDecl(Ides::AST::Declaration* ast);
@@ -195,7 +194,12 @@ namespace CodeGen {
         
         llvm::DebugLoc GetDebugLoc(Ides::AST::AST* ast);
         
-        llvm::Function* GetEvaluatingLLVMFunction() { return static_cast<llvm::Function*>(this->values[this->currentFunctions.top()]); }
+        llvm::Function* GetEvaluatingLLVMFunction() {
+            if (this->currentFunctions.empty()) {
+                return this->currentStaticInitializer;
+            }
+            return static_cast<llvm::Function*>(this->values[this->currentFunctions.top()]);
+        }
         
         bool IsEvaluatingDecl() const { return this->isDeclaration; }
         
@@ -220,6 +224,7 @@ namespace CodeGen {
         llvm::Value* last;
         llvm::MDNode* diFile;
         clang::FileID fid;
+        llvm::Function* currentStaticInitializer;
         
         llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag;
         

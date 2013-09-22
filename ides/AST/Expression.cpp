@@ -37,7 +37,12 @@ namespace AST {
         throw Ides::AST::TypeEvalError(ctx.GetDiagnostics(), Ides::Diagnostics::CALL_NON_FUNCTION, this->exprloc) << ft->ToString();
     }
     
-    
+
+    void Block::Accept(Visitor* v) { v->Visit(this); }
+
+    void IfStatement::Accept(Visitor* v) { v->Visit(this); }
+    void WhileStatement::Accept(Visitor* v) { v->Visit(this); }
+    void ForStatement::Accept(Visitor* v) { v->Visit(this); }
     
     void IdentifierExpression::Accept(Visitor* v) { v->Visit(this); }
     void UnitTypeExpression::Accept(Visitor* v) { v->Visit(this); }
