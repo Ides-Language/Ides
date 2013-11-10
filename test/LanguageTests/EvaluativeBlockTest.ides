@@ -3,7 +3,7 @@
 @NoMangle
 extern def printf(val str: int8*, ...) : int32;
 
-var x = { printf("Hello, world.\n"); 5 - 4; };
+var x = { printf(C"Hello, world.\n"); 5 - 4; };
 
 @NoMangle
 def main() = x;

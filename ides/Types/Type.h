@@ -52,6 +52,7 @@ namespace Types {
         }
         
         virtual bool IsPtrType() const { return false; }
+        virtual bool IsFnType() const { return false; }
         virtual bool IsNumericType() const { return IsIntegerType() || IsFloatType(); }
         virtual bool IsIntegerType() const { return false; }
         virtual bool IsFloatType() const { return false; }
@@ -136,6 +137,7 @@ namespace Types {
             t << ") : " << retType->ToString();
             this->type_name = t.str();
         }
+        virtual bool IsFnType() const { return true; }
     public:
         virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
         
@@ -270,58 +272,49 @@ namespace Types {
     private:
         boost::unordered_map<Ides::String, NumericOperator> operators;
     };
-    
-    template<uint8_t size>
-    class IntegerLiteralType : public NumberType, public Ides::Util::Singleton<IntegerLiteralType<size> > {
-    public:
-        IntegerLiteralType() : NumberType(Ides::String("int") + boost::lexical_cast<Ides::String>((int32_t)size), VoidType::GetSingletonPtr()) { }
-        
-        virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); }
-        
-        virtual NumberClass GetNumberClass() const { return NumberType::N_SINT; }
-        virtual uint64_t GetSize() const { return size; }
-        virtual bool IsIntegerType() const { return true; }
-        virtual bool IsSigned() const { return false; }
-        virtual bool HasImplicitConversionTo(const Type* other) const {
-            if (auto nt = dynamic_cast<const NumberType*>(other)) {
-                return nt->GetSize() >= size || (nt->IsSigned() == false && nt->GetSize() * 2 >= size);
-            }
-            return false;
-        }
-    };
-    
-#define IntegerType(size) \
-    class Integer##size##Type : public NumberType, public Ides::Util::Singleton<Integer##size##Type> { \
-    public: \
-        virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); } \
-        Integer##size##Type() : NumberType("int" #size, VoidType::GetSingletonPtr()) { } \
-        ~Integer##size##Type() { } \
-        virtual NumberType::NumberClass GetNumberClass() const { return NumberType::N_SINT; } \
-        virtual uint64_t GetSize() const { return size; } \
-        virtual bool HasImplicitConversionTo(const Type* other) const; \
-        virtual bool IsIntegerType() const { return true; } \
-    }
 
-#define UIntegerType(size) \
-    class UInteger##size##Type : public NumberType, public Ides::Util::Singleton<UInteger##size##Type> { \
-    public: \
-        virtual void Accept(Ides::Types::TypeVisitor* visitor) const { visitor->Visit(this); } \
-        UInteger##size##Type() : NumberType("uint" #size, VoidType::GetSingletonPtr()) { } \
-        ~UInteger##size##Type() { } \
-        virtual NumberType::NumberClass GetNumberClass() const { return NumberType::N_UINT; } \
-        virtual uint64_t GetSize() const { return size; } \
-        virtual bool HasImplicitConversionTo(const Type* other) const; \
-        virtual bool IsIntegerType() const { return true; } \
-    }
-    
-    IntegerType(8);
-    UIntegerType(8);
-    IntegerType(16);
-    UIntegerType(16);
-    IntegerType(32);
-    UIntegerType(32);
-    IntegerType(64);
-    UIntegerType(64);
+    template<uint64_t size, bool isSigned>
+    class IntegerType : public NumberType, public Ides::Util::Singleton<IntegerType<size, isSigned> > {
+    public:
+        virtual void Accept(Ides::Types::TypeVisitor* visitor) const {
+            visitor->Visit(this);
+        }
+
+        IntegerType() : NumberType(Ides::Util::StringBuilder() << (isSigned ? "int" : "uint") << size, VoidType::GetSingletonPtr()) { }
+        virtual ~IntegerType() { }
+        virtual NumberType::NumberClass GetNumberClass() const {
+            return isSigned ? NumberType::N_SINT : NumberType::N_UINT;
+        }
+
+        virtual uint64_t GetSize() const { return size; }
+
+        virtual bool HasImplicitConversionTo(const Type* other) const {
+            const Ides::Types::NumberType* numericOther = dynamic_cast<const Ides::Types::NumberType*>(other);
+            if (numericOther == NULL)
+                return false;
+            if (!numericOther->IsIntegerType())
+                return false;
+            if (IsSigned() && !numericOther->IsSigned())
+                return false;
+            if (GetSize() > numericOther->GetSize())
+                return false;
+
+            return true;
+        }
+
+        virtual bool IsIntegerType() const { return true; }
+    };
+
+    typedef IntegerType<8, true> Integer8Type;
+    typedef IntegerType<16, true> Integer16Type;
+    typedef IntegerType<32, true> Integer32Type;
+    typedef IntegerType<64, true> Integer64Type;
+
+    typedef IntegerType<8, false> UInteger8Type;
+    typedef IntegerType<16, false> UInteger16Type;
+    typedef IntegerType<32, false> UInteger32Type;
+    typedef IntegerType<64, false> UInteger64Type;
+
     
     class Float32Type : public NumberType, public Ides::Util::Singleton<Float32Type> {
     public:

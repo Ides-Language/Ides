@@ -23,7 +23,7 @@ namespace CodeGen {
     
     void CodeGen::Visit(Ides::AST::AssignmentExpression* ast) { SETTRACE("CodeGen::Visit(AssignmentExpression)")
         llvm::Value* toExpr = GetPtr(ast->GetLHS());
-        llvm::Value* fromExpr = GetValue(ast->GetRHS(), ast->GetLHS()->GetType(actx));
+        llvm::Value* fromExpr = GetValue(ast->GetRHS(), GetIdesType(ast->GetLHS()));
         auto inst = builder->CreateStore(fromExpr, toExpr);
         if (this->dibuilder) {
             inst->setDebugLoc(this->GetDebugLoc(ast));
@@ -97,7 +97,7 @@ namespace CodeGen {
     
     
     void CodeGen::Visit(Ides::AST::BinaryExpression<OP_RARROW>* ast) {
-        const Ides::Types::Type* lhsType = ast->lhs->GetType(actx);
+        const Ides::Types::Type* lhsType = GetIdesType(ast->lhs.get());
         
         llvm::Value* ptr = GetPtr(ast->lhs.get());
         
@@ -121,10 +121,18 @@ namespace CodeGen {
     }
     
     void CodeGen::Visit(Ides::AST::FunctionCallExpression* ast) { SETTRACE("CodeGen::Visit(FunctionCallExpression)")
-        const Ides::Types::FunctionType* function = static_cast<const Ides::Types::FunctionType*>(ast->GetFunction()->GetType(actx));
+        const Ides::Types::Type* ft = GetIdesType(ast->GetFunction());
+        if (const Ides::Types::PointerType* pft = dynamic_cast<const Ides::Types::PointerType*>(ft)) {
+            ft = pft->GetTargetType();
+        }
+        const Ides::Types::FunctionType* function = dynamic_cast<const Ides::Types::FunctionType*>(ft);
+
+        if (function == NULL)
+            Diag(Ides::Diagnostics::CALL_NON_FUNCTION, ast) << ft->ToString();
         
         const Ides::AST::ExpressionList& args = ast->GetArgs();
-        llvm::Function* func = static_cast<llvm::Function*>(GetPtr(ast->GetFunction()));
+        llvm::Value* funcValue = GetPtr(ast->GetFunction());
+        llvm::Function* func = static_cast<llvm::Function*>(funcValue->isDereferenceablePointer() ? builder->CreateLoad(funcValue, "func") : funcValue);
         std::vector<llvm::Value*> fnargs;
         auto defi = function->argTypes.begin();
         for (auto i = args.begin(); i != args.end(); ++i) {
@@ -142,12 +150,13 @@ namespace CodeGen {
         } else if (function->argTypes.size() < args.size() && !function->isVarArgs) {
             throw detail::CodeGenError(*diag, CALL_TOO_MANY_ARGS, ast->exprloc) << (int)function->argTypes.size() << (int)args.size();
         }
+
         last = builder->CreateCall(func, fnargs);
     }
     
     
     void CodeGen::Visit(Ides::AST::AddressOfExpression* ast) { SETTRACE("CodeGen::Visit(AddressOfExpression)")
-        const Ides::Types::Type* exprType = ast->GetType(actx);
+        const Ides::Types::Type* exprType = GetIdesType(ast);
         llvm::AllocaInst* ptr = builder->CreateAlloca(GetLLVMType(exprType), 0, "addrof");
         ptr->setAlignment(exprType->GetAlignment());
         builder->CreateStore(GetPtr(ast->arg.get()), ptr);
@@ -155,7 +164,7 @@ namespace CodeGen {
     }
     
     void CodeGen::Visit(Ides::AST::DereferenceExpression* ast) { SETTRACE("CodeGen::Visit(DereferenceExpression)")
-        const Ides::Types::Type* astType = ast->arg->GetType(actx);
+        const Ides::Types::Type* astType = GetIdesType(ast->arg.get());
         if (dynamic_cast<const Ides::Types::PointerType*>(astType)) {
             last = builder->CreateLoad(this->GetPtr(ast->arg.get()), "deref");
             return;
@@ -164,11 +173,11 @@ namespace CodeGen {
     }
     
     void CodeGen::Visit(Ides::AST::CastExpression* ast) {
-        last = Cast(ast->lhs.get(), ast->GetType(actx));
+        last = Cast(ast->lhs.get(), GetIdesType(ast));
     }
     
     void CodeGen::Visit(Ides::AST::UnaryExpression<OP_INC>* ast) { SETTRACE("CodeGen::Visit(UnaryExpression<OP_INC>)")
-        const Ides::Types::Type* exprType = ast->GetType(actx);
+        const Ides::Types::Type* exprType = GetIdesType(ast);
         llvm::Value* ptr = this->GetPtr(ast->arg.get());
         llvm::Value* oldVal = builder->CreateLoad(ptr);
         llvm::Value* newVal = builder->CreateAdd(oldVal, llvm::ConstantInt::get(GetLLVMType(exprType), 1));
@@ -182,7 +191,7 @@ namespace CodeGen {
     }
     
     void CodeGen::Visit(Ides::AST::UnaryExpression<OP_DEC>* ast) { SETTRACE("CodeGen::Visit(UnaryExpression<OP_DEC>)")
-        const Ides::Types::Type* exprType = ast->GetType(actx);
+        const Ides::Types::Type* exprType = GetIdesType(ast);
         llvm::Value* ptr = this->GetPtr(ast->arg.get());
         llvm::Value* oldVal = builder->CreateLoad(ptr);
         llvm::Value* newVal = builder->CreateSub(oldVal, llvm::ConstantInt::get(GetLLVMType(exprType), 1));
@@ -208,9 +217,9 @@ namespace CodeGen {
     
 #define CREATE_BINARY_EXPRESSION(op, generator, optxt) \
     void CodeGen::Visit(Ides::AST::BinaryExpression<op>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<" #op ">)") \
-        const Ides::Types::Type* resultType = ast->GetType(actx); \
-        const Ides::Types::Type* lhsType = ast->lhs->GetType(actx); \
-        const Ides::Types::Type* rhsType = ast->rhs->GetType(actx); \
+        const Ides::Types::Type* resultType = GetIdesType(ast); \
+        const Ides::Types::Type* lhsType = GetIdesType(ast->lhs.get()); \
+        const Ides::Types::Type* rhsType = GetIdesType(ast->rhs.get()); \
         if (resultType->IsNumericType()) { \
             llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType); \
             llvm::Value* rhsresult = Cast(ast->rhs.get(), resultType); \
@@ -224,9 +233,9 @@ namespace CodeGen {
     CREATE_BINARY_EXPRESSION(OP_STAR, CreateMul, "*")
 
     void CodeGen::Visit(Ides::AST::BinaryExpression<OP_PLUS>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_PLUS>)") \
-        const Ides::Types::Type* resultType = ast->GetType(actx);
-        const Ides::Types::Type* lhsType = ast->lhs->GetType(actx);
-        const Ides::Types::Type* rhsType = ast->rhs->GetType(actx);
+        const Ides::Types::Type* resultType = GetIdesType(ast);
+        const Ides::Types::Type* lhsType = GetIdesType(ast->lhs.get());
+        const Ides::Types::Type* rhsType = GetIdesType(ast->rhs.get());
         if (resultType->IsNumericType()) {
             llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
             llvm::Value* rhsresult = Cast(ast->rhs.get(), resultType);
@@ -238,13 +247,13 @@ namespace CodeGen {
             }
             return;
         }
-        throw detail::CodeGenError(*diag, OP_NO_SUCH_BINARY_OPERATOR, ast->exprloc) << '+' << lhsType->ToString() << rhsType->ToString();
+        throw detail::CodeGenError(*diag, OP_NO_SUCH_BINARY_OPERATOR, ast->exprloc) << "+" << lhsType->ToString() << rhsType->ToString();
     }
 
     void CodeGen::Visit(Ides::AST::BinaryExpression<OP_SLASH>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_SLASH>)")
-        const Ides::Types::Type* resultType = ast->GetType(actx);
-        const Ides::Types::Type* lhsType = ast->lhs->GetType(actx);
-        const Ides::Types::Type* rhsType = ast->rhs->GetType(actx);
+        const Ides::Types::Type* resultType = GetIdesType(ast);
+        const Ides::Types::Type* lhsType = GetIdesType(ast->lhs.get());
+        const Ides::Types::Type* rhsType = GetIdesType(ast->rhs.get());
         
         if (resultType->IsNumericType()) {
             auto nt = static_cast<const Ides::Types::NumberType*>(resultType);
@@ -261,9 +270,9 @@ namespace CodeGen {
     }
     
     void CodeGen::Visit(Ides::AST::BinaryExpression<OP_MOD>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_MOD>)")
-        const Ides::Types::Type* resultType = ast->GetType(actx);
-        const Ides::Types::Type* lhsType = ast->lhs->GetType(actx);
-        const Ides::Types::Type* rhsType = ast->rhs->GetType(actx);
+        const Ides::Types::Type* resultType = GetIdesType(ast);
+        const Ides::Types::Type* lhsType = GetIdesType(ast->lhs.get());
+        const Ides::Types::Type* rhsType = GetIdesType(ast->rhs.get());
         
         if (resultType->IsNumericType()) {
             auto nt = static_cast<const Ides::Types::NumberType*>(resultType);
@@ -287,9 +296,9 @@ namespace CodeGen {
     CREATE_BINARY_EXPRESSION(OP_OR, CreateOr, "||");
     
     void CodeGen::Visit(Ides::AST::BinaryExpression<OP_ASHL>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_ASHL>)")
-        const Ides::Types::Type* resultType = ast->GetType(actx);
-        const Ides::Types::Type* lhsType = ast->lhs->GetType(actx);
-        const Ides::Types::Type* rhsType = ast->rhs->GetType(actx);
+        const Ides::Types::Type* resultType = GetIdesType(ast);
+        const Ides::Types::Type* lhsType = GetIdesType(ast->lhs.get());
+        const Ides::Types::Type* rhsType = GetIdesType(ast->rhs.get());
         if (resultType->IsNumericType()) {
             llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
             llvm::Value* rhsresult = Cast(ast->rhs.get(), Ides::Types::UInteger64Type::GetSingletonPtr());
@@ -299,9 +308,9 @@ namespace CodeGen {
         throw detail::CodeGenError(*diag, OP_NO_SUCH_BINARY_OPERATOR, ast->exprloc) << "<<<" << lhsType->ToString() << rhsType->ToString();
     }
     void CodeGen::Visit(Ides::AST::BinaryExpression<OP_LSHL>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_LSHL>)")
-        const Ides::Types::Type* resultType = ast->GetType(actx);
-        const Ides::Types::Type* lhsType = ast->lhs->GetType(actx);
-        const Ides::Types::Type* rhsType = ast->rhs->GetType(actx);
+        const Ides::Types::Type* resultType = GetIdesType(ast);
+        const Ides::Types::Type* lhsType = GetIdesType(ast->lhs.get());
+        const Ides::Types::Type* rhsType = GetIdesType(ast->rhs.get());
         if (resultType->IsNumericType()) {
             llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
             llvm::Value* rhsresult = Cast(ast->rhs.get(), Ides::Types::UInteger64Type::GetSingletonPtr());
@@ -311,9 +320,9 @@ namespace CodeGen {
         throw detail::CodeGenError(*diag, OP_NO_SUCH_BINARY_OPERATOR, ast->exprloc) << "<<" << lhsType->ToString() << rhsType->ToString();
     }
     void CodeGen::Visit(Ides::AST::BinaryExpression<OP_ASHR>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_ASHR>)")
-        const Ides::Types::Type* resultType = ast->GetType(actx);
-        const Ides::Types::Type* lhsType = ast->lhs->GetType(actx);
-        const Ides::Types::Type* rhsType = ast->rhs->GetType(actx);
+        const Ides::Types::Type* resultType = GetIdesType(ast);
+        const Ides::Types::Type* lhsType = GetIdesType(ast->lhs.get());
+        const Ides::Types::Type* rhsType = GetIdesType(ast->rhs.get());
         if (resultType->IsNumericType()) {
             llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
             llvm::Value* rhsresult = Cast(ast->rhs.get(), Ides::Types::UInteger64Type::GetSingletonPtr());
@@ -323,9 +332,9 @@ namespace CodeGen {
         throw detail::CodeGenError(*diag, OP_NO_SUCH_BINARY_OPERATOR, ast->exprloc) << ">>>" << lhsType->ToString() << rhsType->ToString();
     }
     void CodeGen::Visit(Ides::AST::BinaryExpression<OP_LSHR>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_LSHR>)")
-        const Ides::Types::Type* resultType = ast->GetType(actx);
-        const Ides::Types::Type* lhsType = ast->lhs->GetType(actx);
-        const Ides::Types::Type* rhsType = ast->rhs->GetType(actx);
+        const Ides::Types::Type* resultType = GetIdesType(ast);
+        const Ides::Types::Type* lhsType = GetIdesType(ast->lhs.get());
+        const Ides::Types::Type* rhsType = GetIdesType(ast->rhs.get());
         if (resultType->IsNumericType()) {
             llvm::Value* lhsresult = Cast(ast->lhs.get(), resultType);
             llvm::Value* rhsresult = Cast(ast->rhs.get(), Ides::Types::UInteger64Type::GetSingletonPtr());
@@ -337,8 +346,8 @@ namespace CodeGen {
     
     
     void CodeGen::Visit(Ides::AST::BinaryExpression<OP_EQ>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_EQ>)")
-        const Ides::Types::Type* lhsType = ast->lhs->GetType(actx);
-        const Ides::Types::Type* rhsType = ast->rhs->GetType(actx);
+        const Ides::Types::Type* lhsType = GetIdesType(ast->lhs.get());
+        const Ides::Types::Type* rhsType = GetIdesType(ast->rhs.get());
 
         if (lhsType->IsNumericType() && rhsType->IsNumericType()) {
             const Ides::Types::Type* cmpType = lhsType->HasImplicitConversionTo(rhsType) ? rhsType : lhsType;
@@ -356,8 +365,8 @@ namespace CodeGen {
     }
     
     void CodeGen::Visit(Ides::AST::BinaryExpression<OP_NE>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_NE>)")
-        const Ides::Types::Type* lhsType = ast->lhs->GetType(actx);
-        const Ides::Types::Type* rhsType = ast->rhs->GetType(actx);
+        const Ides::Types::Type* lhsType = GetIdesType(ast->lhs.get());
+        const Ides::Types::Type* rhsType = GetIdesType(ast->rhs.get());
 
         if (lhsType->IsNumericType() && rhsType->IsNumericType()) {
             const Ides::Types::Type* cmpType = lhsType->HasImplicitConversionTo(rhsType) ? rhsType : lhsType;
@@ -375,8 +384,8 @@ namespace CodeGen {
     }
     
     void CodeGen::Visit(Ides::AST::BinaryExpression<OP_LT>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_LT>)")
-        const Ides::Types::Type* lhsType = ast->lhs->GetType(actx);
-        const Ides::Types::Type* rhsType = ast->rhs->GetType(actx);
+        const Ides::Types::Type* lhsType = GetIdesType(ast->lhs.get());
+        const Ides::Types::Type* rhsType = GetIdesType(ast->rhs.get());
 
         if (lhsType->IsNumericType() && rhsType->IsNumericType()) {
             const Ides::Types::NumberType* cmpType = static_cast<const Ides::Types::NumberType*>(lhsType->HasImplicitConversionTo(rhsType) ? rhsType : lhsType);
@@ -394,10 +403,10 @@ namespace CodeGen {
         }
         throw detail::CodeGenError(*diag, OP_NO_SUCH_BINARY_OPERATOR, ast->exprloc) << "<" << lhsType->ToString() << rhsType->ToString();
     }
-    
+
     void CodeGen::Visit(Ides::AST::BinaryExpression<OP_LE>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_LE>)")
-        const Ides::Types::Type* lhsType = ast->lhs->GetType(actx);
-        const Ides::Types::Type* rhsType = ast->rhs->GetType(actx);
+        const Ides::Types::Type* lhsType = GetIdesType(ast->lhs.get());
+        const Ides::Types::Type* rhsType = GetIdesType(ast->rhs.get());
 
         if (lhsType->IsNumericType() && rhsType->IsNumericType()) {
             const Ides::Types::NumberType* cmpType = static_cast<const Ides::Types::NumberType*>(lhsType->HasImplicitConversionTo(rhsType) ? rhsType : lhsType);
@@ -417,8 +426,8 @@ namespace CodeGen {
     }
     
     void CodeGen::Visit(Ides::AST::BinaryExpression<OP_GT>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_GT>)")
-        const Ides::Types::Type* lhsType = ast->lhs->GetType(actx);
-        const Ides::Types::Type* rhsType = ast->rhs->GetType(actx);
+        const Ides::Types::Type* lhsType = GetIdesType(ast->lhs.get());
+        const Ides::Types::Type* rhsType = GetIdesType(ast->rhs.get());
 
         if (lhsType->IsNumericType() && rhsType->IsNumericType()) {
             const Ides::Types::NumberType* cmpType = static_cast<const Ides::Types::NumberType*>(lhsType->HasImplicitConversionTo(rhsType) ? rhsType : lhsType);
@@ -438,8 +447,8 @@ namespace CodeGen {
     }
     
     void CodeGen::Visit(Ides::AST::BinaryExpression<OP_GE>* ast) { SETTRACE("CodeGen::Visit(BinaryExpression<OP_GE>)")
-        const Ides::Types::Type* lhsType = ast->lhs->GetType(actx);
-        const Ides::Types::Type* rhsType = ast->rhs->GetType(actx);
+        const Ides::Types::Type* lhsType = GetIdesType(ast->lhs.get());
+        const Ides::Types::Type* rhsType = GetIdesType(ast->rhs.get());
 
         if (lhsType->IsNumericType() && rhsType->IsNumericType()) {
             const Ides::Types::NumberType* cmpType = static_cast<const Ides::Types::NumberType*>(lhsType->HasImplicitConversionTo(rhsType) ? rhsType : lhsType);
@@ -481,11 +490,11 @@ namespace CodeGen {
     }
     
     void CodeGen::Visit(Ides::AST::ConstantIntExpression* ast) { SETTRACE("CodeGen::Visit(ConstantIntExpression)")
-        last = llvm::ConstantInt::get(this->GetLLVMType(ast->GetType(actx)), ast->GetValue());
+        last = llvm::ConstantInt::get(this->GetLLVMType(GetIdesType(ast)), ast->GetValue());
     }
     
     void CodeGen::Visit(Ides::AST::ConstantFloatExpression* ast) { SETTRACE("CodeGen::Visit(ConstantFloatExpression)")
-        last = llvm::ConstantFP::get(this->GetLLVMType(ast->GetType(actx)), ast->GetValue());
+        last = llvm::ConstantFP::get(this->GetLLVMType(GetIdesType(ast)), ast->GetValue());
     }
 
 

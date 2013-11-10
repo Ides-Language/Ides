@@ -20,7 +20,7 @@ namespace AST {
     
     class Expression : public AST {
     public:
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const = 0;
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) = 0;
 
     };
 
@@ -31,7 +31,7 @@ namespace AST {
         IdentifierExpression(Token* tok) : tok(tok) { }
         
         virtual void Accept(Visitor* v);
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const;
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx);
         
         Ides::StringRef GetName() const { return **tok; }
     private:
@@ -44,7 +44,7 @@ namespace AST {
     class UnitTypeExpression : public Expression {
     public:
         virtual void Accept(Visitor* v);
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const {
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) {
             return Ides::Types::UnitType::GetSingletonPtr();
         }
     };
@@ -55,7 +55,7 @@ namespace AST {
         static NullExpression* Create() { return new NullExpression(); }
         virtual void Accept(Visitor* v);
         
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const {
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) {
             return Ides::Types::UnitType::GetSingletonPtr();
         }
     };
@@ -81,7 +81,7 @@ namespace AST {
         FunctionCallExpression(Expression* fn) : fn(fn) { }
     public:
         virtual void Accept(Visitor* v);
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const;
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx);
         
         static FunctionCallExpression* Create(Expression* fn, ExpressionList* args){
             FunctionCallExpression* ret = Create(fn);
@@ -104,7 +104,7 @@ namespace AST {
     public:
         DotExpression(Expression* lhs, Token* rhs) : lhs(lhs), rhs(rhs) { }
         virtual void Accept(Visitor* v);
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const;
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx);
         
         Expression& GetExpression() const { return *lhs; }
         Token& GetToken() const { return *rhs; }
@@ -119,7 +119,7 @@ namespace AST {
         AddressOfExpression(Expression* exp) : arg(exp) { }
         virtual void Accept(Visitor* v);
         
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const {
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) {
             return Ides::Types::PointerType::Get(arg->GetType(ctx));
         }
         
@@ -131,7 +131,7 @@ namespace AST {
         DereferenceExpression(Expression* exp) : arg(exp) { }
         virtual void Accept(Visitor* v);
         
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const {
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) {
             const Ides::Types::Type* argType = arg->GetType(ctx);
             if (const Ides::Types::PointerType* pt = dynamic_cast<const Ides::Types::PointerType*>(argType)) {
                 return pt->GetTargetType();
@@ -147,7 +147,7 @@ namespace AST {
         CastExpression(Expression* lhs, Type* rhs) : lhs(lhs), rhs(rhs) { }
         virtual void Accept(Visitor* v);
         
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const {
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) {
             return rhs->GetType(ctx);
         }
         
@@ -167,7 +167,7 @@ namespace AST {
         UnaryExpression(UnaryExpressionType type, Expression* arg) : type(type), arg(arg) { }
         virtual void Accept(Visitor* v);
         
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const { return arg->GetType(ctx); }
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) { return arg->GetType(ctx); }
         
         UnaryExpressionType type;
         boost::scoped_ptr<Expression> arg;
@@ -177,10 +177,10 @@ namespace AST {
     template<int op>
     class BinaryExpression : public Expression {
     public:
-        BinaryExpression(Expression* lhs, Expression* rhs) : lhs(lhs), rhs(rhs) { }
+        BinaryExpression(Expression* lhs, Expression* rhs, const char* optxt) : optxt(optxt), lhs(lhs), rhs(rhs) { }
         virtual void Accept(Visitor* v);
         
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const {
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) {
             const Ides::Types::Type* lhstype = lhs->GetType(ctx);
             const Ides::Types::Type* rhstype = rhs->GetType(ctx);
             
@@ -188,12 +188,15 @@ namespace AST {
                 if (rhstype->IsEquivalentType(lhstype)) return lhstype;
                 else if (rhstype->HasImplicitConversionTo(lhstype)) return lhstype;
                 else if (lhstype->HasImplicitConversionTo(rhstype)) return rhstype;
-                
             }
             
-            throw Ides::AST::TypeEvalError(ctx.GetDiagnostics(), Ides::Diagnostics::NO_IMPLICIT_CONVERSION, this->exprloc) << lhstype->ToString() << rhstype->ToString();
+            throw Ides::AST::TypeEvalError(ctx.GetDiagnostics(), Ides::Diagnostics::OP_NO_SUCH_BINARY_OPERATOR, this->exprloc)
+                << optxt
+                << lhstype->ToString()
+                << rhstype->ToString();
         }
-        
+
+        const char* optxt;
         boost::scoped_ptr<Expression> lhs;
         boost::scoped_ptr<Expression> rhs;
         
@@ -201,10 +204,10 @@ namespace AST {
         
     class InfixExpression : public BinaryExpression<0> {
     public:
-        InfixExpression(Token* op, Expression* lhs, Expression* rhs) : BinaryExpression(lhs, rhs), func(op) { }
+        InfixExpression(Token* op, Expression* lhs, Expression* rhs) : BinaryExpression(lhs, rhs, op->GetName().data()), func(op) { }
         virtual void Accept(Visitor* v);
         
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const { return NULL; }
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) { return NULL; }
         
         boost::scoped_ptr<Token> func;
     };
@@ -214,7 +217,7 @@ namespace AST {
         AssignmentExpression(Expression* lhs, Expression* rhs) : lhs(lhs), rhs(rhs) { }
         virtual void Accept(Visitor* v);
         
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const { return rhs->GetType(ctx); }
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) { return rhs->GetType(ctx); }
         
         Expression* GetLHS() { return lhs.get(); }
         Expression* GetRHS() { return rhs.get(); }
@@ -228,7 +231,7 @@ namespace AST {
     class Block : public Expression, public HierarchicalConcreteDeclarationContext {
     public:
         virtual void Accept(Visitor* v);
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const {
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) {
             return statements.back()->GetType(ctx);
         }
 
@@ -239,7 +242,19 @@ namespace AST {
     public:
         IfStatement(Expression* expr, Statement* ift, Statement* iff) : condition(expr), iftrue(ift), iffalse(iff) { }
         virtual void Accept(Visitor* v);
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const { return Ides::Types::VoidType::GetSingletonPtr(); }
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) {
+            if (iftrue && iffalse) {
+                const Ides::Types::Type* trueType = iftrue->GetType(ctx);
+                const Ides::Types::Type* falseType = iffalse->GetType(ctx);
+                if (falseType->HasImplicitConversionTo(trueType)) {
+                    return falseType;
+                }
+                else if (trueType->HasImplicitConversionTo(falseType)) {
+                    return trueType;
+                }
+            }
+            return Ides::Types::VoidType::GetSingletonPtr();
+        }
 
         Expression* condition;
         Expression* iftrue;
@@ -250,7 +265,7 @@ namespace AST {
     public:
         WhileStatement(Expression* expr, Statement* body) : condition(expr), body(body) { }
         virtual void Accept(Visitor* v);
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const { return Ides::Types::VoidType::GetSingletonPtr(); }
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) { return Ides::Types::VoidType::GetSingletonPtr(); }
 
         Expression* condition;
         Expression* body;
@@ -261,7 +276,7 @@ namespace AST {
         ForStatement(Statement* startexpr, Expression* endexpr, Expression* eachexpr, Statement* body) :
         startexpr(startexpr), endexpr(endexpr), eachexpr(eachexpr), body(body) { }
         virtual void Accept(Visitor* v);
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) const { return Ides::Types::VoidType::GetSingletonPtr(); }
+        virtual const Ides::Types::Type* GetType(ASTContext& ctx) { return Ides::Types::VoidType::GetSingletonPtr(); }
 
         Expression* startexpr;
         Expression* endexpr;

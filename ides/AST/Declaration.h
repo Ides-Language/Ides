@@ -35,9 +35,8 @@ namespace AST {
     
     typedef std::vector<Attribute*> AttributeList;
     
-    class Declaration : public AST {
+    class Declaration : public Expression {
     public:
-        virtual const Ides::Types::Type* GetType(ASTContext& ctx) = 0;
         
         Attribute* GetAttribute(Ides::StringRef str) const {
             auto i = attributes.find(str);

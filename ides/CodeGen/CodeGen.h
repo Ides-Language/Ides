@@ -189,7 +189,8 @@ namespace CodeGen {
         llvm::Value* GetDecl(Ides::AST::Declaration* ast);
         
         llvm::Value* Cast(Ides::AST::Expression* ast, const Ides::Types::Type* toType);
-        
+
+        const Ides::Types::Type* GetIdesType(Ides::AST::Expression* ast);
         llvm::Type* GetLLVMType(const Ides::Types::Type* ty);
         
         llvm::DebugLoc GetDebugLoc(Ides::AST::AST* ast);

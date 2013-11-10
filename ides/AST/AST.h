@@ -70,6 +70,7 @@ namespace AST {
         virtual void Accept(Visitor* v);
         
         Ides::StringRef operator*() { return name; }
+        Ides::StringRef GetName() const { return name; }
         
     private:
         const Ides::String name;

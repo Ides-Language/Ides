@@ -24,21 +24,26 @@ namespace Types {
     class ClassType;
     class ReferenceType;
     
-    class Integer1Type;
-    class Integer8Type;
-    class UInteger8Type;
-    class Integer16Type;
-    class UInteger16Type;
-    class Integer32Type;
-    class UInteger32Type;
-    class Integer64Type;
-    class UInteger64Type;
-    
     class Float32Type;
     class Float64Type;
     
     template<uint8_t size>
     class IntegerLiteralType;
+
+    class Integer1Type;
+    
+    template<uint64_t size, bool isSigned>
+    class IntegerType;
+    
+    typedef IntegerType<8, true> Integer8Type;
+    typedef IntegerType<16, true> Integer16Type;
+    typedef IntegerType<32, true> Integer32Type;
+    typedef IntegerType<64, true> Integer64Type;
+
+    typedef IntegerType<8, false> UInteger8Type;
+    typedef IntegerType<16, false> UInteger16Type;
+    typedef IntegerType<32, false> UInteger32Type;
+    typedef IntegerType<64, false> UInteger64Type;
     
     class FloatLiteralType;
     

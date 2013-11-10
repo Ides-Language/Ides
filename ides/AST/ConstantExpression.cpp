@@ -13,9 +13,9 @@ namespace Ides {
 namespace AST {
     
     
-    template<> void ConstantBuiltinTypeExpression<Ides::Types::Integer1Type, bool>::Accept(Visitor* v) { v->Visit(this); }
-    void ConstantIntExpression::Accept(Visitor* v) { v->Visit(this); }
-    template<> void ConstantBuiltinTypeExpression<Ides::Types::Float64Type, double>::Accept(Visitor* v) { v->Visit(this); }
+    template<> void ConstantBoolExpression::Accept(Visitor* v) { v->Visit(this); }
+    template<> void ConstantIntExpression::Accept(Visitor* v) { v->Visit(this); }
+    template<> void ConstantFloatExpression::Accept(Visitor* v) { v->Visit(this); }
     
     void ConstantStringExpression::Accept(Visitor* v) { v->Visit(this); }
     void ConstantCStringExpression::Accept(Visitor* v) { v->Visit(this); }

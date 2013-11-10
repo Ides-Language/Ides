@@ -22,7 +22,7 @@ namespace CodeGen {
     
     void CodeGen::Visit(Ides::AST::GlobalVariableDeclaration* ast) { SETTRACE("CodeGen::Visit(GlobalVariableDeclaration)")
         llvm::GlobalVariable* var = NULL;
-        const Ides::Types::Type* astType = ast->GetType(actx);
+        const Ides::Types::Type* astType = GetIdesType(ast);
         DIGenerator::DebugScope dbgscope;
         
         auto vi = values.find(ast);
@@ -113,7 +113,7 @@ namespace CodeGen {
             var = vi->second;
         }
         else {
-            const Ides::Types::Type* varType = ast->GetType(actx);
+            const Ides::Types::Type* varType = GetIdesType(ast);
             llvm::AllocaInst* alloca = builder->CreateAlloca(this->GetLLVMType(varType), 0, ast->GetName());
             alloca->setAlignment(varType->GetAlignment());
             var = alloca;
@@ -154,19 +154,24 @@ namespace CodeGen {
             var = vi->second;
         }
         else {
-            const Ides::Types::Type* varType = ast->GetType(actx);
-            llvm::AllocaInst* alloca = builder->CreateAlloca(this->GetLLVMType(varType), 0, ast->GetName());
-            alloca->setAlignment(varType->GetAlignment());
-            var = alloca;
+            const Ides::Types::Type* varType = GetIdesType(ast);
+            if (ast->vartype == Ides::AST::VariableDeclaration::DECL_VAL) {
+                var = GetValue(ast->initval, varType);
+            } else {
+                llvm::Type* llvmVarType = GetLLVMType(varType->IsFnType() ? varType->PtrType() : varType);
+                llvm::AllocaInst* alloca = builder->CreateAlloca(llvmVarType, 0, ast->GetName());
+                alloca->setAlignment(varType->GetAlignment());
+                var = alloca;
+
+                if (ast->initval != NULL) {
+                    llvm::Instruction* instr = llvm::cast<llvm::Instruction>(builder->CreateStore(GetValue(ast->initval, varType), var));
+                    if (dibuilder) instr->setDebugLoc(GetDebugLoc(ast));
+                }
+            }
             
             values.insert(std::make_pair(ast, var));
             actx.GetCurrentScope()->AddMember(ast->GetName(), ast);
-            
-            if (ast->initval != NULL) {
-                llvm::Instruction* instr = llvm::cast<llvm::Instruction>(builder->CreateStore(GetValue(ast->initval, varType), var));
-                if (dibuilder) instr->setDebugLoc(GetDebugLoc(ast));
-            }
-            
+
             if (dibuilder != NULL) {
                 auto offset = sman->getFileOffset(ast->exprloc.getBegin());
                 llvm::DIScope currentDIScope(dibuilder->GetCurrentScope());
@@ -179,7 +184,7 @@ namespace CodeGen {
                                                                         dibuilder->GetType(varType));
                 
                 dibuilder->insertDeclare(var, diVar, builder->GetInsertBlock());
-                this->dbgvalues.insert(std::make_pair(alloca, diVar));
+                this->dbgvalues.insert(std::make_pair(var, diVar));
             }
         }
         
@@ -194,7 +199,7 @@ namespace CodeGen {
             std::vector<llvm::Type*> memberLLVMtypes;
             for (auto i = ast->members.begin(); i != ast->members.end(); ++i) {
                 Ides::AST::NamedDeclaration* decl = (Ides::AST::NamedDeclaration*)*i;
-                const Ides::Types::Type* memberType = decl->GetType(actx);
+                const Ides::Types::Type* memberType = GetIdesType(decl);
                 memberLLVMtypes.push_back(this->GetLLVMType(memberType));
             }
             llvmst->setBody(memberLLVMtypes, false);
@@ -210,7 +215,7 @@ namespace CodeGen {
     void CodeGen::Visit(Ides::AST::FunctionDeclaration* ast) { SETTRACE("CodeGen::Visit(FunctionDeclaration)")
         DIGenerator::DebugScope dbgscope;
         llvm::Function* func = NULL;
-        const Ides::Types::Type* functionType = ast->GetType(actx);
+        const Ides::Types::Type* functionType = GetIdesType(ast);
         auto fi = values.find(ast);
         if (fi != values.end()) {
             func = llvm::cast<llvm::Function>(fi->second);
@@ -238,7 +243,7 @@ namespace CodeGen {
                 
                 std::vector<llvm::Value*> argDITypes;
                 for (auto i = ast->GetArgs().begin(); i != ast->GetArgs().end(); ++i) {
-                    const Ides::Types::Type* argType = (*i)->GetType(actx);
+                    const Ides::Types::Type* argType = GetIdesType(*i);
                     llvm::DIType dit(dibuilder->GetType(argType));
                     assert(dit.Verify());
                     argDITypes.push_back(dit);
@@ -306,7 +311,7 @@ namespace CodeGen {
                     const Ides::Types::Type* rettype = ast->GetReturnType(actx);
                     try {
                         auto retVal = builder->CreateRet(GetValue(ast->val, rettype));
-                        retVal->setDebugLoc(GetDebugLoc(ast->val));
+                        //retVal->setDebugLoc(GetDebugLoc(ast->val));
                     }
                     catch (const std::exception& ex) {
                         func->removeFromParent();

@@ -17,20 +17,21 @@ namespace Util {
     
 namespace AST {
     
-    const Ides::Types::Type* DotExpression::GetType(ASTContext& ctx) const {
+    const Ides::Types::Type* DotExpression::GetType(ASTContext& ctx) {
         const Ides::Types::Type* lhstype = lhs->GetType(ctx);
         Declaration* decl = (Ides::AST::Declaration*)lhstype->GetInstanceMember(ctx, **rhs);
         if (decl) return decl->GetType(ctx);
         throw Ides::AST::TypeEvalError(ctx.GetDiagnostics(), Ides::Diagnostics::UNKNOWN_MEMBER, rhs->exprloc) << lhstype->ToString() << **rhs;
     }
     
-    const Ides::Types::Type* IdentifierExpression::GetType(ASTContext& ctx) const {
+    const Ides::Types::Type* IdentifierExpression::GetType(ASTContext& ctx) {
         Declaration* decl = ctx.GetCurrentScope()->GetMember(ctx, **tok);
+        const Ides::Types::Type* dType = decl->GetType(ctx);
         if (decl) return decl->GetType(ctx);
         throw Ides::AST::TypeEvalError(ctx.GetDiagnostics(), Ides::Diagnostics::UNKNOWN_IDENTIFIER, this->exprloc) << **tok;
     }
     
-    const Ides::Types::Type* FunctionCallExpression::GetType(ASTContext& ctx) const {
+    const Ides::Types::Type* FunctionCallExpression::GetType(ASTContext& ctx) {
         const Ides::Types::Type* ft = fn->GetType(ctx);
         const Ides::Types::FunctionType* fntype = dynamic_cast<const Ides::Types::FunctionType*>(ft);
         if (fn) return fntype->retType;
@@ -57,7 +58,7 @@ namespace AST {
     
     void CastExpression::Accept(Visitor* v) { v->Visit(this); }
     
-    template<> const Ides::Types::Type* BinaryExpression<OP_RARROW>::GetType(Ides::AST::ASTContext &ctx) const {
+    template<> const Ides::Types::Type* BinaryExpression<OP_RARROW>::GetType(Ides::AST::ASTContext &ctx) {
         const Ides::Types::Type* lhstype = lhs->GetType(ctx);
         if (const Ides::Types::PointerType* ptype = dynamic_cast<const Ides::Types::PointerType*>(lhstype)) {
             const Ides::Types::Type* valType = ptype->GetTargetType();
@@ -69,22 +70,22 @@ namespace AST {
         }
         throw Ides::AST::TypeEvalError(ctx.GetDiagnostics(), Ides::Diagnostics::OP_NO_SUCH_UNARY_OPERATOR, this->exprloc) << "->" << lhstype->ToString();
     }
-    template<> const Ides::Types::Type* BinaryExpression<OP_LARROW>::GetType(Ides::AST::ASTContext &ctx) const { return lhs->GetType(ctx); }
+    template<> const Ides::Types::Type* BinaryExpression<OP_LARROW>::GetType(Ides::AST::ASTContext &ctx) { return lhs->GetType(ctx); }
     
-    template<> const Ides::Types::Type* BinaryExpression<OP_ASHL>::GetType(Ides::AST::ASTContext &ctx) const { return lhs->GetType(ctx); }
-    template<> const Ides::Types::Type* BinaryExpression<OP_ASHR>::GetType(Ides::AST::ASTContext &ctx) const { return lhs->GetType(ctx); }
-    template<> const Ides::Types::Type* BinaryExpression<OP_LSHL>::GetType(Ides::AST::ASTContext &ctx) const { return lhs->GetType(ctx); }
-    template<> const Ides::Types::Type* BinaryExpression<OP_LSHR>::GetType(Ides::AST::ASTContext &ctx) const { return lhs->GetType(ctx); }
+    template<> const Ides::Types::Type* BinaryExpression<OP_ASHL>::GetType(Ides::AST::ASTContext &ctx) { return lhs->GetType(ctx); }
+    template<> const Ides::Types::Type* BinaryExpression<OP_ASHR>::GetType(Ides::AST::ASTContext &ctx) { return lhs->GetType(ctx); }
+    template<> const Ides::Types::Type* BinaryExpression<OP_LSHL>::GetType(Ides::AST::ASTContext &ctx) { return lhs->GetType(ctx); }
+    template<> const Ides::Types::Type* BinaryExpression<OP_LSHR>::GetType(Ides::AST::ASTContext &ctx) { return lhs->GetType(ctx); }
     
-    template<> const Ides::Types::Type* BinaryExpression<OP_AND>::GetType(Ides::AST::ASTContext &ctx) const { return Ides::Types::Integer1Type::GetSingletonPtr(); }
-    template<> const Ides::Types::Type* BinaryExpression<OP_OR>::GetType(Ides::AST::ASTContext &ctx) const { return Ides::Types::Integer1Type::GetSingletonPtr(); }
+    template<> const Ides::Types::Type* BinaryExpression<OP_AND>::GetType(Ides::AST::ASTContext &ctx) { return Ides::Types::Integer1Type::GetSingletonPtr(); }
+    template<> const Ides::Types::Type* BinaryExpression<OP_OR>::GetType(Ides::AST::ASTContext &ctx) { return Ides::Types::Integer1Type::GetSingletonPtr(); }
     
-    template<> const Ides::Types::Type* BinaryExpression<OP_EQ>::GetType(Ides::AST::ASTContext &ctx) const { return Ides::Types::Integer1Type::GetSingletonPtr(); }
-    template<> const Ides::Types::Type* BinaryExpression<OP_NE>::GetType(Ides::AST::ASTContext &ctx) const { return Ides::Types::Integer1Type::GetSingletonPtr(); }
-    template<> const Ides::Types::Type* BinaryExpression<OP_LT>::GetType(Ides::AST::ASTContext &ctx) const { return Ides::Types::Integer1Type::GetSingletonPtr(); }
-    template<> const Ides::Types::Type* BinaryExpression<OP_LE>::GetType(Ides::AST::ASTContext &ctx) const { return Ides::Types::Integer1Type::GetSingletonPtr(); }
-    template<> const Ides::Types::Type* BinaryExpression<OP_GT>::GetType(Ides::AST::ASTContext &ctx) const { return Ides::Types::Integer1Type::GetSingletonPtr(); }
-    template<> const Ides::Types::Type* BinaryExpression<OP_GE>::GetType(Ides::AST::ASTContext &ctx) const { return Ides::Types::Integer1Type::GetSingletonPtr(); }
+    template<> const Ides::Types::Type* BinaryExpression<OP_EQ>::GetType(Ides::AST::ASTContext &ctx) { return Ides::Types::Integer1Type::GetSingletonPtr(); }
+    template<> const Ides::Types::Type* BinaryExpression<OP_NE>::GetType(Ides::AST::ASTContext &ctx) { return Ides::Types::Integer1Type::GetSingletonPtr(); }
+    template<> const Ides::Types::Type* BinaryExpression<OP_LT>::GetType(Ides::AST::ASTContext &ctx) { return Ides::Types::Integer1Type::GetSingletonPtr(); }
+    template<> const Ides::Types::Type* BinaryExpression<OP_LE>::GetType(Ides::AST::ASTContext &ctx) { return Ides::Types::Integer1Type::GetSingletonPtr(); }
+    template<> const Ides::Types::Type* BinaryExpression<OP_GT>::GetType(Ides::AST::ASTContext &ctx) { return Ides::Types::Integer1Type::GetSingletonPtr(); }
+    template<> const Ides::Types::Type* BinaryExpression<OP_GE>::GetType(Ides::AST::ASTContext &ctx) { return Ides::Types::Integer1Type::GetSingletonPtr(); }
     
     template<> void UnaryExpression<OP_MINUS>::Accept(Visitor* v) { v->Visit(this); }
     template<> void UnaryExpression<OP_NOT>::Accept(Visitor* v) { v->Visit(this); }

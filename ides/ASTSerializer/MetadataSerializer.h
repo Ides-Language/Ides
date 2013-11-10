@@ -97,8 +97,6 @@ namespace AST {
         virtual void Visit(Ides::AST::FieldDeclaration* ast) { }
         virtual void Visit(Ides::AST::FunctionDeclaration* ast);
         virtual void Visit(Ides::AST::OverloadedFunction* ast);
-        virtual void Visit(Ides::AST::Token* ast) { }
-        virtual void Visit(Ides::AST::Type* ast) { }
         
 
 
@@ -125,11 +123,6 @@ namespace AST {
 
         virtual void Visit(const Ides::Types::Float32Type* ty) { last = node().Add(ty->ToString()); }
         virtual void Visit(const Ides::Types::Float64Type* ty) { last = node().Add(ty->ToString()); }
-
-        virtual void Visit(const Ides::Types::IntegerLiteralType<8>* ty) { last = node().Add(ty->ToString()); }
-        virtual void Visit(const Ides::Types::IntegerLiteralType<16>* ty) { last = node().Add(ty->ToString()); }
-        virtual void Visit(const Ides::Types::IntegerLiteralType<32>* ty) { last = node().Add(ty->ToString()); }
-        virtual void Visit(const Ides::Types::IntegerLiteralType<64>* ty) { last = node().Add(ty->ToString()); }
     };
     
 }

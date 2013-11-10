@@ -26,12 +26,12 @@ namespace CodeGen {
                      Ides::AST::ASTContext& actx,
                      clang::FileManager* fman,
                      clang::SourceManager* sman)
-    : fman(fman), sman(sman), lctx(lctx), actx(actx), typeVisitor(lctx), last(NULL), diag(diags)
+    : fman(fman), sman(sman), lctx(lctx), actx(actx), typeVisitor(lctx), last(NULL), diag(diags), dibuilder(NULL)
     {
         this->staticInitializerSequence = 0;
         this->module = new llvm::Module("Ides Module", lctx);
         this->builder = new llvm::IRBuilder<>(lctx);
-        this->dibuilder = new DIGenerator(*this->module);
+        //this->dibuilder = new DIGenerator(*this->module);
     }
     
     CodeGen::~CodeGen() {
@@ -58,25 +58,26 @@ namespace CodeGen {
         DeclarationGuard _guard(this->isDeclaration, false);
         
         ast->Accept(this);
-        const Ides::Types::Type* exprType = ast->GetType(actx);
+        const Ides::Types::Type* exprType = GetIdesType(ast);
         llvm::Type* valType = last->getType();
+
         while (exprType->IsPtrType()) {
             assert(valType->isPointerTy());
             
             exprType = static_cast<const Ides::Types::PointerType*>(exprType)->GetTargetType();
             valType = llvm::dyn_cast<llvm::PointerType>(valType)->getElementType();
         }
-        if (valType->isPointerTy())
+        if (valType->isPointerTy() && !exprType->IsFnType())
             last = builder->CreateLoad(last, "autoderef");
         
         EmitDebugLoc(ast);
         return last;
     }
     
-    llvm::Value* CodeGen::GetValue(Ides::AST::Expression* ast, const Ides::Types::Type* toType) {
+    llvm::Value* CodeGen::GetValue(Ides::AST::Expression* ast, const Ides::Types::Type* toType) { SETTRACE("CodeGen::GetValue(type)")
         DeclarationGuard _guard(this->isDeclaration, false);
         
-        const Ides::Types::Type* fromType = ast->GetType(actx);
+        const Ides::Types::Type* fromType = GetIdesType(ast);
         if (fromType->IsEquivalentType(toType)) {
             return GetValue(ast);
         }
@@ -91,7 +92,7 @@ namespace CodeGen {
         DeclarationGuard _guard(this->isDeclaration, false);
         
         ast->Accept(this);
-        const Ides::Types::Type* exprType = ast->GetType(actx);
+        const Ides::Types::Type* exprType = GetIdesType(ast);
         llvm::Type* valType = last->getType();
         while (exprType->IsPtrType()) {
             exprType = static_cast<const Ides::Types::PointerType*>(exprType)->GetTargetType();
@@ -132,7 +133,7 @@ namespace CodeGen {
         
         llvm::Value* ret = NULL;
         
-        const Ides::Types::Type* exprtype = ast->GetType(actx);
+        const Ides::Types::Type* exprtype = GetIdesType(ast);
         if (exprtype->IsEquivalentType(toType)) {
             ret = GetValue(ast);
         }
@@ -251,7 +252,11 @@ namespace CodeGen {
         ty->Accept(&typeVisitor);
         return typeVisitor.GetType();
     }
-    
+
+    const Ides::Types::Type* CodeGen::GetIdesType(Ides::AST::Expression* ast) {
+        return ast->GetType(actx);
+
+    }
     
 }
 }

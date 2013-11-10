@@ -27,10 +27,15 @@ namespace CodeGen {
         bool blockReturn[2];
         
         builder->CreateCondBr(GetValue(ast->condition, Ides::Types::Integer1Type::GetSingletonPtr()), ifblock, elseblock);
-        
+
+        const Ides::Types::Type* ifType = GetIdesType(ast);
+
+        llvm::Value* trueValue;
+        llvm::Value* falseValue;
+
         builder->SetInsertPoint(ifblock);
         try {
-            GetValue(ast->iftrue);
+            trueValue = GetValue(ast->iftrue, ifType);
             builder->CreateBr(resumeBlock);
             blockReturn[0] = false;
         } catch (const detail::UnitValueException&) {
@@ -41,7 +46,7 @@ namespace CodeGen {
         builder->SetInsertPoint(elseblock);
         if (ast->iffalse) {
             try {
-                GetValue(ast->iffalse);
+                falseValue = GetValue(ast->iffalse, ifType);
                 builder->CreateBr(resumeBlock);
                 blockReturn[1] = false;
             } catch (const detail::UnitValueException&) {
@@ -59,6 +64,13 @@ namespace CodeGen {
             throw detail::UnitValueException();
         } else {
             builder->SetInsertPoint(resumeBlock);
+
+            if (ifType != Ides::Types::VoidType::GetSingletonPtr()) {
+                llvm::PHINode* phi = builder->CreatePHI(GetLLVMType(ifType), 2);
+                phi->addIncoming(trueValue, ifblock);
+                phi->addIncoming(falseValue, elseblock);
+                last = phi;
+            }
         }
     }
     
@@ -128,7 +140,7 @@ namespace CodeGen {
         bool stmtsFailed = false;
         for (auto i = ast->statements.begin(); i != ast->statements.end(); ++i) {
             try {
-                GetValue(*i);
+                last = GetValue(*i);
             }
             catch (const Ides::Util::DiagnosticsError& ex) {
                 stmtsFailed = true;

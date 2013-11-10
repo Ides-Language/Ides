@@ -120,10 +120,30 @@ namespace Ides {
             
             boost::shared_ptr<clang::DiagnosticBuilder> builder;
         };
+
+        class StringBuilder {
+        public:
+            StringBuilder() : buffer(new std::stringstream()) {}
+
+            std::stringstream& GetBuffer() {
+                return *buffer;
+            }
+
+            operator std::string() const {
+                return buffer->str();
+            }
+
+        private:
+            boost::shared_ptr<std::stringstream> buffer;
+        };
     }
 } // namespace Ides
 
-
+template<typename T>
+Ides::Util::StringBuilder operator<<(Ides::Util::StringBuilder builder, const T& output) {
+    builder.GetBuffer() << output;
+    return builder;
+}
 
 template<typename T>
 Ides::Util::DiagnosticsError operator<<(Ides::Util::DiagnosticsError err, const T& output) {

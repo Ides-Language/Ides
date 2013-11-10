@@ -107,19 +107,6 @@ namespace CodeGen {
         virtual void Visit(const Ides::Types::Float32Type* ty) { }
         virtual void Visit(const Ides::Types::Float64Type* ty) { }
         
-        virtual void Visit(const Ides::Types::IntegerLiteralType<8>* ty) {
-            last = createBasicType(ty->ToString(), ty->GetSize(), ty->GetAlignment(), llvm::dwarf::DW_ATE_signed);
-        }
-        virtual void Visit(const Ides::Types::IntegerLiteralType<16>* ty) {
-            last = createBasicType(ty->ToString(), ty->GetSize(), ty->GetAlignment(), llvm::dwarf::DW_ATE_signed);
-        }
-        virtual void Visit(const Ides::Types::IntegerLiteralType<32>* ty) {
-            last = createBasicType(ty->ToString(), ty->GetSize(), ty->GetAlignment(), llvm::dwarf::DW_ATE_signed);
-        }
-        virtual void Visit(const Ides::Types::IntegerLiteralType<64>* ty) {
-            last = createBasicType(ty->ToString(), ty->GetSize(), ty->GetAlignment(), llvm::dwarf::DW_ATE_signed);
-        }
-        
         
     private:
         boost::unordered_map<const Ides::Types::Type*, llvm::MDNode*> typemd;
