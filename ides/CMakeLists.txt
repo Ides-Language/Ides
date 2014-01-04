@@ -37,13 +37,13 @@ endforeach(DIR ${MODULES})
 find_package(BISON)
 find_package(FLEX)
 
-FLEX_TARGET(IdesScanner lexer.l  ${CMAKE_CURRENT_BINARY_DIR}/lexer.cpp)
+FLEX_TARGET(IdesScanner lexer.l  ${CMAKE_CURRENT_BINARY_DIR}/lexer.cpp COMPILE_FLAGS "--header-file=${CMAKE_CURRENT_BINARY_DIR}/lexer.hpp")
 BISON_TARGET(IdesParser parser.y ${CMAKE_CURRENT_BINARY_DIR}/parser.cpp)
 ADD_FLEX_BISON_DEPENDENCY(IdesScanner IdesParser)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-source_group("Generated" FILES ${FLEX_IdesScanner_OUTPUTS} ${BISON_IdesParser_OUTPUTS})
+source_group("Generated" FILES ${FLEX_IdesScanner_OUTPUTS} ${BISON_IdesParser_OUTPUTS} "${CMAKE_CURRENT_BINARY_DIR}/lexer.hpp")
 
 add_library(ides STATIC
 	${LIBIDES_SOURCES}
@@ -56,11 +56,8 @@ add_library(ides STATIC
 
 target_link_libraries(ides
 	${Boost_LIBRARIES}
-	clangFrontend
-	clangEdit
-	clangLex
-	clangBasic
 	${LLVM_MODULE_LIBS}
+	${YAMLCPP_LIBRARY}
 	pthread
 	dl
 	)

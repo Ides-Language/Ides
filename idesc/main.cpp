@@ -9,22 +9,16 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
-#include <ides/Project/Project.h>
-#include <ides/AST/AST.h>
-
-#include <ides/CodeGen/CodeGen.h>
-
 #include <llvm/Support/raw_os_ostream.h>
 #include <llvm/Support/PrettyStackTrace.h>
 #include "llvm/Support/Signals.h"
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/Linker.h>
 
-#include <clang/Frontend/TextDiagnosticPrinter.h>
-#include <clang/Basic/DiagnosticOptions.h>
-#include <clang/Basic/LangOptions.h>
-
-#include <ides/Diagnostics/Diagnostics.h>
+#include <ides/common.h>
+#include <ides/Parsing/Parser.h>
+#include <ides/Compiling/Compiler.h>
+#include <ides/Source/SourcePackage.h>
 
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
@@ -41,7 +35,7 @@ int main(int argc, const char* argv[])
 	po::options_description genericdesc("Options");
 	genericdesc.add_options()
 		("help,h", "Show help message")
-    ("output,o", po::value<std::string>(), "Output path")
+        ("output,o", po::value<std::string>(), "Output path")
 		("interactive,i", "Run in interactive mode")
         ("name", po::value<std::string>()->default_value("Ides Module"), "Module name")
 		;
@@ -101,9 +95,10 @@ int main(int argc, const char* argv[])
 		std::cerr << "No input files specified." << std::endl;
 		return 1;
 	}
-    std::string output_name = args["name"].as<std::string>();
+    auto input_files = args["input-file"].as<std::vector<fs::path>>();
+    auto output_name = args["name"].as<std::string>();
 
-	std::string output_file = output_name + ".ilib";
+	auto output_file = output_name + ".ilib";
 	if (args.count("output")) {
 		output_file = args["output"].as<std::string>();
 	}
@@ -117,63 +112,20 @@ int main(int argc, const char* argv[])
 			return 1;
 		}
 	}
-    
-    std::list<llvm::Module*> modules;
-    
-    clang::DiagnosticOptions diagOpts;
-    llvm::IntrusiveRefCntPtr<clang::DiagnosticIDs> diagIDs= new clang::DiagnosticIDs();
-    llvm::IntrusiveRefCntPtr<clang::DiagnosticsEngine> diag = new clang::DiagnosticsEngine(diagIDs, &diagOpts, new clang::TextDiagnosticPrinter(llvm::errs(), &diagOpts), false);
-    
-    Ides::AST::ASTContext actx(diag);
-    
-    Ides::Diagnostics::InitAllDiagnostics(*diag);
 
-    bool fileErrors = false;
-
-    Ides::Project::Project proj(diag, actx);
-	const std::vector<fs::path> files = args["input-file"].as<std::vector<fs::path> >();
-	for (std::vector<fs::path>::const_iterator i = files.begin(); i != files.end(); ++i) {
-		if (!fs::is_regular_file(*i)) {
-			std::cerr << "Could not open " << *i << "." << std::endl;
-			continue;
-		}
-        
-        clang::LangOptions langopts;
-        diag->getClient()->BeginSourceFile(langopts);
-
-		current_file = i->string();
-
-		fs::ifstream srcfile(*i);
-        
-        Ides::AST::AST* ast = NULL;
+    for (auto file : input_files) {
+        std::string filestr = file.string();
         try {
-            ast = proj.ParseFile(current_file);
-            modules.push_back(proj.Compile((Ides::AST::CompilationUnit*)ast));
-        } catch (const std::exception&) {
-            fileErrors = true;
+            Ides::SourcePackage package(file);
+            Ides::Compiler compiler;
+            compiler.Compile(package);
+        } catch (const std::exception& ex) {
+            std::cerr << ex.what() << std::endl;
         }
-        
-        diag->getClient()->EndSourceFile();
+
     }
 
-    if (fileErrors) return 1;
-    
-    llvm::Module* linkermod = new llvm::Module(output_name, llvm::getGlobalContext());
-    llvm::Linker linker(linkermod);
-    
-    for (auto modi = modules.begin(); modi != modules.end(); ++modi) {
-        std::string err;
-        if (linker.linkInModule(*modi, &err)) {
-            std::cerr << err << std::endl;
-        }
-    }
-    
-    linkermod->dump();
-    
-    fs::ofstream outfile(output_file);
-    llvm::raw_os_ostream llvm_outfile(outfile);
-    llvm::WriteBitcodeToFile(linkermod, llvm_outfile);
-    
+    assert(Ides::Ast::count == 0);
 
 	return 0;
 }

@@ -1,26 +1,10 @@
 %top{
     #include <string>
     #include <sstream>
-    #include <ides/Parsing/ParserCommon.h>
     #include <iostream>
-    
-    #include <parser.hpp>
-    
-    #define YY_INPUT(buf, result, maxSize) yyextra->ReadInput(buf, &(result), maxSize)
-    
-    #define SAVE_TOKEN(x) return x
-    
-    #define SET_YYLLOC \
-    do { \
-        yylloc->setBegin(yylloc->getEnd()); \
-        yylloc->setEnd(yylloc->getBegin().getLocWithOffset(strlen(yytext))); \
-    } while(0)
-    
-    #define YY_USER_ACTION SET_YYLLOC;
-    
-    #define strbuf yylval->ast_str->GetBuffer()
-    
-    
+    #include <ides/Parsing/AST.h>
+    #include <ides/parser.hpp>
+
 }
 
 %option reentrant
@@ -30,27 +14,31 @@
 %option bison-bridge
 %option bison-locations
 
-%option debug
+/* %option debug */
 
 %s IN_BLOCKCOMMENT
 %s IN_SINGLELINECOMMENT
 %x IN_STRING
-%x IN_CSTRING
-%x IN_WCSTRING
-%x IN_LCSTRING
+
+OP [!\#\$%\^&\*\-\+/\\=@<>\|]+
+ID [A-Za-z_][A-Za-z0-9]*
+
 %%
 
 [ \t\v\r\f\n]           ; // Ignore whitespace, but advance the location
 
 <INITIAL>{
 
-[0-9]+\.[0-9]*          { yylval->ast_base = new Ides::AST::ConstantFloatExpression(strtod(yytext, NULL)); return TDOUBLE; }
+[0-9]+\.[0-9]+          { yylval->ast_dec = new Ides::ConstantDec(strtod(yytext, NULL)); return TDOUBLE; }
 
-0                       { yylval->ast_base = new Ides::AST::ConstantIntExpression(0); return TINTEGER; }
-[1-9][0-9]*             { yylval->ast_base = new Ides::AST::ConstantIntExpression(strtol(yytext, NULL, 10)); return TINTEGER; }
-0[0-9]+                 { yylval->ast_base = new Ides::AST::ConstantIntExpression(strtol(yytext, NULL, 8)); return TINTEGER; }
-0x[0-9A-F]+             { yylval->ast_base = new Ides::AST::ConstantIntExpression(strtol(&yytext[3], NULL, 16)); return TINTEGER; }
-0b[0-1]+                { yylval->ast_base = new Ides::AST::ConstantIntExpression(strtol(&yytext[3], NULL, 2)); return TINTEGER; }
+0                       { yylval->ast_int = new Ides::ConstantInt(0); return TINTEGER; }
+[1-9][0-9]*             { yylval->ast_int = new Ides::ConstantInt(strtol(yytext, NULL, 10)); return TINTEGER; }
+0[0-9]+                 { yylval->ast_int = new Ides::ConstantInt(strtol(&yytext[1], NULL, 8)); return TINTEGER; }
+0x[0-9A-F]+             { yylval->ast_int = new Ides::ConstantInt(strtol(&yytext[3], NULL, 16)); return TINTEGER; }
+0b[0-1]+                { yylval->ast_int = new Ides::ConstantInt(strtol(&yytext[3], NULL, 2)); return TINTEGER; }
+
+"true"                  { yylval->ast_bool = new Ides::ConstantBool(true); return TBOOL; }
+"false"                 { yylval->ast_bool = new Ides::ConstantBool(false); return TBOOL; }
 
 
 "def"                   return KW_DEF;
@@ -60,6 +48,7 @@
 "val"                   return KW_VAL;
 "struct"                return KW_STRUCT;
 "class"                 return KW_CLASS;
+"trait"                 return KW_TRAIT;
 
 "null"                  return KW_NULL;
 "namespace"             return KW_NAMESPACE;
@@ -67,9 +56,10 @@
 "public"                return KW_PUBLIC;
 "protected"             return KW_PROTECTED;
 "internal"              return KW_INTERNAL;
-"provate"               return KW_PRIVATE;
+"private"               return KW_PRIVATE;
 "extern"                return KW_EXTERN;
 "const"                 return KW_CONST;
+"abstract"              return KW_ABSTRACT;
 
 "throw"                 return KW_THROW;
 "new"                   return KW_NEW;
@@ -81,74 +71,21 @@
 "for"                   return KW_FOR;
 "do"                    return KW_DO;
 
-"void"                  return KW_VOID;
-"unit"                  return KW_UNIT;
-"bool"                  return KW_BOOL;
-"int8"                  return KW_INT8;
-"uint8"                 return KW_UINT8;
-"int16"                 return KW_INT16;
-"uint16"                return KW_UINT16;
-"int32"                 return KW_INT32;
-"uint32"                return KW_UINT32;
-"int64"                 return KW_INT64;
-"uint64"                return KW_UINT64;
-
-"float32"               return KW_FLOAT32;
-"float64"               return KW_FLOAT64;
-
-"true"                  yylval->ast_base = new Ides::AST::ConstantBoolExpression(true); return KW_TRUE;
-"false"                 yylval->ast_base = new Ides::AST::ConstantBoolExpression(false); return KW_FALSE;
-
-"or"                    return OP_COALESCE;
-"as"                    return OP_CAST;
-"++"                    return OP_INC;
-"--"                    return OP_DEC;
-
-"+"                     return OP_PLUS;
-"-"                     return OP_MINUS;
-"*"                     return OP_STAR;
-"/"                     return OP_SLASH;
-"%"                     return OP_MOD;
-
-"=="                    return OP_EQ;
-"!="                    return OP_NE;
-"<"                     return OP_LT;
-">"                     return OP_GT;
-"<="                    return OP_LE;
-">="                    return OP_GE;
-
-"&&"                    return OP_AND;
-"||"                    return OP_OR;
-"!"                     return OP_NOT;
-
-"->"                    return OP_RARROW;
-"<-"                    return OP_LARROW;
-
-"|"                     return OP_BOR;
-"&"                     return OP_BAND;
-"^"                     return OP_BXOR;
-"~"                     return OP_BNOT;
-
-"<<"                    return OP_LSHL;
-">>"                    return OP_LSHR;
-">>>"                   return OP_ASHL;
-"<<<"                   return OP_ASHR;
-
-"="                     return OP_ASSIGN;
-
-"\.\.\."             return KW_VARARGS;
+"\.\.\."                return KW_VARARGS;
 
 "/*"           BEGIN(IN_BLOCKCOMMENT);
 "//"           BEGIN(IN_SINGLELINECOMMENT);
 
-"\""           { yylval->ast_str = new Ides::AST::ConstantStringExpression(); yylval->ast_str->exprloc.setBegin(yylloc->getBegin()); BEGIN(IN_STRING); }
-"C\""          { yylval->ast_str = new Ides::AST::ConstantCStringExpression(); yylval->ast_str->exprloc.setBegin(yylloc->getBegin()); BEGIN(IN_CSTRING); }
-"WC\""         { yylval->ast_str = new Ides::AST::ConstantWCStringExpression(); yylval->ast_str->exprloc.setBegin(yylloc->getBegin()); BEGIN(IN_WCSTRING); }
-"LC\""         { yylval->ast_str = new Ides::AST::ConstantLCStringExpression(); yylval->ast_str->exprloc.setBegin(yylloc->getBegin()); BEGIN(IN_LCSTRING); }
+"\""                    { BEGIN(IN_STRING); }
+"C\""                   { BEGIN(IN_STRING); }
+"WC\""                  { BEGIN(IN_STRING); }
+"LC\""                  { BEGIN(IN_STRING); }
 
-\'.\'                   { yylval->ast_base = new Ides::AST::ConstantIntExpression(yytext[1]); return TCHAR; }
+\'.\'                   { return TCHAR; }
 
-[a-zA-Z_][a-zA-Z0-9_]*  { yylval->ast_ident = new Ides::AST::Token(yytext); return TIDENTIFIER; }
+{OP}                    { yylval->ast_ident = new Ides::IdentifierExpr(yytext); return TOPERATOR; }
+{ID}(_{OP})?            { yylval->ast_ident = new Ides::IdentifierExpr(yytext); return TIDENTIFIER; }
+`[^`]+`                 { yylval->ast_ident = new Ides::IdentifierExpr(std::string(&yytext[1], strlen(yytext) - 2)); return TIDENTIFIER; }
 
 }
 
@@ -162,21 +99,12 @@
     [^\n]*              BEGIN(INITIAL); // Eat the rest of the line and continue.
 }
 
-<IN_STRING,IN_CSTRING,IN_WCSTRING,IN_LCSTRING>{
-    [^\\"]              { strbuf << yytext; }
-    \\a                 { strbuf << '\a'; }
-    \\b                 { strbuf << '\b'; }
-    \\f                 { strbuf << '\f'; }
-    \\n                 { strbuf << '\n'; }
-    \\r                 { strbuf << '\r'; }
-    \\t                 { strbuf << '\t'; }
-    \\v                 { strbuf << '\v'; }
-    \\\'                { strbuf << '\''; }
-    \\\"                { strbuf << '"'; }
+<IN_STRING>{
+
     \\.                 { std::cerr << "invalid escape sequence" << std::endl; yyterminate(); }
     <<EOF>>             { std::cerr << "unterminated quote" << std::endl; yyterminate(); }
     
-    \"                  { BEGIN(INITIAL); yylval->ast_str->exprloc.setEnd(yylloc->getEnd()); return TSTRING; }
+    \"                  { BEGIN(INITIAL); return TSTRING; }
 }
 
 <<EOF>>                 { yyterminate(); }
@@ -185,12 +113,3 @@
 
 %%
 
-
-void Ides::Parsing::ParseContext::InitParser() {
-    yylex_init(&this->scanner);
-    yyset_extra(this, this->scanner);
-}
-
-void Ides::Parsing::ParseContext::DestroyParser() {
-    yylex_destroy(this->scanner);
-}
