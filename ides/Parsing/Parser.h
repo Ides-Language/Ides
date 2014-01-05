@@ -11,6 +11,7 @@
 
 #include <ides/common.h>
 #include <ides/Source/SourceLocation.h>
+#include <ides/Source/SourcePackage.h>
 #include <ides/Parsing/AST.h>
 
 #include <ides/lexer.hpp>
@@ -26,6 +27,8 @@ namespace Ides {
 
         ~Parser();
 
+        AstPtr Parse(const Ides::SourcePackage& pkg);
+        AstPtr Parse(const Ides::SourceDirectory& dir);
         AstPtr Parse(const Ides::SourceFile& file);
         AstPtr Parse(llvm::StringRef source);
         AstPtr Parse(const llvm::MemoryBuffer& buf);

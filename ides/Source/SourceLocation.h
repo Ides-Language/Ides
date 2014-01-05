@@ -30,8 +30,9 @@ namespace Ides {
     struct SourceRange;
 
     struct SourceFilesystemLocation : public Source {
+        SourceFilesystemLocation(SourceDirectory* dir) : dir(dir) {}
 
-        Graph<SourceDirectory>::One dir;
+        const SourceDirectory* dir;
 
         virtual Ides::Path GetPath() const = 0;
 
@@ -42,17 +43,29 @@ namespace Ides {
     };
 
     struct SourceDirectory : public SourceFilesystemLocation {
+        SourceDirectory(Ides::StringRef dirname);
+        SourceDirectory(SourceDirectory* dir, Ides::StringRef dirname);
         virtual Ides::Path GetPath() const;
 
-        const std::string dirname;
+        const Ides::String dirname;
 
-        Graph<SourceDirectory>::Many dirs;
-        Graph<SourceFile>::Many files;
+        const std::vector<SourceDirectory*>& GetDirs() const { return dirs; }
+        const std::vector<SourceFile*>& GetFiles() const { return files; }
+
+    private:
+
+        std::vector<SourceDirectory*> dirs;
+        std::vector<SourceFile*> files;
+
+        void FillMembers();
 
     };
 
-    struct SourceFile : public SourceFilesystemLocation, private std::enable_shared_from_this<SourceFile> {
+    struct SourceFile : public SourceFilesystemLocation, private boost::noncopyable {
     public:
+        SourceFile(SourceDirectory* dir, Ides::StringRef name)
+            : SourceFilesystemLocation(dir), filename(name) {}
+
         virtual Ides::Path GetPath() const;
 
         void Open();
@@ -67,21 +80,21 @@ namespace Ides {
             return *buffer;
         }
 
-        const Graph<SourceLine>::Many& GetLines() const { return lines; }
-        const Graph<SourceLine>::One& GetLineForOffset(size_t offset) const;
+        const std::vector<SourceLine*>& GetLines() const { return lines; }
+        const SourceLine* GetLineForOffset(size_t offset) const;
     private:
-        Graph<SourceLocation>::One OffsetToLocation(size_t offset) const;
+        SourceLocation* OffsetToLocation(size_t offset) const;
 
         std::string filename;
         llvm::OwningPtr<llvm::MemoryBuffer> buffer;
-        Graph<SourceLine>::Many lines;
+        std::vector<SourceLine*> lines;
     };
 
     struct SourceLocation : public Source {
-        SourceLocation(Graph<SourceFile>::One file, size_t offset)
+        SourceLocation(const SourceFile* file, size_t offset)
             : file(file), offset(offset) { }
 
-        const Graph<SourceFile>::One file;
+        const SourceFile* file;
         const size_t offset;
 
         llvm::StringRef ToString() const {
@@ -90,11 +103,11 @@ namespace Ides {
     };
 
     struct SourceRange : public Source {
-        SourceRange(Graph<SourceLocation>::One begin, Graph<SourceLocation>::One end)
+        SourceRange(SourceLocation* begin, SourceLocation* end)
             : begin(begin), end(end) { assert(begin->offset <= end->offset && begin->file == end->file); }
 
-        const Graph<SourceLocation>::One begin;
-        const Graph<SourceLocation>::One end;
+        const SourceLocation* begin;
+        const SourceLocation* end;
 
         llvm::StringRef ToString() const {
             llvm::MemoryBuffer& buf = begin->file->GetBuffer();
@@ -103,17 +116,13 @@ namespace Ides {
     };
 
     struct SourceLine : public SourceRange {
-        SourceLine(size_t number, Graph<SourceLocation>::One begin, Graph<SourceLocation>::One end)
+        SourceLine(size_t number, SourceLocation* begin, SourceLocation* end)
             : SourceRange(begin, end), number(number) { }
 
         const size_t number;
 
     };
 
-}
-
-inline Ides::SourceRange operator+(const Ides::SourceRange& lhs, const Ides::SourceRange& rhs) {
-    return Ides::SourceRange(lhs.begin, rhs.end);
 }
 
 #endif /* defined(__ides__SourceLocation__) */

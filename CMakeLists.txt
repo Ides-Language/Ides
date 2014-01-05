@@ -24,7 +24,7 @@ if (MSVC)
 	unset(Boost_LIBRARY_DIRS)
 endif(MSVC)
 
-set(LLVM_REQUIRED_LIBS engine)
+set(LLVM_REQUIRED_LIBS all)
 set(YAMLCPP_STATIC_LIBRARY On)
 find_package(LLVM REQUIRED)
 find_package(YamlCpp REQUIRED)

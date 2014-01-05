@@ -35,41 +35,20 @@ int main(int argc, const char* argv[])
 	po::options_description genericdesc("Options");
 	genericdesc.add_options()
 		("help,h", "Show help message")
-        ("output,o", po::value<std::string>(), "Output path")
 		("interactive,i", "Run in interactive mode")
-        ("name", po::value<std::string>()->default_value("Ides Module"), "Module name")
-		;
-
-	po::options_description compilerdesc("Compiler Options");
-	compilerdesc.add_options()
-		("include-path,I", po::value<std::vector<std::string> >()->
-			//default_value(std::vector<fs::path>())->
-			composing(), "Additional include paths")
-		("compile,c", "Compile source file, but don't link.")
-		("optimization-level,O", po::value<unsigned int>(0), "Optimization level.")
-		//("define,D", po::value<std::map<std::string, std::string> >()->composing(), "Add preprocessor definition")
-		//("no-gc", "Disable garbage collection support")
-		;
-
-	po::options_description linkerdesc("Linker Options");
-	compilerdesc.add_options()
-        ("library-path,L", po::value<std::vector<std::string> >()->composing(), "Additional library paths")
-        ("lib,l", po::value<std::vector<std::string> >()->composing(), "Additional libraries to link")
-		;
-
-	po::options_description rundesc("Runtime Options");
-	rundesc.add_options()
-		("no-extlib", "Disable extended standard library (disables garbage collection and class support)")
-		("use-gc", po::value<std::string>()->default_value("shadow-stack"), "The GC algorithm to use")
+        ("parse-only", "Parse the input file(s) and print the AST (YAML)")
 		;
 
 	po::options_description hiddendesc("Hidden Options");
 	hiddendesc.add_options()
-		("input-file", po::value<std::vector<fs::path> >(), "input file")
+        ("input-file", po::value<fs::path>(), "input file")
+        ("debug-mode", "debug mode")
+        ("verbose-mode", "verbose mode")
+        ("trace-mode", "trace mode")
 		;
 
 	po::options_description visibledesc("Allowed Options");
-	visibledesc.add(genericdesc).add(compilerdesc).add(linkerdesc);
+	visibledesc.add(genericdesc);
 
 	po::options_description alldesc("All Options");
 	alldesc.add(visibledesc).add(hiddendesc);
@@ -82,8 +61,7 @@ int main(int argc, const char* argv[])
 		po::notify(args);
 	}
 	catch (const std::exception& ex) {
-		std::cerr << "error " << ex.what() << std::endl;
-		return 1;
+        MSG(F_BADARGS) % ex.what();
 	}
 
 	if (args.count("help")) {
@@ -91,41 +69,44 @@ int main(int argc, const char* argv[])
 		return 0;
 	}
 
+    if (args.count("debug-mode")) {
+        Ides::MessageBuilder::min_print = Ides::DEBUG;
+    }
+    if (args.count("verbose-mode")) {
+        Ides::MessageBuilder::min_print = Ides::INFO;
+    }
+    if (args.count("trace-mode")) {
+        Ides::MessageBuilder::min_print = Ides::TRACE;
+    }
+
 	if (args.count("input-file") == 0) {
-		std::cerr << "No input files specified." << std::endl;
-		return 1;
+		MSG(F_NOINPUTS);
 	}
-    auto input_files = args["input-file"].as<std::vector<fs::path>>();
-    auto output_name = args["name"].as<std::string>();
+    auto file = args["input-file"].as<fs::path>();
 
-	auto output_file = output_name + ".ilib";
-	if (args.count("output")) {
-		output_file = args["output"].as<std::string>();
-	}
+    DBG("Driver startup complete. Beginning compile phase.");
 
-	if (boost::filesystem::exists(output_file)) {
-		if (boost::filesystem::is_regular_file(output_file)) {
-			boost::filesystem::remove(output_file);
-		}
-		else {
-			std::cerr << "Output file " << output_file << " already exists and is not a regular file. Can not continue." << std::endl;
-			return 1;
-		}
-	}
-
-    for (auto file : input_files) {
+    if (args.count("parse-only")) {
+        Ides::SourceFile source(NULL, file.string());
+        source.Open();
+        Ides::Parser parser;
+        Ides::AstPtr ast = parser.Parse(source);
+        YAML::Emitter out;
+        ast->Emit(out);
+        std::cout << out.c_str() << std::endl;
+    }
+    else {
         std::string filestr = file.string();
         try {
             Ides::SourcePackage package(file);
             Ides::Compiler compiler;
-            compiler.Compile(package);
+            Ides::AstPtr ast = compiler.Parse(package);
+            std::cout << *ast << std::endl;
         } catch (const std::exception& ex) {
             std::cerr << ex.what() << std::endl;
+            return 1;
         }
-
     }
-
-    assert(Ides::Ast::count == 0);
 
 	return 0;
 }

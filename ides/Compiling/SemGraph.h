@@ -9,6 +9,19 @@
 #ifndef __ides__SemGraph__
 #define __ides__SemGraph__
 
-#include <iostream>
+#include <ides/common.h>
+#include <ides/Compiling/SymbolTable.h>
+
+namespace Ides {
+
+    class Node {
+    private:
+    };
+
+
+    class Namespace : public Node {
+
+    };
+}
 
 #endif /* defined(__ides__SemGraph__) */

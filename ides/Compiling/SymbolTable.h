@@ -18,7 +18,7 @@ class SemGraph;
 template<typename T>
 class SymbolTable {
     typedef std::unordered_map<Ides::String, T> SymbolMap;
-    typedef Graph<SymbolTable<T>>::One Ptr;
+    typedef SymbolTable<T>* Ptr;
 
     Ptr New() {
         return Ptr(new SymbolTable<T>());

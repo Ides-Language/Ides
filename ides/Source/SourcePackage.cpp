@@ -8,8 +8,10 @@
 
 #include "SourcePackage.h"
 
-Ides::SourcePackage::SourcePackage(const Ides::Path& location) : path(location),
-    config(YAML::LoadFile((location / "build.yaml").string()))
+Ides::SourcePackage::SourcePackage(const Ides::Path& location) :
+    SourceFilesystemLocation(NULL),
+    root(location.string()),
+    config(YAML::LoadFile((location / "ides.yaml").string()))
 {
 
 }

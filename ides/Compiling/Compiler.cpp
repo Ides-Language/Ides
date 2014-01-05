@@ -9,5 +9,5 @@
 #include "Compiler.h"
 
 void Ides::Compiler::Compile(Ides::SourcePackage& package) {
-    std::cout << "Compiling " << package.GetProperty<Ides::String>("name") << "..." << std::endl;
+    DBG("Compiling " << package.GetProperty<Ides::String>("name") << "...");
 }

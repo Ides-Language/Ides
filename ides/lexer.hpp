@@ -7,13 +7,21 @@
     #include <string>
     #include <sstream>
     #include <iostream>
+    #include <ides/Lang.h>
     #include <ides/Parsing/AST.h>
     #include <ides/parser.hpp>
 
+#define YY_USER_ACTION { MSG(I_TOK) % yytext % yylineno; \
+yylloc->first_line = yylineno; \
+yylloc->first_column = yylloc->last_column; \
+yylloc->last_column=yylloc->first_column+yyleng; \
+yylloc->last_line = yylineno; \
+}
 
 
 
-#line 17 "/Users/edwards/Projects/Ides/ides/lexer.hpp"
+
+#line 25 "/Users/edwards/Projects/Ides/ides/lexer.hpp"
 
 #define  YY_INT_ALIGNED short int
 
@@ -350,9 +358,9 @@ extern int yylex \
 #undef YY_DECL
 #endif
 
-#line 114 "lexer.l"
+#line 133 "lexer.l"
 
 
-#line 357 "/Users/edwards/Projects/Ides/ides/lexer.hpp"
+#line 365 "/Users/edwards/Projects/Ides/ides/lexer.hpp"
 #undef yyIN_HEADER
 #endif /* yyHEADER_H */

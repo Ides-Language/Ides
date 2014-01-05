@@ -16,8 +16,6 @@
 #define xppstr(s) #s
 #define ppstr(s) xppstr(s)
 
-#define SETTRACE(str) llvm::PrettyStackTraceString __stack_t(__FILE__ ":" ppstr(__LINE__) " - " str);
-
 #include "Singleton.h"
 #include "Match.h"
 
@@ -32,12 +30,6 @@ namespace Ides {
         template<typename T>
         struct Tree {
             typedef std::unique_ptr<T> One;
-            typedef std::vector<One> Many;
-        };
-
-        template<typename T>
-        struct Graph {
-            typedef std::shared_ptr<const T> One;
             typedef std::vector<One> Many;
         };
 

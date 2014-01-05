@@ -3,7 +3,7 @@ add_definitions(-DLIBIDES_EXPORTS)
 
 file(GLOB MODULES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*")
 
-set (LIBIDES_HEADERS ${LIBIDES_HEADERS} common.h ides.h)
+set (LIBIDES_HEADERS ${LIBIDES_HEADERS} common.h Lang.h ides.h)
 
 foreach (DIR ${MODULES})
 	if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${DIR}/")
@@ -38,7 +38,7 @@ find_package(BISON)
 find_package(FLEX)
 
 FLEX_TARGET(IdesScanner lexer.l  ${CMAKE_CURRENT_BINARY_DIR}/lexer.cpp COMPILE_FLAGS "--header-file=${CMAKE_CURRENT_BINARY_DIR}/lexer.hpp")
-BISON_TARGET(IdesParser parser.y ${CMAKE_CURRENT_BINARY_DIR}/parser.cpp)
+BISON_TARGET(IdesParser parser.y ${CMAKE_CURRENT_BINARY_DIR}/parser.cpp COMPILE_FLAGS -v)
 ADD_FLEX_BISON_DEPENDENCY(IdesScanner IdesParser)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})

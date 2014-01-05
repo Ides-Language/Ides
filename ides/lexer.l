@@ -2,14 +2,23 @@
     #include <string>
     #include <sstream>
     #include <iostream>
+    #include <ides/Lang.h>
     #include <ides/Parsing/AST.h>
     #include <ides/parser.hpp>
+
+#define YY_USER_ACTION { MSG(I_TOK) % yytext % yylineno; \
+yylloc->first_line = yylineno; \
+yylloc->first_column = yylloc->last_column; \
+yylloc->last_column=yylloc->first_column+yyleng; \
+yylloc->last_line = yylineno; \
+}
 
 }
 
 %option reentrant
 %option stack
 %option noyywrap
+%option yylineno
 
 %option bison-bridge
 %option bison-locations
@@ -20,7 +29,8 @@
 %s IN_SINGLELINECOMMENT
 %x IN_STRING
 
-OP [!\#\$%\^&\*\-\+/\\=@<>\|]+
+OP_START [!\#\%\^&\*\-\+/\\<>\|?]
+OP {OP_START}[=:{OP_START}]*
 ID [A-Za-z_][A-Za-z0-9]*
 
 %%
@@ -52,6 +62,10 @@ ID [A-Za-z_][A-Za-z0-9]*
 
 "null"                  return KW_NULL;
 "namespace"             return KW_NAMESPACE;
+"case"                  return KW_CASE;
+
+"if"                    return KW_IF;
+"else"                  return KW_ELSE;
 
 "public"                return KW_PUBLIC;
 "protected"             return KW_PROTECTED;
@@ -64,22 +78,17 @@ ID [A-Za-z_][A-Za-z0-9]*
 "throw"                 return KW_THROW;
 "new"                   return KW_NEW;
 "return"                return KW_RETURN;
-
-"if"                    return KW_IF;
-"else"                  return KW_ELSE;
-"while"                 return KW_WHILE;
-"for"                   return KW_FOR;
-"do"                    return KW_DO;
+"match"                 return KW_MATCH;
 
 "\.\.\."                return KW_VARARGS;
+"=>"                    return KW_DEFINEDAS;
 
 "/*"           BEGIN(IN_BLOCKCOMMENT);
 "//"           BEGIN(IN_SINGLELINECOMMENT);
 
-"\""                    { BEGIN(IN_STRING); }
-"C\""                   { BEGIN(IN_STRING); }
-"WC\""                  { BEGIN(IN_STRING); }
-"LC\""                  { BEGIN(IN_STRING); }
+"\""                    { yylval->ast_str = new Ides::ConstantString(""); BEGIN(IN_STRING); }
+
+:[0-9]+                 { yylval->ast_placeholder = new Ides::PlaceholderExpr(strtol(&yytext[1], NULL, 10)); return TPLACEHOLDER; }
 
 \'.\'                   { return TCHAR; }
 
@@ -100,9 +109,19 @@ ID [A-Za-z_][A-Za-z0-9]*
 }
 
 <IN_STRING>{
+    [^\\"]              { yylval->ast_str->value += yytext; }
+    \\a                 { yylval->ast_str->value += '\a'; }
+    \\b                 { yylval->ast_str->value += '\b'; }
+    \\f                 { yylval->ast_str->value += '\f'; }
+    \\n                 { yylval->ast_str->value += '\n'; }
+    \\r                 { yylval->ast_str->value += '\r'; }
+    \\t                 { yylval->ast_str->value += '\t'; }
+    \\v                 { yylval->ast_str->value += '\v'; }
+    \\\'                { yylval->ast_str->value += '\''; }
+    \\\"                { yylval->ast_str->value += '"'; }
 
-    \\.                 { std::cerr << "invalid escape sequence" << std::endl; yyterminate(); }
-    <<EOF>>             { std::cerr << "unterminated quote" << std::endl; yyterminate(); }
+    \\.                 { MSG(E_BADESC) % yytext; yyterminate(); }
+    <<EOF>>             { MSG(E_NOENDQUOT); yyterminate(); }
     
     \"                  { BEGIN(INITIAL); return TSTRING; }
 }

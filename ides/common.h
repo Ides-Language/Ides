@@ -15,6 +15,7 @@
 #include <cassert>
 #include <iostream>
 #include <algorithm>
+#include <unordered_map>
 extern "C" {
 #include <stdint.h>
 }
@@ -29,14 +30,15 @@ extern "C" {
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Support/PrettyStackTrace.h>
 #include <llvm/Support/system_error.h>
-#include <boost/unordered_map.hpp>
-#include <boost/unordered_set.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/filesystem.hpp>
 
 #include <boost/variant.hpp>
 
+#include <yaml-cpp/yaml.h>
+
 #include <ides/Util/Util.h>
+#include <ides/Diagnostics/Diagnostics.h>
 
 
 

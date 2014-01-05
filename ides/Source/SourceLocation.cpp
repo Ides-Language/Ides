@@ -9,33 +9,41 @@
 #include "SourceLocation.h"
 
 Ides::Path Ides::SourceDirectory::GetPath() const {
-    return dir->GetPath() / dirname;
+    if (dir) return dir->GetPath() / dirname;
+    return Ides::Path(dirname);
 }
 
 Ides::Path Ides::SourceFile::GetPath() const {
-    return dir->GetPath() / filename;
+    if (dir) return dir->GetPath() / filename;
+    return Ides::Path(filename);
 }
 
-Ides::Graph<Ides::SourceLocation>::One Ides::SourceFile::OffsetToLocation(size_t offset) const {
-    return Ides::Graph<Ides::SourceLocation>::One(new Ides::SourceLocation(this->shared_from_this(), offset));
+Ides::SourceLocation* Ides::SourceFile::OffsetToLocation(size_t offset) const {
+    return new Ides::SourceLocation(this, offset);
 }
 
 void Ides::SourceFile::Open() {
-    llvm::MemoryBuffer::getFile(this->ToString(), buffer);
+    const auto openPath = this->GetPath();
+    auto code = llvm::MemoryBuffer::getFile(openPath.string(), buffer);
+    if (code != llvm::error_code::success()) {
+        throw std::runtime_error(StringBuilder() << "Could not open " << openPath << ": " << code.message());
+    }
     auto rest = llvm::StringRef(buffer->getBufferStart(), buffer->getBufferSize());
 
     size_t last_linesep = 0;
     size_t linesep = rest.find_first_of('\n');
     size_t linenum = 1;
     while (linesep != llvm::StringRef::npos) {
-        auto sourceline = new Ides::SourceLine(linenum, OffsetToLocation(last_linesep), OffsetToLocation(linesep));
-        lines.push_back(Graph<Ides::SourceLine>::One(sourceline));
-        last_linesep = linesep;
-        linesep = rest.find_first_of('\n');
+        auto begin = OffsetToLocation(last_linesep);
+        auto end = OffsetToLocation(linesep);
+        auto sourceline = new Ides::SourceLine(linenum, begin, end);
+        lines.push_back(sourceline);
+        last_linesep = linesep + 1;
+        linesep = rest.find('\n', last_linesep);
         ++linenum;
     }
     auto sourceline = new Ides::SourceLine(linenum, OffsetToLocation(last_linesep), OffsetToLocation(rest.size()));
-    lines.push_back(Graph<Ides::SourceLine>::One(sourceline));
+    lines.push_back(sourceline);
 }
 
 void Ides::SourceFile::Close() {
@@ -43,11 +51,42 @@ void Ides::SourceFile::Close() {
     buffer.reset();
 }
 
-const Ides::Graph<Ides::SourceLine>::One& Ides::SourceFile::GetLineForOffset(size_t offset) const {
+const Ides::SourceLine* Ides::SourceFile::GetLineForOffset(size_t offset) const {
     for (auto& line : lines) {
         if (line->begin->offset <= offset && line->end->offset > offset) {
             return line;
         }
     }
     throw std::runtime_error("offset out of bounds.");
+}
+
+Ides::SourceDirectory::SourceDirectory(Ides::StringRef dirname)
+    : SourceFilesystemLocation(NULL), dirname(dirname)
+{
+    FillMembers();
+}
+
+Ides::SourceDirectory::SourceDirectory(SourceDirectory* dir, Ides::StringRef dirname)
+    : SourceFilesystemLocation(dir), dirname(dirname)
+{
+    FillMembers();
+}
+
+void Ides::SourceDirectory::FillMembers()
+{
+    boost::filesystem::directory_iterator begin(GetPath());
+    boost::filesystem::directory_iterator end;
+
+    for (auto i = begin; i != end; ++i) {
+        if (boost::filesystem::is_regular_file(*i) && i->path().extension() == ".ides") {
+            Ides::SourceFile* file(new Ides::SourceFile(this, i->path().filename().string()));
+            files.push_back(file);
+            file->Open();
+        }
+
+        if (boost::filesystem::is_directory(*i)) {
+            Ides::SourceDirectory* file(new Ides::SourceDirectory(this, i->path().filename().string()));
+            dirs.push_back(file);
+        }
+    }
 }

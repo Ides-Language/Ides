@@ -18,23 +18,24 @@ namespace Ides {
     class SourcePackage : public Ides::SourceFilesystemLocation {
     public:
         SourcePackage(const Ides::Path& location);
-        virtual Ides::Path GetPath() const { return path; }
+        virtual Ides::Path GetPath() const { return root.GetPath(); }
+        const Ides::SourceDirectory& GetRoot() const { return root; }
 
         template<typename T>
-        T GetProperty(llvm::StringRef prop) {
+        T GetProperty(llvm::StringRef prop) const {
             return GetPropertyOf<T>(prop, config);
         }
 
     private:
         template<typename T>
-        T GetPropertyOf(llvm::StringRef prop, const YAML::Node& node) {
+        T GetPropertyOf(llvm::StringRef prop, const YAML::Node& node) const {
             auto split = prop.split('.');
             if (split.first == prop) {
                 return config[prop.str()].as<T>();
             }
             return GetPropertyOf<T>(split.second, node[split.first.str()]);
         }
-        Ides::Path path;
+        Ides::SourceDirectory root;
         YAML::Node config;
     };
 
