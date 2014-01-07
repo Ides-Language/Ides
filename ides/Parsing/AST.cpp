@@ -6,8 +6,48 @@
 //
 //
 
-#include <stdio.h>
+#include <ides/Parsing/AstTraits.h>
+#include <unordered_map>
+#include <yaml-cpp/yaml.h>
+#include <regex>
 #include <ides/Parsing/AST.h>
+
+namespace Ides {
+    struct AstBase;
+
+    typedef Ides::AstBase* (YamlReader)(const YAML::Node&);
+
+    std::unordered_map<std::string, YamlReader*> AstReaders;
+
+
+    template<typename T>
+    struct AstIOBuilder {
+        static AstIOBuilder<T>* self;
+        AstIOBuilder(YamlReader* reader) {
+            AstReaders.insert(std::make_pair(AstTraits<T>::name, reader));
+        }
+    };
+
+    template<typename T>
+    Ides::AstBase* ReadNode(const YAML::Node& node);
+
+    template<typename T>
+    void WriteNode(YAML::Emitter& o, const T& ast);
+
+
+    DECL_AST_VISITOR(AST_TYPES, PrintNode, void, std::ostream&, size_t);
+
+#define AST_NAME(r, d, t) \
+    struct t;\
+    template<> AstBase* ReadNode<t>(const YAML::Node& n); \
+    template<> AstIOBuilder<t>* AstIOBuilder<t>::self = new AstIOBuilder(&ReadNode<t>);
+
+
+    BOOST_PP_SEQ_FOR_EACH(AST_NAME, , AST_TYPES);
+
+
+}
+
 
 namespace {
 
@@ -17,177 +57,6 @@ namespace {
         for (size_t i = 0; i < size; ++i)
             buf << " ";
         return buf.str();
-    }
-
-    std::ostream& PrettyPrint(std::ostream& os, const Ides::Ast& data, size_t tab) {
-        Match<void>()
-            .on<const Ides::Ast>([&os, &tab](const Ides::Ast*){ os << "{AST?}"; })
-            .on<const Ides::TupleExpr>([&os, &tab](const Ides::TupleExpr* expr) {
-                os << "{";
-                for (auto& i : expr->items) {
-                    os << NL(tab+4);
-                    PrettyPrint(os, *i, tab+4);
-                    os << ";";
-                }
-                os << NL(tab) << "}";
-            })
-            .on<const Ides::InfixExpr>([&os, &tab](const Ides::InfixExpr* expr){
-                os << "(";
-                PrettyPrint(os, *expr->lhs, tab);
-                os << " " << expr->ident << " ";
-                PrettyPrint(os, *expr->rhs, tab);
-                os << ")";
-            })
-            .on<const Ides::PrefixExpr>([&os, &tab](const Ides::PrefixExpr* expr){
-                os << "(";
-                os << expr->ident;
-                PrettyPrint(os, *expr->rhs, tab);
-                os << ")";
-            })
-            .on<const Ides::CallExpr>([&os, &tab](const Ides::CallExpr* expr){
-                PrettyPrint(os, *expr->lhs, tab);
-                os << "(";
-                bool first = true;
-                for (auto& i : expr->args->items) {
-                    if (!first) os << ", ";
-                    PrettyPrint(os, *i, tab);
-                    first = false;
-                }
-                os << ")";
-            })
-            .on<const Ides::IndexExpr>([&os, &tab](const Ides::IndexExpr* expr){
-                PrettyPrint(os, *expr->lhs, tab);
-                os << "[";
-                bool first = true;
-                for (auto& i : expr->args->items) {
-                    if (!first) os << ", ";
-                    PrettyPrint(os, *i, tab);
-                    first = false;
-                }
-                os << "]";
-            })
-            .on<const Ides::VarArgsExpr>([&os, &tab](const Ides::VarArgsExpr* expr){
-                PrettyPrint(os, *expr->lhs, tab);
-                os << "...";
-            })
-            .on<const Ides::BlockExpr>([&os, &tab](const Ides::BlockExpr* expr){
-                PrettyPrint(os, *expr->lhs, tab);
-                PrettyPrint(os, *expr->body, tab);
-            })
-            .on<const Ides::DotExpr>([&os, &tab](const Ides::DotExpr* expr){
-                PrettyPrint(os, *expr->lhs, tab);
-                os << "." << expr->ident;
-            })
-            .on<const Ides::IfExpr>([&os, &tab](const Ides::IfExpr* expr){
-                os << "if (";
-                PrettyPrint(os, *expr->cond, tab);
-                os << ") ";
-                PrettyPrint(os, *expr->body, tab);
-            })
-            .on<const Ides::IdentifierExpr>([&os, &tab](const Ides::IdentifierExpr* expr){
-                os << "`" << expr->ident << "`";
-            })
-            .on<const Ides::Name>([&os, &tab](const Ides::Name* expr){
-                os << "`" << expr->ident << "`";
-                if (!expr->genericArgs->items.empty()) {
-                    os << "[";
-                    bool first = true;
-                    for (auto& i : expr->genericArgs->items) {
-                        os << (first ? "" : ", ");
-                        PrettyPrint(os, *i, tab);
-                        first = false;
-                    }
-                    os << "]";
-                }
-            })
-            .on<const Ides::ConstantInt>([&os, &tab](const Ides::ConstantInt* expr){ os << expr->value; })
-            .on<const Ides::ConstantDec>([&os, &tab](const Ides::ConstantDec* expr){ os << expr->value; })
-            .on<const Ides::ConstantBool>([&os, &tab](const Ides::ConstantBool* expr){ os << (expr->value ? "true" : "false"); })
-            .on<const Ides::ConstantString>([&os, &tab](const Ides::ConstantString* expr){ os << "\"" << expr->value << "\""; })
-            .on<const Ides::PlaceholderExpr>([&os, &tab](const Ides::PlaceholderExpr* expr){
-                os << ':' << static_cast<int>(expr->value);
-            })
-
-            .on<const Ides::DataStructureDecl>([&os, &tab](const Ides::DataStructureDecl* expr){
-                if (!expr->args->items.empty()) {
-                    os << "(";
-                    bool first = true;
-                    for (auto& i : expr->args->items) {
-                        os << (first ? "" : ", ");
-                        PrettyPrint(os, *i, tab);
-                        first = false;
-                    }
-                    os << ")";
-                }
-                bool first = true;
-                for (auto& i : expr->superTypes->items) {
-                    os << (first ? " : " : ", ");
-                    PrettyPrint(os, *i, tab);
-                    first = false;
-                }
-                os << " => ";
-                PrettyPrint(os, *expr->body, tab);
-            })
-            .on<const Ides::TraitDecl>([&os, &tab](const Ides::TraitDecl* expr){
-                os << "trait ";
-                PrettyPrint(os, *expr->name, tab);
-                PrettyPrint(os, *expr->decl, tab);
-            })
-            .on<const Ides::ClassDecl>([&os, &tab](const Ides::ClassDecl* expr){
-                os << "class ";
-                PrettyPrint(os, *expr->name, tab);
-                PrettyPrint(os, *expr->decl, tab);
-            })
-            .on<const Ides::StructDecl>([&os, &tab](const Ides::StructDecl* expr){
-                os << "struct ";
-                PrettyPrint(os, *expr->name, tab);
-                PrettyPrint(os, *expr->decl, tab);
-            })
-            .on<const Ides::ModuleDecl>([&os, &tab](const Ides::ModuleDecl* expr){
-                os << "mod ";
-                PrettyPrint(os, *expr->name, tab);
-                PrettyPrint(os, *expr->decl, tab);
-            })
-            .on<const Ides::ArgDecl>([&os, &tab](const Ides::ArgDecl* expr){
-                PrettyPrint(os, *expr->name, tab);
-                os << " : ";
-                PrettyPrint(os, *expr->decl, tab);
-            })
-            .on<const Ides::FnDecl>([&os, &tab](const Ides::FnDecl* expr){
-                os << "def ";
-                PrettyPrint(os, *expr->name, tab);
-                os << "(";
-                bool first = true;
-                for (auto& i : expr->decl->args->items) {
-                    os << (first ? "" : ", ");
-                    PrettyPrint(os, *i, tab);
-                    first = false;
-                }
-                os << ")";
-                if (expr->decl->type) {
-                    os << " : ";
-                    PrettyPrint(os, *expr->decl->type, tab);
-                }
-                if (expr->decl->body) {
-                    os << " => ";
-                    PrettyPrint(os, *expr->decl->body, tab);
-                }
-            })
-            .on<const Ides::PartialFunction>([&os, &tab](const Ides::PartialFunction* expr){
-                os << "{";
-                for (auto& i : expr->cases) {
-                    os << NL(tab+4);
-                    os << "case ";
-                    PrettyPrint(os, *i->lhs, tab+8);
-                    os << " => ";
-                    os << NL(tab+8);
-                    PrettyPrint(os, *i->rhs, tab+8);
-                }
-                os << NL(tab) << "}";
-            })
-
-            .match(&data);
-        return os;
     }
 
     enum associativity {
@@ -203,6 +72,7 @@ namespace {
     } precedence;
 
     const precedence operators[] = {
+        {"if", -5, NONASSOC}, {"else", -10, RIGHT},
         {"&&", 1, LEFT},{"||", 1, LEFT},
         {"|", 2, LEFT},{"^", 5, RIGHT},{"&", 6, LEFT},
         {"or", 7, LEFT},
@@ -229,18 +99,22 @@ namespace {
         return {op, 0, LEFT};
     }
 
-    Ides::InfixExpr* RotateLhs(Ides::InfixExpr* self) {
-        if (Ides::InfixExpr* ilhs = self->lhs->As<Ides::InfixExpr>()) {
-            precedence selfP = get_precedence(self->ident.c_str());
-            precedence lhsP = get_precedence(ilhs->ident.c_str());
-            if ((selfP.p > lhsP.p) || (selfP.p == lhsP.p && selfP.assoc == RIGHT)) {
-                Ides::Expr* b = ilhs->rhs.release();
-                self->lhs.release();
-                self->lhs.reset(b);
-                ilhs->rhs.reset(RotateLhs(self));
-                return ilhs;
-            } else if (selfP.assoc == NONASSOC) {
-                MSG(E_NONASSOC) % self->ident;
+    Ides::BinaryExpr* RotateLhs(Ides::BinaryExpr* self) {
+        Ides::IdentifierExpr* ident = self->As<Ides::IdentifierExpr>();
+        Ides::BinaryExpr* ilhs = self->lhs->As<Ides::BinaryExpr>();
+        if (ident != NULL && ilhs != NULL) {
+            if (Ides::IdentifierExpr* lhsident = ilhs->fn->As<Ides::IdentifierExpr>()) {
+                precedence selfP = get_precedence(ident->ident.c_str());
+                precedence lhsP = get_precedence(lhsident->ident.c_str());
+                if ((selfP.p > lhsP.p) || (selfP.p == lhsP.p && selfP.assoc == RIGHT)) {
+                    Ides::Expr* b = ilhs->rhs.release();
+                    self->lhs.release();
+                    self->lhs.reset(b);
+                    ilhs->rhs.reset(RotateLhs(self));
+                    return ilhs;
+                } else if (selfP.assoc == NONASSOC) {
+                    MSG(E_NONASSOC) % ident->ident;
+                }
             }
         }
         return self;
@@ -250,43 +124,95 @@ namespace {
 
 namespace Ides {
 
-    Ides::InfixExpr* Ides::InfixExpr::Create(IdentifierExpr* ident, Expr* lhs, Expr* rhs) {
-        return RotateLhs(new Ides::InfixExpr(ident, lhs, rhs));
+
+    Ides::BinaryExpr* Ides::BinaryExpr::Create(IdentifierExpr* ident, Expr* lhs, Expr* rhs) {
+        return RotateLhs(new Ides::BinaryExpr(ident, lhs, rhs));
     }
 
     void Ast::Emit(YAML::Emitter &o) {
+        if (this == NULL) {
+            o << YAML::Node();
+            return;
+        }
         o << YAML::BeginMap;
-        o << YAML::Key << "type" << YAML::Value << type;
-        o << YAML::Key << "loc" << YAML::Value << "null";
-        o << YAML::Key << "data";
-        o << YAML::Value;
+        o << YAML::Key << "type" << YAML::Value << getName();
+        o << YAML::Key << "loc" << YAML::Value;
+        o << YAML::BeginMap;
+        if (this->source.begin.file)
+            o << YAML::Key << "file" << YAML::Value << this->source.begin.file->GetPath().string();
+        o << YAML::Key << "offset" << YAML::Value << this->source.begin.offset;
+        o << YAML::Key << "length" << YAML::Value << this->source.length;
+        o << YAML::EndMap;
+        o << YAML::Key << "data" << YAML::Value;
         DoEmit(o);
         o << YAML::EndMap;
     }
 
+    Ast* Ast::Read(const YAML::Node& n) {
+        auto nt = n.Type();
+        if (nt == YAML::NodeType::Null || nt == YAML::NodeType::Undefined) return NULL;
+        std::string ntype = n["type"].Scalar();
+        DBG("Using reader for " << ntype);
+        YamlReader* reader = AstReaders.at(ntype);
+        return (*reader)(n["data"]);
+    }
+
+    /** IdentifierExpr **/
     void IdentifierExpr::DoEmit(YAML::Emitter& o) {
         o << ident;
     }
 
-    void Name::DoEmit(YAML::Emitter& o) {
-        o << ident;
-        o << YAML::Key << "typeargs" << YAML::Value;
-        o << YAML::BeginSeq;
-        for (auto& i : genericArgs->items) {
-            i->Emit(o);
-        }
-        o << YAML::EndSeq;
+    template<>
+    Ast* ReadNode<IdentifierExpr>(const YAML::Node& n) {
+        return new IdentifierExpr(n.Scalar());
     }
 
-    void DotExpr::DoEmit(YAML::Emitter& o) {
+
+    template<>
+    void PrintNode(const IdentifierExpr& expr, std::ostream& os, size_t tab) {
+        static std::regex basic_ident("[A-Za-z_][A-Za-z0-9_]*");
+        if (std::regex_match(expr.ident, basic_ident)) {
+            os << expr.ident;
+        }
+        else {
+            os << "`" << expr.ident << "`";
+        }
+    }
+
+    /** Name **/
+    void Name::DoEmit(YAML::Emitter& o) {
         o << YAML::BeginMap;
-        o << YAML::Key << "lhs" << YAML::Value;
-        lhs->Emit(o);
-        o << YAML::Key << "ident" << YAML::Value << ident;
+        o << YAML::Key << "ident" << YAML::Value;
+        ident->Emit(o);
+        if (!genericArgs->items.empty()) {
+            o << YAML::Key << "typeargs" << YAML::Value;
+            genericArgs->Emit(o);
+        }
         o << YAML::EndMap;
     }
 
-    void TupleExpr::DoEmit(YAML::Emitter& o) {
+    template<>
+    Ast* ReadNode<Name>(const YAML::Node& n) {
+        return new Name(new IdentifierExpr(n["ident"].Scalar()), Ast::Read<ExprList>(n["typeargs"]));
+    }
+
+    template<>
+    void PrintNode(const Name& expr, std::ostream& os, size_t tab) {
+        DoPrintNode(*expr.ident, os, tab);
+        if (!expr.genericArgs->items.empty()) {
+            os << "[";
+            bool first = true;
+            for (auto& i : expr.genericArgs->items) {
+                os << (first ? "" : ", ");
+                DoPrintNode(*i, os, tab);
+                first = false;
+            }
+            os << "]";
+        }
+    }
+
+    /** ExprList **/
+    void ExprList::DoEmit(YAML::Emitter& o) {
         o << YAML::BeginSeq;
         for (auto& i : items) {
             i->Emit(o);
@@ -294,35 +220,87 @@ namespace Ides {
         o << YAML::EndSeq;
     }
 
+    template<>
+    Ast* ReadNode<ExprList>(const YAML::Node& n) {
+        ExprList* ret = new ExprList();
+        for (auto i : n) {
+            ret->Add(Ast::Read<Expr>(i));
+        }
+        return ret;
+    }
+
+    template<>
+    void PrintNode(const ExprList& expr, std::ostream& os, size_t tab) {
+        os << "{";
+        for (auto& i : expr.items) {
+            os << NL(tab+4);
+            DoPrintNode(*i, os, tab+4);
+            os << ";";
+        }
+        os << NL(tab) << "}";
+    }
+
+    /** CallExpr **/
     void CallExpr::DoEmit(YAML::Emitter& o)  {
         o << YAML::BeginMap;
         o << YAML::Key << "lhs" << YAML::Value;
         lhs->Emit(o);
         o << YAML::Key << "args" << YAML::Value;
-        o << YAML::BeginSeq;
-        for (auto& i : args->items) {
-            i->Emit(o);
-        }
-        o << YAML::EndSeq;
+        args->Emit(o);
         o << YAML::EndMap;
     }
 
+    template<>
+    Ast* ReadNode<CallExpr>(const YAML::Node& n) {
+        return new CallExpr(Ast::Read<Expr>(n["lhs"]), Ast::Read<ExprList>(n["args"]));
+    }
+
+    template<>
+    void PrintNode(const CallExpr& expr, std::ostream& os, size_t tab) {
+        DoPrintNode(*expr.lhs, os, tab);
+        os << "(";
+        bool first = true;
+        for (auto& i : expr.args->items) {
+            if (!first) os << ", ";
+            DoPrintNode(*i, os, tab);
+            first = false;
+        }
+        os << ")";
+    }
+
+    /** IndexExpr **/
     void IndexExpr::DoEmit(YAML::Emitter& o) {
         o << YAML::BeginMap;
         o << YAML::Key << "lhs" << YAML::Value;
         lhs->Emit(o);
         o << YAML::Key << "args" << YAML::Value;
-        o << YAML::BeginSeq;
-        for (auto& i : args->items) {
-            i->Emit(o);
+        args->Emit(o);
+        o << YAML::EndMap;
+    }
+
+    template<>
+    Ast* ReadNode<IndexExpr>(const YAML::Node& n) {
+        return new IndexExpr(Ast::Read<Expr>(n["lhs"]), Ast::Read<ExprList>(n["args"]));
+    }
+
+    template<>
+    void PrintNode(const IndexExpr& expr, std::ostream& os, size_t tab) {
+        DoPrintNode(*expr.lhs, os, tab);
+        os << "[";
+        bool first = true;
+        for (auto& i : expr.args->items) {
+            if (!first) os << ", ";
+            DoPrintNode(*i, os, tab);
+            first = false;
         }
-        o << YAML::EndSeq;
-        o << YAML::EndMap;
+        os << "]";
     }
 
-    void InfixExpr::DoEmit(YAML::Emitter& o) {
+    /** BinaryExpr **/
+    void BinaryExpr::DoEmit(YAML::Emitter& o) {
         o << YAML::BeginMap;
-        o << YAML::Key << "op" << YAML::Value << ident;
+        o << YAML::Key << "fn" << YAML::Value;
+        fn->Emit(o);
         o << YAML::Key << "lhs" << YAML::Value;
         lhs->Emit(o);
         o << YAML::Key << "rhs" << YAML::Value;
@@ -330,61 +308,103 @@ namespace Ides {
         o << YAML::EndMap;
     }
 
-    void PrefixExpr::DoEmit(YAML::Emitter& o) {
+    template<>
+    Ast* ReadNode<BinaryExpr>(const YAML::Node& n) {
+        return new BinaryExpr(new IdentifierExpr(n["op"].Scalar()),
+                              Ast::Read<Expr>(n["lhs"]),
+                              Ast::Read<Expr>(n["rhs"]));
+    }
+
+    template<>
+    void PrintNode(const BinaryExpr& expr, std::ostream& os, size_t tab) {
+        if (expr.fn->ident == "if") {
+            os << "if (";
+            DoPrintNode(*expr.lhs, os, tab);
+            os << ") ";
+            DoPrintNode(*expr.rhs, os, tab);
+            return;
+        }
+        os << "(";
+        DoPrintNode(*expr.lhs, os, tab);
+        os << ")";
+        os << " ";
+        DoPrintNode(*expr.fn, os, tab);
+        os << " ";
+        DoPrintNode(*expr.rhs, os, tab);
+    }
+
+    /** UnaryExpr **/
+    void UnaryExpr::DoEmit(YAML::Emitter& o) {
         o << YAML::BeginMap;
-        o << YAML::Key << "op" << YAML::Value << ident;
-        o << YAML::Key << "rhs" << YAML::Value;
-        rhs->Emit(o);
+        if (is_prefix) {
+            o << YAML::Key << "op" << YAML::Value; fn->Emit(o);
+            o << YAML::Key << "arg" << YAML::Value; arg->Emit(o);
+        } else {
+            o << YAML::Key << "arg" << YAML::Value; arg->Emit(o);
+            o << YAML::Key << "op" << YAML::Value; fn->Emit(o);
+        }
         o << YAML::EndMap;
     }
 
-    void IfExpr::DoEmit(YAML::Emitter& o) {
-        o << YAML::BeginMap;
-        o << YAML::Key << "cond" << YAML::Value;
-        cond->Emit(o);
-        o << YAML::Key << "body" << YAML::Value;
-        body->Emit(o);
-        o << YAML::EndMap;
+    template<>
+    Ast* ReadNode<UnaryExpr>(const YAML::Node& n) {
+        return new UnaryExpr(Ast::Read<Expr>(n["arg"]),
+                             new IdentifierExpr(n["op"].Scalar()));
     }
 
-    void BlockExpr::DoEmit(YAML::Emitter& o) {
-        o << YAML::BeginMap;
-        o << YAML::Key << "lhs" << YAML::Value;
-        lhs->Emit(o);
-        o << YAML::Key << "body" << YAML::Value;
-        body->Emit(o);
-        o << YAML::EndMap;
+    template<>
+    void PrintNode(const UnaryExpr& expr, std::ostream& os, size_t tab) {
+        DoPrintNode(*expr.fn, os, tab);
+        DoPrintNode(*expr.arg, os, tab);
     }
 
-//    void NamedDecl::DoEmit(YAML::Emitter& o)
 
+    /** DataStructureDecl **/
     void DataStructureDecl::DoEmit(YAML::Emitter& o) {
         o << YAML::BeginMap;
         o << YAML::Key << "args" << YAML::Value;
-        o << YAML::BeginSeq;
-        for (auto& i : args->items) {
-            i->Emit(o);
-        }
-        o << YAML::EndSeq;
+        args->Emit(o);
         o << YAML::Key << "supers" << YAML::Value;
-        o << YAML::BeginSeq;
-        for (auto& i : superTypes->items) {
-            i->Emit(o);
-        }
-        o << YAML::EndSeq;
+        superTypes->Emit(o);
         o << YAML::Key << "body" << YAML::Value;
         body->Emit(o);
         o << YAML::EndMap;
     }
 
-    void FunctionDecl::DoEmit(YAML::Emitter& o) {
+    template<>
+    Ast* ReadNode<DataStructureDecl>(const YAML::Node& n) {
+        return new DataStructureDecl(Ast::Read<ExprList>(n["args"]),
+                                     Ast::Read<ExprList>(n["supers"]),
+                                     Ast::Read<ExprList>(n["body"]));
+    }
+
+    template<>
+    void PrintNode(const DataStructureDecl& expr, std::ostream& os, size_t tab) {
+        if (!expr.args->items.empty()) {
+            os << "(";
+            bool first = true;
+            for (auto& i : expr.args->items) {
+                os << (first ? "" : ", ");
+                DoPrintNode(*i, os, tab);
+                first = false;
+            }
+            os << ")";
+        }
+        bool first = true;
+        for (auto& i : expr.superTypes->items) {
+            os << (first ? " : " : ", ");
+            DoPrintNode(*i, os, tab);
+            first = false;
+        }
+        os << " => ";
+        DoPrintNode(*expr.body, os, tab);
+    }
+
+    /* FnDataDecl */
+    void FnDataDecl::DoEmit(YAML::Emitter& o) {
         o << YAML::BeginMap;
         o << YAML::Key << "args" << YAML::Value;
-        o << YAML::BeginSeq;
-        for (auto& i : args->items) {
-            i->Emit(o);
-        }
-        o << YAML::EndSeq;
+        args->Emit(o);
         if (type) {
             o << YAML::Key << "ret" << YAML::Value;
             type->Emit(o);
@@ -396,22 +416,217 @@ namespace Ides {
         o << YAML::EndMap;
     }
 
+    template<>
+    Ast* ReadNode<FnDataDecl>(const YAML::Node& n) {
+        return new FnDataDecl(Ast::Read<ExprList>(n["args"]),
+                              Ast::Read<Expr>(n["ret"]),
+                              Ast::Read<Expr>(n["body"]));
+    }
+
+    template<>
+    void PrintNode(const FnDataDecl& expr, std::ostream& os, size_t tab) {
+        assert(false);
+    }
+
 //    void ValueDecl::DoEmit(YAML::Emitter& o)
 
-    void CasePair::DoEmit(YAML::Emitter& o) {
-        o << YAML::BeginMap;
-        o << YAML::Key << "lhs" << YAML::Value;
-        lhs->Emit(o);
-        o << YAML::Key << "rhs" << YAML::Value;
-        rhs->Emit(o);
-    }
 
+    /** PartialFunction **/
     void PartialFunction::DoEmit(YAML::Emitter& o) {
+        o << YAML::BeginSeq;
+        for (auto& i : *this) {
+            o << YAML::BeginMap;
+            o << YAML::Key << "lhs" << YAML::Value;
+            if (i.first) {
+                i.first->Emit(o);
+            }
+            else {
+                o << "else";
+            }
+            o << YAML::Key << "rhs" << YAML::Value;
+            i.second->Emit(o);
+            o << YAML::EndMap;
+        }
+        o << YAML::EndSeq;
+    }
+
+    template<>
+    Ast* ReadNode<PartialFunction>(const YAML::Node& n) {
+        PartialFunction* ret = new PartialFunction();
+        for (auto i : n) {
+            if (i["lhs"].IsScalar())
+                ret->Add(NULL, Ast::Read<Expr>(i["rhs"]));
+            else
+                ret->Add(Ast::Read<Expr>(i["lhs"]), Ast::Read<Expr>(i["rhs"]));
+        }
+        return ret;
+    }
+
+    template<>
+    void PrintNode(const PartialFunction& expr, std::ostream& os, size_t tab) {
+        os << "{";
+        for (auto& i : expr) {
+            os << NL(tab+4);
+            os << "case ";
+            if (i.first) {
+                DoPrintNode(*i.first, os, tab+8);
+            }
+            else {
+                os << "else";
+            }
+            os << " => ";
+            os << NL(tab+8);
+            DoPrintNode(*i.second, os, tab+8);
+        }
+        os << NL(tab) << "}";
     }
 
 
+
+    template<>
+    Ast* ReadNode<ConstantString>(const YAML::Node& n) {
+        return new ConstantString(n.Scalar());
+    }
+
+    template<>
+    void PrintNode(const ConstantString& expr, std::ostream& os, size_t tab) {
+        os << "\"" << expr.value << "\"";
+    }
+
+    template<>
+    Ast* ReadNode<ValueDecl>(const YAML::Node& n) {
+        return new ValueDecl(Ast::Read<Expr>(n["type"]), Ast::Read<Expr>(n["init"]));
+    }
+
+    template<>
+    void PrintNode(const ValueDecl& expr, std::ostream& os, size_t tab) {
+        assert(false);
+    }
+
+    template<>
+    Ast* ReadNode<TraitDecl>(const YAML::Node& n) {
+        return new TraitDecl(V_DEFAULT, Ast::Read<Name>(n["name"]), Ast::Read<DataStructureDecl>(n["decl"]));
+    }
+
+    template<>
+    void PrintNode(const TraitDecl& expr, std::ostream& os, size_t tab) {
+        os << "trait ";
+        DoPrintNode(*expr.name, os, tab);
+        DoPrintNode(*expr.decl, os, tab);
+    }
+
+    template<>
+    Ast* ReadNode<ClassDecl>(const YAML::Node& n) {
+        return new ClassDecl(V_DEFAULT, Ast::Read<Name>(n["name"]), Ast::Read<DataStructureDecl>(n["decl"]));
+    }
+
+    template<>
+    void PrintNode(const ClassDecl& expr, std::ostream& os, size_t tab) {
+        os << "class ";
+        DoPrintNode(*expr.name, os, tab);
+        DoPrintNode(*expr.decl, os, tab);
+    }
+
+    template<>
+    Ast* ReadNode<StructDecl>(const YAML::Node& n) {
+        return new StructDecl(V_DEFAULT, Ast::Read<Name>(n["name"]), Ast::Read<DataStructureDecl>(n["decl"]));
+    }
+
+    template<>
+    void PrintNode(const StructDecl& expr, std::ostream& os, size_t tab) {
+        os << "struct ";
+        DoPrintNode(*expr.name, os, tab);
+        DoPrintNode(*expr.decl, os, tab);
+    }
+
+    template<>
+    Ast* ReadNode<ValDecl>(const YAML::Node& n) {
+        return new ValDecl(V_DEFAULT, Ast::Read<Name>(n["name"]), Ast::Read<ValueDecl>(n["decl"]));
+    }
+
+    template<>
+    void PrintNode(const ValDecl& expr, std::ostream& os, size_t tab) {
+        os << "val ";
+        DoPrintNode(*expr.name, os, tab);
+        os << " = ";
+        DoPrintNode(*expr.decl->init, os, tab);
+    }
+
+    template<>
+    Ast* ReadNode<VarDecl>(const YAML::Node& n) {
+        return new VarDecl(V_DEFAULT, Ast::Read<Name>(n["name"]), Ast::Read<ValueDecl>(n["decl"]));
+    }
+
+    template<>
+    void PrintNode(const VarDecl& expr, std::ostream& os, size_t tab) {
+        os << "var ";
+        DoPrintNode(*expr.name, os, tab);
+        if (expr.decl->type) {
+            os << " : ";
+            DoPrintNode(*expr.decl->type, os, tab);
+        }
+        if (expr.decl->init && expr.decl->type) {
+            os << " => ";
+            DoPrintNode(*expr.decl->init, os, tab);
+        } else if (expr.decl->init) {
+            os << " = ";
+            DoPrintNode(*expr.decl->init, os, tab);
+        }
+    }
+
+    template<>
+    Ast* ReadNode<FnDecl>(const YAML::Node& n) {
+        return new FnDecl(V_DEFAULT, Ast::Read<Name>(n["name"]), Ast::Read<FnDataDecl>(n["decl"]));
+    }
+
+    template<>
+    void PrintNode(const FnDecl& expr, std::ostream& os, size_t tab) {
+        os << "def ";
+        DoPrintNode(*expr.name, os, tab);
+        os << "(";
+        bool first = true;
+        for (auto& i : expr.decl->args->items) {
+            os << (first ? "" : ", ");
+            DoPrintNode(*i, os, tab);
+            first = false;
+        }
+        os << ")";
+        if (expr.decl->type) {
+            os << " : ";
+            DoPrintNode(*expr.decl->type, os, tab);
+        }
+        if (expr.decl->body) {
+            os << " => ";
+            DoPrintNode(*expr.decl->body, os, tab);
+        }
+    }
+
+    template<>
+    Ast* ReadNode<ArgDecl>(const YAML::Node& n) {
+        return new ArgDecl(V_DEFAULT, Ast::Read<IdentifierExpr>(n["name"]), Ast::Read<Expr>(n["decl"]));
+    }
+
+    template<>
+    void PrintNode(const ArgDecl& expr, std::ostream& os, size_t tab) {
+        DoPrintNode(*expr.name, os, tab);
+        os << " : ";
+        DoPrintNode(*expr.decl, os, tab);
+    }
+
+    template<>
+    Ast* ReadNode<ModuleDecl>(const YAML::Node& n) {
+        return new ModuleDecl(V_DEFAULT, Ast::Read<Name>(n["name"]), Ast::Read<ExprList>(n["decl"]));
+    }
+
+    template<>
+    void PrintNode(const ModuleDecl& expr, std::ostream& os, size_t tab) {
+        os << "mod ";
+        DoPrintNode(*expr.name, os, tab);
+        DoPrintNode(*expr.decl, os, tab);
+    }
 }
 
 std::ostream& operator<<(std::ostream& os, const Ides::Ast& data) {
-    return PrettyPrint(os, data, 0);
+    Ides::DoPrintNode(data, os, 0);
+    return os;
 }

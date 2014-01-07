@@ -13,7 +13,6 @@
 #include <boost/format.hpp>
 
 #define MSG(x) Ides::MessageBuilder(#x, ::Ides::x)
-#define DBG(contents) MSG(D_GENERIC) % (std::string)(Ides::Util::StringBuilder() << contents)
 
 namespace Ides {
 
@@ -24,7 +23,9 @@ namespace Ides {
         NOTE,
         WARNING,
         ERROR,
-        FATAL
+        FATAL,
+
+        DBG_DEFAULT = NOTE
     };
 
     struct MessageDef {
@@ -51,8 +52,10 @@ namespace Ides {
         MessageBuilder(const char* msgid, const MessageDef& message)
             : msgid(msgid), msg(message), fmt(new boost::format(message.contents)) { }
 
-        MessageBuilder(MessageBuilder& other)
-            : msgid(other.msgid), msg(other.msg), fmt(std::move(other.fmt)) { }
+        MessageBuilder(MessageBuilder&& other) = default;
+
+        MessageBuilder(MessageBuilder&) = delete;
+        MessageBuilder(const MessageBuilder&) = delete;
 
         ~MessageBuilder() {
             if (fmt) {
@@ -61,12 +64,12 @@ namespace Ides {
                     std::cerr << message << std::endl;
                     exit(1);
                 }
-                else if (msg.sev <= MessageBuilder::min_except) {
+                else if (msg.sev < MessageBuilder::min_except) {
                     if (msg.sev >= min_print)
                         std::cerr << message << std::endl;
                 }
                 else {
-                    throw CompilerError(msg, message);
+                    throw Ides::CompilerError(msg, message);
                 }
             }
         }
@@ -74,7 +77,13 @@ namespace Ides {
         template<typename T>
         MessageBuilder operator%(const T& arg) {
             *fmt % arg;
-            return *this;
+            return std::move(*this);
+        }
+
+        template<typename T>
+        MessageBuilder operator<<(const T& arg) {
+            *fmt % arg;
+            return std::move(*this);
         }
 
         const char* msgid;
@@ -105,6 +114,14 @@ namespace Ides {
 
 }
 
-#define SETTRACE(str) Ides::IdesStackTrace __stack_t(__FILE__ ":" ppstr(__LINE__) " - " str);
+//#ifdef _DEBUG
+    #define DBG(contents) MSG(D_GENERIC) % (std::string)(Ides::Util::StringBuilder() << contents)
+    #define INFO(contents) MSG(I_GENERIC) % (std::string)(Ides::Util::StringBuilder() << contents)
+    #define SETTRACE(str) Ides::IdesStackTrace __stack_t(__FILE__ ":" ppstr(__LINE__) " - " str);
+//#else
+//    #define DBG(contents)
+//    #define INFO(contents)
+//    #define SETTRACE(str)
+//#endif
 
 #endif /* defined(__ides__Diagnostics__) */

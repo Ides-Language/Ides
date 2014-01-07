@@ -9,7 +9,7 @@
 #include "Diagnostics.h"
 
 namespace Ides {
-    Severity MessageBuilder::min_print = NOTE;
+    Severity MessageBuilder::min_print = DBG_DEFAULT;
     Severity MessageBuilder::min_except = ERROR;
     
     const char* SeverityToString(Severity sev) {

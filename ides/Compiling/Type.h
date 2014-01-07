@@ -11,40 +11,22 @@
 
 #include <ides/common.h>
 #include <ides/Compiling/SemGraph.h>
+#include <ides/Util/MultiStack.h>
 
 namespace Ides {
-    template<typename T>
-    struct Ty {
-        typedef std::vector<const T*> Many;
-        typedef const T* One;
+
+    struct A { };
+    struct B { };
+
+    struct Type : public Ides::MultiContext<A*, B*> {
+    public:
+        Type() {
+            A* x = new A();
+            SETCTX(x);
+            delete x;
+        }
     };
 
-    struct Type : Ty<Type> {
-    };
-
-    struct TraitTy : Type, Ty<TraitTy> {
-
-    };
-
-    struct StructTy : Type, Ty<StructTy> {
-
-    };
-
-    struct ClassTy : StructTy, Ty<ClassTy> {
-
-    };
-
-    struct BuiltinTy : Type, Ty<BuiltinTy> {
-
-    };
-
-    struct UnitTy : BuiltinTy, Ty<UnitTy>, public Ides::Util::Singleton<UnitTy> {
-
-    };
-
-    struct VoidTy : BuiltinTy, Ty<VoidTy>, public Ides::Util::Singleton<VoidTy> {
-
-    };
 }
 
 #endif /* defined(__ides__Type__) */

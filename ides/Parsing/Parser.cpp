@@ -10,11 +10,9 @@
 
 #include "Parser.h"
 
-size_t Ides::Ast::count = 0;
+int yyparse (Ides::Parser* context, Ides::AstBase** program);
 
-int yyparse (Ides::Parser* context, Ides::Ast** program);
-
-Ides::Parser::Parser() {
+Ides::Parser::Parser() : currentFile(NULL) {
     yylex_init(&scanner);
 }
 
@@ -26,25 +24,26 @@ Ides::AstPtr Ides::Parser::Parse(const Ides::SourcePackage& pkg) { SETTRACE("Par
     Ides::AstPtr contents = Parse(pkg.GetRoot());
     return Ides::AstPtr(new Ides::ModuleDecl(Ides::V_PUBLIC,
                                              new Ides::Name(pkg.GetProperty<Ides::String>("name")),
-                                             (Ides::TupleExpr*)contents.release()));
+                                             (Ides::ExprList*)contents.release()));
 }
 
 Ides::AstPtr Ides::Parser::Parse(const Ides::SourceDirectory& dir) { SETTRACE("Parse(Parser::SourceDirectory)")
-    Ides::TupleExpr* modules = new Ides::TupleExpr();
+    DBG("Parsing dir:  " << dir.GetPath());
+    Ides::ExprList* modules = new Ides::ExprList();
 
     try {
         for (auto& i : dir.GetDirs()) {
-            modules->Add(new Ides::ModuleDecl(Ides::V_PUBLIC, new Ides::Name(i->dirname), (Ides::TupleExpr*)Parse(*i).release()));
+            modules->Add(new Ides::ModuleDecl(Ides::V_PUBLIC, new Ides::Name(i->dirname), (Ides::ExprList*)Parse(*i).release()));
         }
 
         for (auto& i : dir.GetFiles()) {
             Ides::AstPtr fileMembers = Parse(*i);
-            for (auto& fi : static_cast<Ides::TupleExpr*>(fileMembers.get())->items) {
+            for (auto& fi : static_cast<Ides::ExprList*>(fileMembers.get())->items) {
                 modules->Add(fi.release());
             }
             fileMembers.reset();
         }
-    } catch (const std::exception&) {
+    } catch (...) {
         delete modules;
         throw;
     }
@@ -53,7 +52,11 @@ Ides::AstPtr Ides::Parser::Parse(const Ides::SourceDirectory& dir) { SETTRACE("P
 }
 
 Ides::AstPtr Ides::Parser::Parse(const Ides::SourceFile& file) { SETTRACE("Parse(Parser::SourceFile)")
-    return Parse(file.GetBuffer());
+    DBG("Parsing file: " << file.GetPath());
+    this->currentFile = &file;
+    Ides::AstPtr ret = Parse(file.GetBuffer());
+    this->currentFile = NULL;
+    return ret;
 }
 
 Ides::AstPtr Ides::Parser::Parse(const llvm::MemoryBuffer& buf) { SETTRACE("Parse(llvm::MemoryBuffer)")
@@ -71,7 +74,7 @@ Ides::AstPtr Ides::Parser::Parse(llvm::StringRef source) { SETTRACE("Parse(llvm:
     try {
         yyparse(this, &ret);
     }
-    catch (const std::exception&) {
+    catch (...) {
         yy_delete_buffer(bufferState, scanner);
         throw;
     }

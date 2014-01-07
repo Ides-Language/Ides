@@ -10,8 +10,13 @@
 
 Ides::SourcePackage::SourcePackage(const Ides::Path& location) :
     SourceFilesystemLocation(NULL),
-    root(location.string()),
-    config(YAML::LoadFile((location / "ides.yaml").string()))
+    root(location.string())
 {
+    try {
+        config = YAML::LoadFile((location / "ides.yaml").string());
+    }
+    catch (...) {
+        MSG(F_BADPACKAGE) % (location / "ides.yaml");
+    }
 
 }

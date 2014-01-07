@@ -83,7 +83,6 @@ namespace Ides {
         const std::vector<SourceLine*>& GetLines() const { return lines; }
         const SourceLine* GetLineForOffset(size_t offset) const;
     private:
-        SourceLocation* OffsetToLocation(size_t offset) const;
 
         std::string filename;
         llvm::OwningPtr<llvm::MemoryBuffer> buffer;
@@ -91,11 +90,18 @@ namespace Ides {
     };
 
     struct SourceLocation : public Source {
+        SourceLocation() : file(NULL), offset(0) { }
         SourceLocation(const SourceFile* file, size_t offset)
-            : file(file), offset(offset) { }
+            : file(file), offset(offset) { if (file) assert(offset <= file->GetBuffer().getBufferSize()); }
+        SourceLocation(const SourceLocation& s) : file(s.file), offset(s.offset) { }
+        SourceLocation& operator=(const SourceLocation& rhs) { this->file=rhs.file; this->offset=rhs.offset; return *this; }
 
         const SourceFile* file;
-        const size_t offset;
+        size_t offset;
+
+        SourceLocation operator+(int o) const {
+            return SourceLocation(file, offset + o);
+        }
 
         llvm::StringRef ToString() const {
             return "";
@@ -103,21 +109,29 @@ namespace Ides {
     };
 
     struct SourceRange : public Source {
-        SourceRange(SourceLocation* begin, SourceLocation* end)
-            : begin(begin), end(end) { assert(begin->offset <= end->offset && begin->file == end->file); }
+        SourceRange() : length(0) {}
+        SourceRange(SourceLocation begin, size_t length)
+        : begin(begin), length(length) {}
+        SourceRange(const SourceRange& s) = default;
+        SourceRange(SourceRange&& s) = default;
+        SourceRange& operator=(const SourceRange& rhs) { this->begin=rhs.begin; this->length=rhs.length; return *this; }
 
-        const SourceLocation* begin;
-        const SourceLocation* end;
+        SourceRange Union(const SourceRange& other) {
+            return SourceRange(begin, other.begin.offset + other.length - begin.offset);
+        }
+
+        SourceLocation begin;
+        size_t length;
 
         llvm::StringRef ToString() const {
-            llvm::MemoryBuffer& buf = begin->file->GetBuffer();
-            return llvm::StringRef(buf.getBufferStart() + begin->offset, end->offset - begin->offset);
+            llvm::MemoryBuffer& buf = begin.file->GetBuffer();
+            return llvm::StringRef(buf.getBufferStart() + begin.offset, length);
         }
     };
 
     struct SourceLine : public SourceRange {
-        SourceLine(size_t number, SourceLocation* begin, SourceLocation* end)
-            : SourceRange(begin, end), number(number) { }
+        SourceLine(size_t number, SourceLocation begin, SourceLocation end)
+            : SourceRange(begin, end.offset - begin.offset), number(number) { }
 
         const size_t number;
 

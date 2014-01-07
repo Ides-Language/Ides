@@ -10,14 +10,12 @@
 #define __ides__Compiler__
 
 #include <ides/common.h>
-#include <ides/Parsing/Parser.h>
 #include <ides/Source/SourceLocation.h>
 #include <ides/Source/SourcePackage.h>
 
 namespace Ides {
-    class Compiler : public Parser {
+    class Compiler {
     public:
-        void Compile(Ides::SourcePackage& package);
     };
 }
 

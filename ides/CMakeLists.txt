@@ -13,8 +13,8 @@ foreach (DIR ${MODULES})
 		set(LIBIDES_HEADERS ${LIBIDES_HEADERS} ${MODULE_HEADERS})
 		set(LIBIDES_SOURCES ${LIBIDES_SOURCES} ${MODULE_SOURCES})
 
-		source_group("${DIR}" FILES ${MODULE_HEADERS})
-		source_group("${DIR}" FILES ${MODULE_SOURCES})
+		source_group("${DIR}\\include" FILES ${MODULE_HEADERS})
+		source_group("${DIR}\\src" FILES ${MODULE_SOURCES})
 
 		INSTALL(FILES ${MODULE_HEADERS} DESTINATION "include/ides/${DIR}")
 	else()

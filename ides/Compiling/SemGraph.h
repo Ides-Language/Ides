@@ -13,15 +13,7 @@
 #include <ides/Compiling/SymbolTable.h>
 
 namespace Ides {
-
-    class Node {
-    private:
-    };
-
-
-    class Namespace : public Node {
-
-    };
+    
 }
 
 #endif /* defined(__ides__SemGraph__) */

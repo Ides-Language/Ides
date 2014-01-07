@@ -35,27 +35,25 @@ namespace Ides {
 
         class StringBuilder {
         public:
-            StringBuilder() : buffer(new std::stringstream()) {}
-
-            std::stringstream& GetBuffer() {
-                return *buffer;
-            }
+            StringBuilder() : buffer(new std::stringstream()) { }
+            StringBuilder(StringBuilder&) = delete;
+            StringBuilder(const StringBuilder&) = delete;
+            StringBuilder(StringBuilder&&) = default;
 
             operator std::string() const {
                 return buffer->str();
             }
 
+            template<typename T>
+            StringBuilder operator<<(const T& output) {
+                *buffer << output;
+                return std::move(*this);
+            }
+
         private:
-            boost::shared_ptr<std::stringstream> buffer;
+            std::unique_ptr<std::stringstream> buffer;
         };
     }
 } // namespace Ides
-
-
-template<typename T>
-Ides::Util::StringBuilder operator<<(Ides::Util::StringBuilder builder, const T& output) {
-    builder.GetBuffer() << output;
-    return builder;
-}
 
 #endif

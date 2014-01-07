@@ -19,7 +19,7 @@
 
 
 namespace Ides {
-    typedef std::unique_ptr<Ides::Ast> AstPtr;
+    typedef std::unique_ptr<Ides::AstBase> AstPtr;
 
     class Parser {
     public:
@@ -35,7 +35,9 @@ namespace Ides {
 
         yyscan_t GetScanner() const { return scanner; }
 
+        const Ides::SourceFile* GetSourceFile() const { return currentFile; }
     private:
+        const Ides::SourceFile* currentFile;
         size_t readOffset;
         yyscan_t scanner;
     };

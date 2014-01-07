@@ -12,20 +12,24 @@
 #include <ides/common.h>
 #include <ides/Source/SourceLocation.h>
 #include <ides/Lang.h>
+#include <ides/Parsing/AstTraits.h>
+
+namespace Ides {
+    struct AstBase;
+}
+
+std::ostream& operator<<(std::ostream& os, const Ides::AstBase& data);
+
+
 
 namespace Ides {
     using namespace Ides::Util;
 
     typedef const Ides::String Identifier;
 
-    struct Ast {
-        //Tree<Ides::SourceRange>::One source;
-        Ast(const char* type) : type(type) {
-            ++count;
-        }
-        virtual ~Ast() {
-            --count;
-        }
+
+    struct AstBase {
+        Ides::SourceRange source;
 
         template<typename T>
         T* As() {
@@ -39,18 +43,35 @@ namespace Ides {
 
         void Emit(YAML::Emitter& o);
 
-        static size_t count;
-        const char* type;
+        Ides::String ToString() const {
+            std::ostringstream str;
+            str << *this;
+            return str.str();
+        }
+
+        static AstBase* Read(const YAML::Node& n);
+        template<typename RT>
+        static RT* Read(const YAML::Node& n) { return Read(n)->template As<RT>(); }
+
+        virtual AstKind getKind() const = 0;
+        virtual const char* getName() const = 0;
     private:
         virtual void DoEmit(YAML::Emitter& o) = 0;
     };
 
-    struct Expr : Ast {
-        Expr(const char* type) : Ast(type) {}
+    typedef AstBase Ast;
+
+    typedef AstBase Expr;
+    typedef AstBase Decl;
+
+    template<typename T>
+    struct AstImpl : AstBase, AstTraits<T> {
+        virtual AstKind getKind() const { return AstTraits<T>::getKind(); }
+        virtual const char* getName() const { return AstTraits<T>::getName(); }
     };
 
-    struct IdentifierExpr : Expr {
-        IdentifierExpr(const Identifier& ident) : Expr("ident"), ident(ident) {}
+    struct IdentifierExpr : AstImpl<IdentifierExpr> {
+        IdentifierExpr(const Identifier& ident) : ident(ident) {}
         virtual ~IdentifierExpr() {}
         Identifier ident;
 
@@ -58,151 +79,115 @@ namespace Ides {
         virtual void DoEmit(YAML::Emitter& o);
     };
 
-    struct DotExpr : Expr {
-        DotExpr(Expr* lhs, IdentifierExpr* ident) : Expr("dot"), lhs(lhs), ident(ident->ident) {
-            delete ident;
-        }
-        Tree<Expr>::One lhs;
-        Identifier ident;
+    struct ExprList : AstImpl<ExprList>, Tree<Expr>::Many {
+        ExprList() : items(*this) { }
 
-    private:
-        virtual void DoEmit(YAML::Emitter& o);
-    };
-
-    struct TupleExpr : Expr {
-        TupleExpr() : Expr("tuple") {}
-
-        Tree<Expr>::Many items;
+        Tree<Expr>::Many& items;
 
         void Add(Expr* exp) {
-            items.push_back(std::unique_ptr<Expr>(exp));
+            items.push_back(Tree<Expr>::One(exp));
         }
 
     private:
         virtual void DoEmit(YAML::Emitter& o);
     };
 
-    struct CallExpr : Expr {
-        CallExpr(Expr* lhs, TupleExpr* args)
-            : Expr("call"), lhs(lhs), args(args) {}
-        Tree<Expr>::One lhs;
-        Tree<TupleExpr>::One args;
-
-    private:
-        virtual void DoEmit(YAML::Emitter& o);
-    };
-
-    struct VarArgsExpr : Expr {
-        VarArgsExpr(Expr* lhs) : Expr("varargs"), lhs(lhs) {}
-        Tree<Expr>::One lhs;
-
-    private:
-        virtual void DoEmit(YAML::Emitter& o) {
-            lhs->Emit(o);
-        }
-    };
-
-    struct IndexExpr : Expr {
-        IndexExpr(Expr* lhs, TupleExpr* args)
-        : Expr("index"), lhs(lhs), args(args) {}
-        Tree<Expr>::One lhs;
-        Tree<TupleExpr>::One args;
-
-    private:
-        virtual void DoEmit(YAML::Emitter& o);
-    };
-
-    template<typename T>
-    struct ConstantExpr : Expr {
-        ConstantExpr(const T& val) : Expr("constant"), value(val) {}
-        T value;
-
-    private:
-        virtual void DoEmit(YAML::Emitter& o) {
-            o << value;
-        }
-    };
-
-    typedef ConstantExpr<std::string> ConstantString;
-    typedef ConstantExpr<char> ConstantChar;
-    typedef ConstantExpr<uint64_t> ConstantInt;
-    typedef ConstantExpr<double> ConstantDec;
-    typedef ConstantExpr<bool> ConstantBool;
-    typedef ConstantExpr<uint8_t> PlaceholderExpr;
-
-    struct InfixExpr : Expr {
-
-        static InfixExpr* Create(IdentifierExpr* ident, Expr* lhs, Expr* rhs);
-
-        Identifier ident;
-
-        Tree<Expr>::One lhs;
-        Tree<Expr>::One rhs;
-
-    private:
-        InfixExpr(IdentifierExpr* ident, Expr* lhs, Expr* rhs)
-        : Expr("infix"), ident(ident->ident), lhs(lhs), rhs(rhs) {
-            delete ident;
-        }
-
-        virtual void DoEmit(YAML::Emitter& o);
-    };
-
-    struct PrefixExpr : Expr {
-        PrefixExpr(Expr* rhs, IdentifierExpr* ident) : Expr("prefix"), rhs(rhs), ident(ident->ident) {
-            delete ident;
-        }
-        Tree<Expr>::One rhs;
-        Identifier ident;
-
-    private:
-        virtual void DoEmit(YAML::Emitter& o);
-    };
-
-    struct IfExpr : Expr {
-        IfExpr(Expr* cond, Expr* body) : Expr("if"), cond(cond), body(body) { }
-        Tree<Expr>::One cond;
-        Tree<Expr>::One body;
-
-    private:
-        virtual void DoEmit(YAML::Emitter& o);
-    };
-
-    struct BlockExpr : Expr {
-        BlockExpr(Expr* lhs, TupleExpr* body) : Expr("block"), lhs(lhs), body(body) { }
-        Tree<Expr>::One lhs;
-        Tree<TupleExpr>::One body;
-
-    private:
-        virtual void DoEmit(YAML::Emitter& o);
-    };
-
-    struct Decl : public Expr {
-        Decl(const char* type) : Expr(type) {}
-    };
-
-    struct Name : IdentifierExpr {
-        Name(const Identifier& ident) : IdentifierExpr(ident), genericArgs(new TupleExpr()) {}
-        Name(IdentifierExpr* ident) : IdentifierExpr(ident->ident), genericArgs(new TupleExpr()) {
-            delete ident;
-        }
-
-        Name(IdentifierExpr* ident, TupleExpr* genericArgs) : IdentifierExpr(ident->ident), genericArgs(genericArgs) {
-            delete ident;
-        }
+    struct Name : AstImpl<Name> {
+        Name(const Identifier& ident) : ident(new IdentifierExpr(ident)), genericArgs(new ExprList()) {}
+        Name(IdentifierExpr* ident) : ident(ident), genericArgs(new ExprList()) { }
+        Name(IdentifierExpr* ident, ExprList* genericArgs) : ident(ident), genericArgs(genericArgs) { }
         virtual ~Name() {}
 
-        Tree<TupleExpr>::One genericArgs;
+        Tree<IdentifierExpr>::One ident;
+        Tree<ExprList>::One genericArgs;
 
     private:
         virtual void DoEmit(YAML::Emitter& o);
     };
 
-    template<typename DeclType, DataKind Kind = NONE, typename IdentKind = Name>
-    struct NamedDecl : Decl {
-        NamedDecl(Visibility vis, IdentKind* name, DeclType* decl) :
-            Decl("decl"), name(name), decl(decl), vis(vis)
-        {
+    struct CallExpr : AstImpl<CallExpr> {
+        CallExpr(Expr* lhs, ExprList* args)
+            : lhs(lhs), args(args) {}
+        Tree<Expr>::One lhs;
+        Tree<ExprList>::One args;
+
+    private:
+        virtual void DoEmit(YAML::Emitter& o);
+    };
+
+    struct IndexExpr : AstImpl<IndexExpr> {
+        IndexExpr(Expr* lhs, ExprList* args)
+        : lhs(lhs), args(args) {}
+        Tree<Expr>::One lhs;
+        Tree<ExprList>::One args;
+
+    private:
+        virtual void DoEmit(YAML::Emitter& o);
+    };
+
+    typedef uint16_t placeholder_t;
+    typedef boost::variant<std::string, uint64_t, placeholder_t, double, bool, char> ConstantValue;
+    struct ConstantExpr : AstImpl<ConstantExpr> {
+        ConstantExpr(const ConstantValue& val) : value(val) {}
+        ConstantValue value;
+
+    private:
+        virtual void DoEmit(YAML::Emitter& o) {
+            o << (std::string)(StringBuilder() << value);
+        }
+    };
+
+    typedef ConstantExpr ConstantInt;
+    typedef ConstantExpr ConstantDec;
+    typedef ConstantExpr ConstantBool;
+    typedef ConstantExpr ConstantString;
+    typedef ConstantExpr ConstantChar;
+    typedef ConstantExpr PlaceholderExpr;
+
+    struct BinaryExpr : AstImpl<BinaryExpr> {
+        BinaryExpr(IdentifierExpr* fn, Expr* lhs, Expr* rhs)
+        : fn(fn), lhs(lhs), rhs(rhs) { }
+
+        static BinaryExpr* Create(IdentifierExpr* ident, Expr* lhs, Expr* rhs);
+
+        Tree<IdentifierExpr>::One fn;
+
+        Tree<Expr>::One lhs;
+        Tree<Expr>::One rhs;
+
+    private:
+
+        virtual void DoEmit(YAML::Emitter& o);
+    };
+
+    struct UnaryExpr : AstImpl<UnaryExpr> {
+        UnaryExpr(Expr* fn, Expr* arg, bool is_prefix = true)
+            : fn(fn), arg(arg), is_prefix(is_prefix) { }
+        Tree<Expr>::One fn;
+        Tree<Expr>::One arg;
+        bool is_prefix;
+
+    private:
+        virtual void DoEmit(YAML::Emitter& o);
+    };
+
+    typedef std::pair<Tree<Expr>::One, Tree<Expr>::One> CasePair;
+
+    struct PartialFunction : AstImpl<PartialFunction>, std::vector<CasePair> {
+
+        void Add(Expr* lhs, Expr* rhs) {
+            push_back(CasePair(Tree<Expr>::One(lhs), Tree<Expr>::One(rhs)));
+        }
+
+    private:
+        virtual void DoEmit(YAML::Emitter& o);
+    };
+
+    template<typename Self, typename DeclType, typename IdentKind = Name>
+    struct NamedDecl : AstImpl<Self> {
+        NamedDecl(Visibility vis, IdentKind* name, DeclType* decl)
+            : name(name), decl(decl), vis(vis) {
+                assert(decl != NULL);
         }
         typename Tree<IdentKind>::One name;
         typename Tree<DeclType>::One decl;
@@ -219,21 +204,23 @@ namespace Ides {
         }
     };
 
-    struct DataStructureDecl : Decl {
-        DataStructureDecl(TupleExpr* args, TupleExpr* supers, TupleExpr* body) : Decl("struct"), args(args), superTypes(supers), body(body) { }
+    struct DataStructureDecl : AstImpl<DataStructureDecl> {
+        DataStructureDecl(ExprList* args, ExprList* supers, ExprList* body)
+            : args(args), superTypes(supers), body(body) { }
 
-        Tree<TupleExpr>::One args;
-        Tree<TupleExpr>::One superTypes;
-        Tree<TupleExpr>::One body;
+        Tree<ExprList>::One args;
+        Tree<ExprList>::One superTypes;
+        Tree<ExprList>::One body;
 
     private:
         virtual void DoEmit(YAML::Emitter& o);
     };
 
-    struct FunctionDecl : Decl {
-        FunctionDecl(TupleExpr* args, Expr* type, Expr* body) : Decl("def"), args(args), type(type), body(body) { }
+    struct FnDataDecl : AstImpl<FnDataDecl> {
+        FnDataDecl(ExprList* args, Expr* type, Expr* body)
+            : args(args), type(type), body(body) { }
 
-        Tree<TupleExpr>::One args;
+        Tree<ExprList>::One args;
         Tree<Expr>::One type;
         Tree<Expr>::One body;
 
@@ -241,59 +228,53 @@ namespace Ides {
         virtual void DoEmit(YAML::Emitter& o);
     };
 
-    template<ValKind Kind>
-    struct ValueDecl : Decl {
-        ValueDecl(Expr* type, Expr* init) : Decl(Kind == VAL ? "val" : "var"),
-            type(type), init(init) {}
+    struct ValueDecl : AstImpl<ValueDecl> {
+        ValueDecl(Expr* type, Expr* init) : type(type), init(init) {}
         Tree<Expr>::One type;
         Tree<Expr>::One init;
 
     private:
         virtual void DoEmit(YAML::Emitter& o) {
             o << YAML::BeginMap;
-            o << YAML::Key << "type" << YAML::Value;
-            type->Emit(o);
-            o << YAML::Key << "init" << YAML::Value;
-            init->Emit(o);
+            if (type) {
+                o << YAML::Key << "type" << YAML::Value;
+                type->Emit(o);
+            }
+            if (init) {
+                o << YAML::Key << "init" << YAML::Value;
+                init->Emit(o);
+            }
+            o << YAML::EndMap;
         }
     };
 
-    typedef NamedDecl<DataStructureDecl, TRAIT> TraitDecl;
-    typedef NamedDecl<DataStructureDecl, CLASS> ClassDecl;
-    typedef NamedDecl<DataStructureDecl, STRUCT> StructDecl;
-
-    typedef NamedDecl<ValueDecl<VAL>> ValDecl;
-    typedef NamedDecl<ValueDecl<VAR>> VarDecl;
-
-    typedef NamedDecl<FunctionDecl> FnDecl;
-    typedef NamedDecl<Expr, NONE, IdentifierExpr> ArgDecl;
-
-    typedef NamedDecl<TupleExpr> ModuleDecl;
-
-    struct CasePair : public Decl {
-        CasePair(Expr* lhs, Expr* rhs) : Decl("pair"), lhs(lhs), rhs(rhs) {}
-
-        Tree<Expr>::One lhs;
-        Tree<Expr>::One rhs;
-
-    private:
-        virtual void DoEmit(YAML::Emitter& o);
+    struct TraitDecl : NamedDecl<TraitDecl, DataStructureDecl> {
+        TraitDecl(Visibility vis, Name* name, DataStructureDecl* decl) : NamedDecl(vis, name, decl) { }
+    };
+    struct ClassDecl : NamedDecl<ClassDecl, DataStructureDecl> {
+        ClassDecl(Visibility vis, Name* name, DataStructureDecl* decl) : NamedDecl(vis, name, decl) { }
+    };
+    struct StructDecl : NamedDecl<StructDecl, DataStructureDecl> {
+        StructDecl(Visibility vis, Name* name, DataStructureDecl* decl) : NamedDecl(vis, name, decl) { }
     };
 
-    struct PartialFunction : public Expr {
-        PartialFunction() : Expr("partialfn") {}
-        Tree<CasePair>::Many cases;
+    struct ValDecl : NamedDecl<ValDecl, ValueDecl> {
+        ValDecl(Visibility vis, Name* name, ValueDecl* decl) : NamedDecl(vis, name, decl) { }
+    };
+    struct VarDecl : NamedDecl<VarDecl, ValueDecl> {
+        VarDecl(Visibility vis, Name* name, ValueDecl* decl) : NamedDecl(vis, name, decl) { }
+    };
+    struct FnDecl : NamedDecl<FnDecl, FnDataDecl> {
+        FnDecl(Visibility vis, Name* name, FnDataDecl* decl) : NamedDecl(vis, name, decl) { }
+    };
+    struct ArgDecl : NamedDecl<ArgDecl, Expr, IdentifierExpr> {
+        ArgDecl(Visibility vis, IdentifierExpr* name, Expr* decl) : NamedDecl(vis, name, decl) { }
+    };
 
-        void Add(CasePair* exp) {
-            cases.push_back(Tree<CasePair>::One(exp));
-        }
-
-    private:
-        virtual void DoEmit(YAML::Emitter& o);
+    struct ModuleDecl : NamedDecl<ModuleDecl, ExprList> {
+        ModuleDecl(Visibility vis, Name* name, ExprList* decl) : NamedDecl(vis, name, decl) { }
     };
 
 }
-
-std::ostream& operator<<(std::ostream& os, const Ides::Ast& data);
 
 #endif

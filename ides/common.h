@@ -11,11 +11,14 @@
 #define IDES_EXPORTS
 #endif
 
+#define BOOST_PP_VARIADICS 1
+
 #include <string>
 #include <cassert>
 #include <iostream>
 #include <algorithm>
 #include <unordered_map>
+#include <utility>
 extern "C" {
 #include <stdint.h>
 }
@@ -32,6 +35,7 @@ extern "C" {
 #include <llvm/Support/system_error.h>
 #include <boost/lexical_cast.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/preprocessor.hpp>
 
 #include <boost/variant.hpp>
 

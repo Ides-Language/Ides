@@ -18,10 +18,6 @@ Ides::Path Ides::SourceFile::GetPath() const {
     return Ides::Path(filename);
 }
 
-Ides::SourceLocation* Ides::SourceFile::OffsetToLocation(size_t offset) const {
-    return new Ides::SourceLocation(this, offset);
-}
-
 void Ides::SourceFile::Open() {
     const auto openPath = this->GetPath();
     auto code = llvm::MemoryBuffer::getFile(openPath.string(), buffer);
@@ -34,15 +30,15 @@ void Ides::SourceFile::Open() {
     size_t linesep = rest.find_first_of('\n');
     size_t linenum = 1;
     while (linesep != llvm::StringRef::npos) {
-        auto begin = OffsetToLocation(last_linesep);
-        auto end = OffsetToLocation(linesep);
+        auto begin = SourceLocation(this, last_linesep);
+        auto end = SourceLocation(this, linesep);
         auto sourceline = new Ides::SourceLine(linenum, begin, end);
         lines.push_back(sourceline);
         last_linesep = linesep + 1;
         linesep = rest.find('\n', last_linesep);
         ++linenum;
     }
-    auto sourceline = new Ides::SourceLine(linenum, OffsetToLocation(last_linesep), OffsetToLocation(rest.size()));
+    auto sourceline = new Ides::SourceLine(linenum, SourceLocation(this, last_linesep), SourceLocation(this, rest.size()));
     lines.push_back(sourceline);
 }
 
@@ -53,7 +49,7 @@ void Ides::SourceFile::Close() {
 
 const Ides::SourceLine* Ides::SourceFile::GetLineForOffset(size_t offset) const {
     for (auto& line : lines) {
-        if (line->begin->offset <= offset && line->end->offset > offset) {
+        if (line->begin.offset <= offset && line->begin.offset + line->length >= offset) {
             return line;
         }
     }

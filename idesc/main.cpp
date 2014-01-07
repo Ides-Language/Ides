@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <map>
 #include <fstream>
+#include <chrono>
 
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
@@ -28,6 +29,8 @@ std::string current_file;
 
 int main(int argc, const char* argv[])
 {
+    auto start_time = std::chrono::high_resolution_clock::now();
+
     llvm::sys::PrintStackTraceOnErrorSignal();
     llvm::PrettyStackTraceProgram X(argc, argv);
     
@@ -36,13 +39,16 @@ int main(int argc, const char* argv[])
 	genericdesc.add_options()
 		("help,h", "Show help message")
 		("interactive,i", "Run in interactive mode")
-        ("parse-only", "Parse the input file(s) and print the AST (YAML)")
+        ("output-file,o", po::value<fs::path>(), "Output file for compiler results. (Defaults to stdout.)")
+        ("parse-ast", "Parse an AST from YAML provided through stdin.")
+        ("print-ast", "Print the resulting AST as YAML and stop.")
+        ("print-src", "Print formatted source code from the AST and stop.")
 		;
 
 	po::options_description hiddendesc("Hidden Options");
 	hiddendesc.add_options()
-        ("input-file", po::value<fs::path>(), "input file")
-        ("debug-mode", "debug mode")
+        ("input-file", po::value<fs::path>()->default_value("."), "input file")
+        ("debug", po::value<int>()->default_value(0), "debug mode")
         ("verbose-mode", "verbose mode")
         ("trace-mode", "trace mode")
 		;
@@ -64,49 +70,80 @@ int main(int argc, const char* argv[])
         MSG(F_BADARGS) % ex.what();
 	}
 
-	if (args.count("help")) {
+    Ides::MessageBuilder::min_print = (Ides::Severity)(Ides::DBG_DEFAULT - args["debug"].as<int>());
+
+	if (args.count("help")) { SETTRACE("--help")
 		std::cout << visibledesc << std::endl;
 		return 0;
 	}
 
-    if (args.count("debug-mode")) {
-        Ides::MessageBuilder::min_print = Ides::DEBUG;
-    }
-    if (args.count("verbose-mode")) {
-        Ides::MessageBuilder::min_print = Ides::INFO;
-    }
-    if (args.count("trace-mode")) {
-        Ides::MessageBuilder::min_print = Ides::TRACE;
-    }
-
-	if (args.count("input-file") == 0) {
-		MSG(F_NOINPUTS);
-	}
     auto file = args["input-file"].as<fs::path>();
 
-    DBG("Driver startup complete. Beginning compile phase.");
+    std::ostream* outstream = &std::cout;
 
-    if (args.count("parse-only")) {
-        Ides::SourceFile source(NULL, file.string());
-        source.Open();
-        Ides::Parser parser;
-        Ides::AstPtr ast = parser.Parse(source);
-        YAML::Emitter out;
-        ast->Emit(out);
-        std::cout << out.c_str() << std::endl;
+    Ides::AstPtr ast;
+    Ides::Parser parser;
+
+    DBG("Driver startup complete. Beginning compile phase.");
+    if (args.count("parse-ast")) { SETTRACE("--parse-ast")
+        YAML::Node doc;
+        if (args.count("input-file")) {
+            std::fstream fs(file.string());
+            doc = YAML::Load(fs);
+            fs.close();
+        } else {
+            doc = YAML::Load(std::cin);
+        }
+        ast = Ides::AstPtr(Ides::Ast::Read(doc));
     }
     else {
-        std::string filestr = file.string();
         try {
             Ides::SourcePackage package(file);
-            Ides::Compiler compiler;
-            Ides::AstPtr ast = compiler.Parse(package);
-            std::cout << *ast << std::endl;
-        } catch (const std::exception& ex) {
-            std::cerr << ex.what() << std::endl;
+            ast = parser.Parse(package);
+        }
+        catch (const std::exception& e) {
+            std::cerr << e.what() << std::endl;
             return 1;
         }
     }
+
+    std::fstream outfile;
+    outfile.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+
+    if (args.count("output-file")) { SETTRACE("--output-file")
+        fs::path outputfile = args["output-file"].as<fs::path>();
+        try {
+            outfile.open(outputfile.string(), std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
+        }
+        catch (const std::ofstream::failure& e) {
+            MSG(F_BADOUTFILE) % outputfile;
+        }
+        outstream = &outfile;
+        assert(outstream->good());
+    }
+
+    if (args.count("print-ast")) { SETTRACE("--print-ast")
+        YAML::Emitter out(*outstream);
+        ast->Emit(out);
+
+        *outstream << std::endl;
+    }
+    else if (args.count("print-src")) { SETTRACE("--print-src")
+        *outstream << *ast << std::endl;
+    }
+    else {
+        throw std::runtime_error("Codegen not yet implemented.");
+    }
+
+    if (outfile.is_open())
+        outfile.close();
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> time_span =
+        std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time);
+
+    MSG(D_RUNTIME) % time_span.count();
+
 
 	return 0;
 }
