@@ -69,11 +69,11 @@ namespace Ides {
 #define IDES_AST_ARGNAMES(...) BOOST_PP_LIST_FOR_EACH_I(IDES_FORM_AST_ARGS, arg, BOOST_PP_VARIADIC_TO_LIST(__VA_ARGS__))
 
 #define IDES_FWD_DECL_AST_VISITOR(r, d, t) \
-    template<> BOOST_PP_TUPLE_ELEM(3, 0, d) BOOST_PP_TUPLE_ELEM(3, 1, d) < t > \
-    (const Ides:: t & ast, BOOST_PP_LIST_ENUM(BOOST_PP_TUPLE_ELEM(3, 2, d)));
+    template<> BOOST_PP_TUPLE_ELEM(3, 0, d) BOOST_PP_TUPLE_ELEM(3, 1, d) < ::Ides:: t > \
+    (const ::Ides:: t & ast, BOOST_PP_LIST_ENUM(BOOST_PP_TUPLE_ELEM(3, 2, d)));
 
 #define IDES_REF_AST_VISITOR(r, d, t) (BOOST_PP_TUPLE_ELEM(3, 0, d) (*)\
-    (const Ides::AstBase &, BOOST_PP_LIST_ENUM(BOOST_PP_TUPLE_ELEM(3, 2, d))))(& BOOST_PP_TUPLE_ELEM(3, 1, d) < Ides:: t >) ,
+    (const ::Ides::AstBase &, BOOST_PP_LIST_ENUM(BOOST_PP_TUPLE_ELEM(3, 2, d))))(& BOOST_PP_TUPLE_ELEM(3, 1, d) < ::Ides:: t >) ,
 
 #define DECL_VISITOR(name, ret, ...) \
     template<typename T> ret name (const T&, __VA_ARGS__ ); \
