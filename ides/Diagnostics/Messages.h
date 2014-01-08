@@ -10,6 +10,8 @@ IDES_MESSAGE(ERROR, E_NOENDQUOT, "unterminated quote");
 IDES_MESSAGE(ERROR, E_PARSE, "%1% on line %2%");
 IDES_MESSAGE(ERROR, E_NONASSOC, "%1% is non-associative");
 
+IDES_MESSAGE(ERROR, E_MOD_NONDECL, "expected declaration in module context, got %1%");
+
 IDES_MESSAGE(FATAL, F_BADARGS, "error parsing command line arguments: %1%");
 IDES_MESSAGE(FATAL, F_BADOUTFILE, "error opening file %1% for output");
 IDES_MESSAGE(FATAL, F_BADPACKAGE, "no package definition at %1%");

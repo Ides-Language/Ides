@@ -34,9 +34,6 @@ namespace Ides {
     template<typename T>
     void WriteNode(YAML::Emitter& o, const T& ast);
 
-
-    DECL_AST_VISITOR(AST_TYPES, PrintNode, void, std::ostream&, size_t);
-
 #define AST_NAME(r, d, t) \
     struct t;\
     template<> AstBase* ReadNode<t>(const YAML::Node& n); \
@@ -72,7 +69,7 @@ namespace {
     } precedence;
 
     const precedence operators[] = {
-        {"if", -5, NONASSOC}, {"else", -10, RIGHT},
+        {"if", 0, NONASSOC}, {"else", -200, RIGHT},
         {"&&", 1, LEFT},{"||", 1, LEFT},
         {"|", 2, LEFT},{"^", 5, RIGHT},{"&", 6, LEFT},
         {"or", 7, LEFT},
@@ -88,7 +85,7 @@ namespace {
     const precedence get_precedence(const char* op){
         // Operators ending in = are minimum-associativity.
         if (op[strlen(op)] - 1 == '=') {
-            return {op, -10000, RIGHT};
+            return {op, -100, RIGHT};
         }
 
         for (int i=0; i<PRECTABLE_LEN; i++) {
@@ -124,6 +121,7 @@ namespace {
 
 namespace Ides {
 
+    DECL_AST_VISITOR(PrintNode, void, std::ostream&, size_t);
 
     Ides::BinaryExpr* Ides::BinaryExpr::Create(IdentifierExpr* ident, Expr* lhs, Expr* rhs) {
         return RotateLhs(new Ides::BinaryExpr(ident, lhs, rhs));

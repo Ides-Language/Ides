@@ -25,26 +25,26 @@
 #include <boost/preprocessor/slot/counter.hpp>
 
 #define AST_TYPES \
-(IdentifierExpr)\
-(ExprList)\
-(CallExpr)\
-(IndexExpr)\
-(ConstantExpr)\
-(BinaryExpr)\
-(UnaryExpr)\
-(Name)\
-(TraitDecl)\
-(ClassDecl)\
-(StructDecl)\
-(ValueDecl)\
-(ValDecl)\
-(VarDecl)\
-(FnDataDecl)\
-(FnDecl)\
-(ArgDecl)\
-(ModuleDecl)\
-(PartialFunction)\
-(DataStructureDecl)
+    (IdentifierExpr)\
+    (ExprList)\
+    (CallExpr)\
+    (IndexExpr)\
+    (ConstantExpr)\
+    (BinaryExpr)\
+    (UnaryExpr)\
+    (Name)\
+    (TraitDecl)\
+    (ClassDecl)\
+    (StructDecl)\
+    (ValueDecl)\
+    (ValDecl)\
+    (VarDecl)\
+    (FnDataDecl)\
+    (FnDecl)\
+    (ArgDecl)\
+    (ModuleDecl)\
+    (PartialFunction)\
+    (DataStructureDecl)
 
 #define IDES_AST_KIND_ENUM_ITEM(r, data, elem) BOOST_PP_CAT(data, elem),
 
@@ -69,25 +69,27 @@ namespace Ides {
 #define IDES_AST_ARGNAMES(...) BOOST_PP_LIST_FOR_EACH_I(IDES_FORM_AST_ARGS, arg, BOOST_PP_VARIADIC_TO_LIST(__VA_ARGS__))
 
 #define IDES_FWD_DECL_AST_VISITOR(r, d, t) \
-    template<> BOOST_PP_TUPLE_ELEM(3, 0, d)\
-    BOOST_PP_TUPLE_ELEM(3, 1, d) \
+    template<> BOOST_PP_TUPLE_ELEM(3, 0, d) BOOST_PP_TUPLE_ELEM(3, 1, d) < t > \
     (const Ides:: t & ast, BOOST_PP_LIST_ENUM(BOOST_PP_TUPLE_ELEM(3, 2, d)));
 
 #define IDES_REF_AST_VISITOR(r, d, t) (BOOST_PP_TUPLE_ELEM(3, 0, d) (*)\
     (const Ides::AstBase &, BOOST_PP_LIST_ENUM(BOOST_PP_TUPLE_ELEM(3, 2, d))))(& BOOST_PP_TUPLE_ELEM(3, 1, d) < Ides:: t >) ,
 
-#define DECL_AST_VISITOR(types, name, ret, ...) \
+#define DECL_VISITOR(name, ret, ...) \
     template<typename T> ret name (const T&, __VA_ARGS__ ); \
     BOOST_PP_SEQ_FOR_EACH(IDES_FWD_DECL_AST_VISITOR, \
         (ret, name, BOOST_PP_VARIADIC_TO_LIST(__VA_ARGS__)), \
-        types) \
+        AST_TYPES) \
     ret BOOST_PP_CAT(Do, name)(const Ides::AstBase& ast IDES_AST_ARGNAMES(__VA_ARGS__)) { \
         static ret (*funcs[])(const Ides::AstBase& ast, __VA_ARGS__) = { \
             BOOST_PP_SEQ_FOR_EACH(IDES_REF_AST_VISITOR, \
                 (ret, name, BOOST_PP_VARIADIC_TO_LIST(__VA_ARGS__)), \
                 AST_TYPES) \
         };  \
-        (*funcs[ast.getKind()])(ast, BOOST_PP_ENUM_PARAMS(BOOST_PP_VARIADIC_SIZE(__VA_ARGS__), arg)); \
+        return (*funcs[ast.getKind()])(ast, BOOST_PP_ENUM_PARAMS(BOOST_PP_VARIADIC_SIZE(__VA_ARGS__), arg)); \
     }
+
+#define DECL_AST_VISITOR(name, ret, ...) DECL_VISITOR(name, ret, __VA_ARGS__)
+
 
 #endif

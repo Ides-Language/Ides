@@ -47,6 +47,7 @@ int main(int argc, const char* argv[])
 
 	po::options_description hiddendesc("Hidden Options");
 	hiddendesc.add_options()
+        ("print-visitors", po::value<std::vector<std::string>>()->multitoken(), "Print visitor template.")
         ("input-file", po::value<fs::path>()->default_value("."), "input file")
         ("debug", po::value<int>()->default_value(0), "debug mode")
         ("verbose-mode", "verbose mode")
@@ -76,6 +77,32 @@ int main(int argc, const char* argv[])
 		std::cout << visibledesc << std::endl;
 		return 0;
 	}
+    else if (args.count("print-visitors")) {
+        auto list = args["print-visitors"].as<std::vector<std::string>>();
+        std::string name = list[0];
+        list.erase(list.begin());
+        std::string rettype = list.empty() ? "void" : list[0];
+        if (!list.empty()) list.erase(list.begin());
+
+        std::stringstream argtypes;
+        std::stringstream argnames;
+
+        while (list.size() >= 2) {
+            argtypes << ", " << list[0];
+            argnames << ", " << list[0] << " " << list[1];
+            list.erase(list.begin(), list.begin() + 2);
+        }
+
+#define PRINT_IDES_VISITOR(r, data, elem) \
+        std::cout << "template<> " << rettype << " " << name << \
+        "(const " << BOOST_PP_STRINGIZE(elem) << "& ast" << argnames.str() << ") { " << \
+        (list.empty() ? "" : list[0]) << " }" << std::endl;
+
+        std::cout << "DECL_AST_VISITOR(" << name << ", " << rettype << argtypes.str() << ");" << std::endl;
+        BOOST_PP_SEQ_FOR_EACH(PRINT_IDES_VISITOR, _, AST_TYPES)
+
+        return 0;
+    }
 
     auto file = args["input-file"].as<fs::path>();
 
@@ -132,7 +159,8 @@ int main(int argc, const char* argv[])
         *outstream << *ast << std::endl;
     }
     else {
-        throw std::runtime_error("Codegen not yet implemented.");
+        Ides::Compiler compiler;
+        compiler.Compile(*ast);
     }
 
     if (outfile.is_open())

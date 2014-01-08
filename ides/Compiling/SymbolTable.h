@@ -17,8 +17,12 @@ class SemGraph;
 
 template<typename T>
 class SymbolTable {
+public:
     typedef std::unordered_map<Ides::String, T> SymbolMap;
     typedef SymbolTable<T>* Ptr;
+
+    SymbolTable() : parent(NULL) { }
+    SymbolTable(SymbolTable<T>::Ptr parent) : parent(parent) { }
 
     Ptr New() {
         return Ptr(new SymbolTable<T>());
@@ -28,7 +32,11 @@ class SymbolTable {
         return Ptr(new SymbolTable<T>(parent));
     }
 
-    const T& Get(Ides::StringRef str) {
+    void InsertSymbol(Ides::StringRef name, const T& val) {
+        symbols.insert(std::make_pair(name, val));
+    }
+
+    const T& GetSymbol(Ides::StringRef str) {
         auto i = symbols.find(str);
         if (i != symbols.end()) {
             return i.second;
@@ -38,10 +46,11 @@ class SymbolTable {
         }
         throw std::runtime_error("No such symbol.");
     }
+protected:
+    void SetParentSymbolTable(SymbolTable<T>::Ptr parent) {
+        this->parent = parent;
+    }
 private:
-
-    SymbolTable() { }
-    SymbolTable(SymbolTable<T>::Ptr parent) : parent(parent) { }
 
     SymbolTable<T>::Ptr parent;
     SymbolMap symbols;

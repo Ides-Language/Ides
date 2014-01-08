@@ -21,6 +21,8 @@ namespace Ides {
     public:
         template<typename A>
         A& Top() const { return ((std::stack<A>*)this)->top(); }
+        template<typename A>
+        bool IsEmpty() const { return ((std::stack<A>*)this)->empty(); }
     protected:
         template<typename A> void Pop() { ((std::stack<A>*)this)->pop(); }
         template<typename A> void Push(A& t) { ((std::stack<A>*)this)->push(t); }

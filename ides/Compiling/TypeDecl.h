@@ -10,14 +10,56 @@
 #define __ides__TypeDecl__
 
 #include <ides/common.h>
+#include <ides/Compiling/Value.h>
 
 namespace Ides {
-    struct TypeDecl {
-
+    class TypeDecl : public Value {
+    public:
+        virtual Ides::StringRef GetName() = 0;
     };
 
-    struct TraitDecl : TypeDecl {
+    class TraitTypeDecl : public TypeDecl {
+    public:
+        TraitTypeDecl(const Ides::TraitDecl& ast) : ast(ast) {
+            InsertSymbol(GetName(), this);
+        }
 
+        Ides::StringRef GetName() { return ast.name->ident->ident; }
+
+        const Ides::TraitDecl& ast;
+    };
+
+    class ClassTypeDecl : public TypeDecl {
+    public:
+        ClassTypeDecl(const Ides::ClassDecl& ast) : ast(ast) {
+            InsertSymbol(GetName(), this);
+        }
+
+        Ides::StringRef GetName() { return ast.name->ident->ident; }
+
+        const Ides::ClassDecl& ast;
+    };
+
+    class StructTypeDecl : public TypeDecl {
+    public:
+        StructTypeDecl(const Ides::StructDecl& ast) : ast(ast) {
+            InsertSymbol(GetName(), this);
+        }
+
+        Ides::StringRef GetName() { return ast.name->ident->ident; }
+
+        const Ides::StructDecl& ast;
+    };
+
+    class Module : public Ides::TypeDecl {
+    public:
+        Module(const Ides::ModuleDecl& ast) : ast(ast) {
+            InsertSymbol(GetName(), this);
+        }
+
+        Ides::StringRef GetName() { return ast.name->ident->ident; }
+
+        const Ides::ModuleDecl& ast;
     };
 
 }

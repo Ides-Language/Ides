@@ -1,0 +1,4 @@
+{
+    "cmd": [ "/usr/local/bin/idesc", "$project_path"],
+    "selector": "source.ides"
+}

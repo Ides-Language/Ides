@@ -150,7 +150,7 @@ stmt : expr stmt_end
 ;
 
 name : ident { $$ = new Ides::Name($1); $$->source = @$; }
-     | ident '[' tuple_items ']' { $$ = new Ides::Name($1, $3); $$->source = @$; }
+     | ident '[' arg_items ']' { $$ = new Ides::Name($1, $3); $$->source = @$; }
 ;
 
 compound_expr : { $$ = new Ides::ExprList(); }
@@ -164,7 +164,6 @@ primary_expr : constant
              | '(' tuple_items ')' { $$ = $2; }
              | '{' compound_expr '}' { $$ = $2; }
              | '{' pf_items '}' { $$ = $2; }
-             | if_expr
 ;
 
 postfix_expr : postfix_expr '(' tuple_items ')' { $$ = new Ides::CallExpr($1, $3); $$->source = @$; }
@@ -176,6 +175,7 @@ postfix_expr : postfix_expr '(' tuple_items ')' { $$ = new Ides::CallExpr($1, $3
 ;
 
 prefix_expr : operator prefix_expr { $$ = new Ides::UnaryExpr($1, $2); $$->source = @$; }
+            | KW_IF '(' expr ')' expr { $$ = new Ides::BinaryExpr(new Ides::IdentifierExpr("if"), $5, $3); $$->source = @$; }
             | postfix_expr
 ;
 

@@ -14,8 +14,10 @@
 #include <ides/Source/SourcePackage.h>
 
 namespace Ides {
+    struct AstBase;
     class Compiler {
     public:
+        void Compile(const AstBase&);
     };
 }
 

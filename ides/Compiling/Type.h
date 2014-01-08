@@ -10,20 +10,15 @@
 #define __ides__Type__
 
 #include <ides/common.h>
-#include <ides/Compiling/SemGraph.h>
+#include <ides/Compiling/Value.h>
 #include <ides/Util/MultiStack.h>
 
 namespace Ides {
-
-    struct A { };
-    struct B { };
-
-    struct Type : public Ides::MultiContext<A*, B*> {
+    class Type  : public Value {
     public:
+        static const char* AnonymousName;
+
         Type() {
-            A* x = new A();
-            SETCTX(x);
-            delete x;
         }
     };
 

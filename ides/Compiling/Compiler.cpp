@@ -7,4 +7,11 @@
 //
 
 #include "Compiler.h"
+#include <ides/Compiling/CompilerContext.h>
 
+namespace Ides {
+    void Compiler::Compile(const Ast& ast) {
+        CompilerContext ctx;
+        //DoGenerateTypeDecl(ast, &ctx);
+    }
+}

@@ -56,4 +56,7 @@ namespace Ides {
     }
 } // namespace Ides
 
+
+#include "MultiStack.h"
+
 #endif

@@ -7,3 +7,7 @@
 //
 
 #include "Type.h"
+
+namespace Ides {
+    const char* Type::AnonymousName = "<anonymous type>";
+}
