@@ -9,9 +9,14 @@
 #include "Compiler.h"
 #include <ides/Compiling/CompilerContext.h>
 
+#include <ides/Compiling/TypeDecl.h>
+
 namespace Ides {
     void Compiler::Compile(const Ast& ast) {
-        CompilerContext ctx;
+        RecordInitializer recordinit;
+        TypeDecl* mod = recordinit.DoAccept(ast);
+        DBG("Accepted module: " << mod->GetFullName());
+        delete mod;
         //DoGenerateTypeDecl(ast, &ctx);
     }
 }

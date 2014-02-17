@@ -14,7 +14,7 @@
 namespace Ides {
 
     template<typename... Args>
-    class MultiContext : std::stack<Args>... {
+    class MultiContext : private std::stack<Args>... {
         // MultiContextItem handles all stack operations for us, to ensure the stack stays sane.
         template<typename CT, typename CS>
         friend class MultiContextItem;

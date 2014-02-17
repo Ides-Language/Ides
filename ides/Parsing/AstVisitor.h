@@ -15,10 +15,6 @@
 
 namespace Ides {
 
-    class AstVisitor;
-
-    void DoVisitAstVisitor(const Ides::AstBase& ast, AstVisitor* visitor);
-
     class AstVisitor {
     public:
         virtual ~AstVisitor() { }
@@ -32,20 +28,20 @@ namespace Ides {
     template<typename T>
     class ReturningAstVisitor : private AstVisitor {
     public:
-        virtual ~AstVisitor() { }
+        virtual ~ReturningAstVisitor() { }
 
         virtual T DoAccept(const Ides::AstBase& ast) {
             try {
-                DoVisit(ast, this);
+                DoVisit(ast);
             } catch (...) {
-                last = NULL;
+                last = T();
                 throw;
             }
             return last;
         }
 
 
-#define IDES_AST_ACCEPTER_MEMBER(r, data, elem) virtual T Accept(const elem & ast) { }
+#define IDES_AST_ACCEPTER_MEMBER(r, data, elem) virtual T Accept(const elem & ast) { return T(); }
         BOOST_PP_SEQ_FOR_EACH(IDES_AST_ACCEPTER_MEMBER, _, AST_TYPES)
 
     private:

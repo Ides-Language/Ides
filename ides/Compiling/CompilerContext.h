@@ -11,12 +11,13 @@
 
 #include <ides/common.h>
 #include <ides/Compiling/TypeDecl.h>
+#include <ides/Compiling/SymbolTable.h>
 
 namespace Ides {
     
-struct CompilerContext : MultiContext<Ides::TypeDecl*> {
-
-};
+    struct CompilerContext : MultiContext<SymbolTable<Ides::Value*>*, Ides::TypeDecl*> {
+        CompilerContext() { }
+    };
 
 }
 

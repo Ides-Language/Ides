@@ -80,19 +80,20 @@ namespace {
         {"as", 50, LEFT},
     };
 
-#define PRECTABLE_LEN  sizeof(operators)/sizeof(operators[0])
+#define PREC_TABLE_LEN  sizeof(operators)/sizeof(operators[0])
 
     const precedence get_precedence(const char* op){
+        for (int i=0; i<PREC_TABLE_LEN; i++) {
+            if (strcmp(operators[i].op, op) == 0) {
+                return operators[i];
+            }
+        }
+
         // Operators ending in = are minimum-associativity.
         if (op[strlen(op)] - 1 == '=') {
             return {op, -100, RIGHT};
         }
 
-        for (int i=0; i<PRECTABLE_LEN; i++) {
-            if (strcmp(operators[i].op, op) == 0) {
-                return operators[i];
-            }
-        }
         return {op, 0, LEFT};
     }
 
@@ -153,6 +154,20 @@ namespace Ides {
         DBG("Using reader for " << ntype);
         YamlReader* reader = AstReaders.at(ntype);
         return (*reader)(n["data"]);
+    }
+
+    /** QualExpr **/
+    void QualExpr::DoEmit(YAML::Emitter& o) {
+    }
+
+    template<>
+    Ast* ReadNode<QualExpr>(const YAML::Node& n) {
+        return new QualExpr();
+    }
+
+
+    template<>
+    void PrintNode(const QualExpr& expr, std::ostream& os, size_t tab) {
     }
 
     /** IdentifierExpr **/
@@ -502,44 +517,23 @@ namespace Ides {
     }
 
     template<>
-    Ast* ReadNode<TraitDecl>(const YAML::Node& n) {
-        return new TraitDecl(V_DEFAULT, Ast::Read<Name>(n["name"]), Ast::Read<DataStructureDecl>(n["decl"]));
+    Ast* ReadNode<RecordDecl>(const YAML::Node& n) {
+        return new RecordDecl(Ast::Read<QualExpr>(n["qual"]),
+                              (Ides::RecordKind)n["kind"].as<int>(),
+                              Ast::Read<Name>(n["name"]),
+                              Ast::Read<DataStructureDecl>(n["decl"]));
     }
 
     template<>
-    void PrintNode(const TraitDecl& expr, std::ostream& os, size_t tab) {
-        os << "trait ";
-        DoPrintNode(*expr.name, os, tab);
-        DoPrintNode(*expr.decl, os, tab);
-    }
-
-    template<>
-    Ast* ReadNode<ClassDecl>(const YAML::Node& n) {
-        return new ClassDecl(V_DEFAULT, Ast::Read<Name>(n["name"]), Ast::Read<DataStructureDecl>(n["decl"]));
-    }
-
-    template<>
-    void PrintNode(const ClassDecl& expr, std::ostream& os, size_t tab) {
-        os << "class ";
-        DoPrintNode(*expr.name, os, tab);
-        DoPrintNode(*expr.decl, os, tab);
-    }
-
-    template<>
-    Ast* ReadNode<StructDecl>(const YAML::Node& n) {
-        return new StructDecl(V_DEFAULT, Ast::Read<Name>(n["name"]), Ast::Read<DataStructureDecl>(n["decl"]));
-    }
-
-    template<>
-    void PrintNode(const StructDecl& expr, std::ostream& os, size_t tab) {
-        os << "struct ";
+    void PrintNode(const RecordDecl& expr, std::ostream& os, size_t tab) {
+        os << "record ";
         DoPrintNode(*expr.name, os, tab);
         DoPrintNode(*expr.decl, os, tab);
     }
 
     template<>
     Ast* ReadNode<ValDecl>(const YAML::Node& n) {
-        return new ValDecl(V_DEFAULT, Ast::Read<Name>(n["name"]), Ast::Read<ValueDecl>(n["decl"]));
+        return new ValDecl(Ast::Read<QualExpr>(n["qual"]), Ast::Read<Name>(n["name"]), Ast::Read<ValueDecl>(n["decl"]));
     }
 
     template<>
@@ -552,7 +546,7 @@ namespace Ides {
 
     template<>
     Ast* ReadNode<VarDecl>(const YAML::Node& n) {
-        return new VarDecl(V_DEFAULT, Ast::Read<Name>(n["name"]), Ast::Read<ValueDecl>(n["decl"]));
+        return new VarDecl(Ast::Read<QualExpr>(n["qual"]), Ast::Read<Name>(n["name"]), Ast::Read<ValueDecl>(n["decl"]));
     }
 
     template<>
@@ -574,7 +568,7 @@ namespace Ides {
 
     template<>
     Ast* ReadNode<FnDecl>(const YAML::Node& n) {
-        return new FnDecl(V_DEFAULT, Ast::Read<Name>(n["name"]), Ast::Read<FnDataDecl>(n["decl"]));
+        return new FnDecl(Ast::Read<QualExpr>(n["qual"]), Ast::Read<Name>(n["name"]), Ast::Read<FnDataDecl>(n["decl"]));
     }
 
     template<>
@@ -601,7 +595,7 @@ namespace Ides {
 
     template<>
     Ast* ReadNode<ArgDecl>(const YAML::Node& n) {
-        return new ArgDecl(V_DEFAULT, Ast::Read<IdentifierExpr>(n["name"]), Ast::Read<Expr>(n["decl"]));
+        return new ArgDecl(Ast::Read<QualExpr>(n["qual"]), Ast::Read<IdentifierExpr>(n["name"]), Ast::Read<Expr>(n["decl"]));
     }
 
     template<>
@@ -613,7 +607,7 @@ namespace Ides {
 
     template<>
     Ast* ReadNode<ModuleDecl>(const YAML::Node& n) {
-        return new ModuleDecl(V_DEFAULT, Ast::Read<Name>(n["name"]), Ast::Read<ExprList>(n["decl"]));
+        return new ModuleDecl(Ast::Read<QualExpr>(n["qual"]), Ast::Read<Name>(n["name"]), Ast::Read<ExprList>(n["decl"]));
     }
 
     template<>

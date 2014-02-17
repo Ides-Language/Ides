@@ -18,6 +18,7 @@
 
 #include "Singleton.h"
 #include "Match.h"
+#include "Visitor.h"
 
 namespace Ides {
     typedef std::string String;

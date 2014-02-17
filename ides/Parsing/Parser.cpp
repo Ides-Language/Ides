@@ -22,7 +22,7 @@ Ides::Parser::~Parser() {
 
 Ides::AstPtr Ides::Parser::Parse(const Ides::SourcePackage& pkg) { SETTRACE("Parse(Parser::SourcePackage)")
     Ides::AstPtr contents = Parse(pkg.GetRoot());
-    return Ides::AstPtr(new Ides::ModuleDecl(Ides::V_PUBLIC,
+    return Ides::AstPtr(new Ides::ModuleDecl(NULL,
                                              new Ides::Name(pkg.GetProperty<Ides::String>("name")),
                                              (Ides::ExprList*)contents.release()));
 }
@@ -33,7 +33,7 @@ Ides::AstPtr Ides::Parser::Parse(const Ides::SourceDirectory& dir) { SETTRACE("P
 
     try {
         for (auto& i : dir.GetDirs()) {
-            modules->Add(new Ides::ModuleDecl(Ides::V_PUBLIC, new Ides::Name(i->dirname), (Ides::ExprList*)Parse(*i).release()));
+            modules->Add(new Ides::ModuleDecl(NULL, new Ides::Name(i->dirname), (Ides::ExprList*)Parse(*i).release()));
         }
 
         for (auto& i : dir.GetFiles()) {

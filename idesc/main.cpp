@@ -134,11 +134,14 @@ int main(int argc, const char* argv[])
         }
     }
 
+    DBG("Parse complete. Beginning output phase.");
+
     std::fstream outfile;
     outfile.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
     if (args.count("output-file")) { SETTRACE("--output-file")
         fs::path outputfile = args["output-file"].as<fs::path>();
+        DBG("Output file set to" << outputfile);
         try {
             outfile.open(outputfile.string(), std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
         }
@@ -148,20 +151,35 @@ int main(int argc, const char* argv[])
         outstream = &outfile;
         assert(outstream->good());
     }
+    else {
+        DBG("No output file selected. Will output to STDOUT.");
+    }
 
     if (args.count("print-ast")) { SETTRACE("--print-ast")
+        DBG("Printing YAML from AST.");
+
         YAML::Emitter out(*outstream);
         ast->Emit(out);
 
         *outstream << std::endl;
     }
     else if (args.count("print-src")) { SETTRACE("--print-src")
+        DBG("Printing formatted source code from AST.");
         *outstream << *ast << std::endl;
     }
     else {
-        Ides::Compiler compiler;
-        compiler.Compile(*ast);
+        DBG("No output forms selected. Beginning compilation.");
+        try {
+            Ides::Compiler compiler;
+            compiler.Compile(*ast);
+        }
+        catch (const std::exception& e) {
+            std::cerr << e.what() << std::endl;
+            return 1;
+        }
     }
+
+    DBG("Compilation complete.");
 
     if (outfile.is_open())
         outfile.close();

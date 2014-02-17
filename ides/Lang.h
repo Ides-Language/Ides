@@ -9,24 +9,29 @@ namespace Ides {
         VAR
     };
 
-    enum DataKind {
-        NONE,
-        TRAIT,
+    enum RecordKind {
+        STRUCT,
         CLASS,
-        STRUCT
+        TRAIT,
+        TYPE,
+        IMPL
     };
 
-    enum Visibility {
-        V_PRIVATE,
-        V_PROTECTED,
-        V_INTERNAL,
-        V_PUBLIC,
+    enum Qualifiers {
+        QUAL_PRIVATE,
+        QUAL_PROTECTED,
+        QUAL_INTERNAL,
+        QUAL_PUBLIC,
 
-        V_EXTERN = 1 << 10,
-        V_CONST = 1 << 11,
-        V_ABSTRACT = 1 << 12,
+        QUAL_EXTERN,
+        QUAL_CONST,
+        QUAL_ABSTRACT,
+        QUAL_UNSAFE,
+        QUAL_INTRINSIC,
+        QUAL_IMPLICIT,
+        QUAL_LOCKED,
 
-        V_DEFAULT = V_PRIVATE
+        QUAL_COUNT
     };
 
     

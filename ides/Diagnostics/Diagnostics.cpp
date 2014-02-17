@@ -17,6 +17,7 @@ namespace Ides {
             case TRACE: return "TRACE";
             case INFO: return "INFO";
             case DEBUG: return "DEBUG";
+            case LINT: return "LINT";
             case NOTE: return "NOTE";
             case WARNING: return "WARN";
             case ERROR: return "ERROR";

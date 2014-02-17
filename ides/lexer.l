@@ -31,8 +31,8 @@ MSG(I_TOK) % yytext;\
 %s IN_SINGLELINECOMMENT
 %x IN_STRING
 
-OP_START [!\#\%\^&\*\-\+/\\<>\|?]
-OP {OP_START}[=:!\#\%\^&\*\-\+/\\<>\|?]*
+OP_START [!\#\%\^&\*\-\+/\\<>\|?~]
+OP {OP_START}[=:!\#\%\^&\*\-\+/\\<>\|?~]*
 ID [A-Za-z_][A-Za-z0-9]*
 
 %%
@@ -105,6 +105,10 @@ ID [A-Za-z_][A-Za-z0-9]*
 "extern"                return KW_EXTERN;
 "const"                 return KW_CONST;
 "abstract"              return KW_ABSTRACT;
+"unsafe"                return KW_UNSAFE;
+"intrinsic"             return KW_INTRINSIC;
+"implicit"              return KW_IMPLICIT;
+"locked"                return KW_LOCKED;
 
 "throw"                 return KW_THROW;
 "new"                   return KW_NEW;
@@ -113,6 +117,7 @@ ID [A-Za-z_][A-Za-z0-9]*
 "as"                    return KW_AS;
 
 "\.\.\."                return KW_VARARGS;
+"\.\."                  return KW_RANGE;
 "=>"                    return KW_DEFINEDAS;
 
 "/*"           BEGIN(IN_BLOCKCOMMENT);

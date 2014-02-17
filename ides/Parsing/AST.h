@@ -70,6 +70,14 @@ namespace Ides {
         virtual const char* getName() const { return AstTraits<T>::getName(); }
     };
 
+    struct QualExpr : AstImpl<QualExpr>, std::bitset<Ides::QUAL_COUNT> {
+        virtual ~QualExpr() {}
+
+    private:
+        virtual void DoEmit(YAML::Emitter& o);
+
+    };
+
     struct IdentifierExpr : AstImpl<IdentifierExpr> {
         IdentifierExpr(const Identifier& ident) : ident(ident) {}
         virtual ~IdentifierExpr() {}
@@ -185,13 +193,13 @@ namespace Ides {
 
     template<typename Self, typename DeclType, typename IdentKind = Name>
     struct NamedDecl : AstImpl<Self> {
-        NamedDecl(Visibility vis, IdentKind* name, DeclType* decl)
-            : name(name), decl(decl), vis(vis) {
+        NamedDecl(QualExpr* qual, IdentKind* name, DeclType* decl)
+            : name(name), decl(decl), qual(qual) {
                 assert(decl != NULL);
         }
         typename Tree<IdentKind>::One name;
         typename Tree<DeclType>::One decl;
-        Visibility vis;
+        typename Tree<QualExpr>::One qual;
 
     private:
         virtual void DoEmit(YAML::Emitter& o) {
@@ -248,31 +256,28 @@ namespace Ides {
         }
     };
 
-    struct TraitDecl : NamedDecl<TraitDecl, DataStructureDecl> {
-        TraitDecl(Visibility vis, Name* name, DataStructureDecl* decl) : NamedDecl(vis, name, decl) { }
-    };
-    struct ClassDecl : NamedDecl<ClassDecl, DataStructureDecl> {
-        ClassDecl(Visibility vis, Name* name, DataStructureDecl* decl) : NamedDecl(vis, name, decl) { }
-    };
-    struct StructDecl : NamedDecl<StructDecl, DataStructureDecl> {
-        StructDecl(Visibility vis, Name* name, DataStructureDecl* decl) : NamedDecl(vis, name, decl) { }
+    struct RecordDecl : NamedDecl<RecordDecl, DataStructureDecl> {
+        RecordDecl(QualExpr* qual, RecordKind kind, Name* name, DataStructureDecl* decl)
+            : NamedDecl(qual, name, decl), kind(kind) { }
+
+        RecordKind kind;
     };
 
     struct ValDecl : NamedDecl<ValDecl, ValueDecl> {
-        ValDecl(Visibility vis, Name* name, ValueDecl* decl) : NamedDecl(vis, name, decl) { }
+        ValDecl(QualExpr* qual, Name* name, ValueDecl* decl) : NamedDecl(qual, name, decl) { }
     };
     struct VarDecl : NamedDecl<VarDecl, ValueDecl> {
-        VarDecl(Visibility vis, Name* name, ValueDecl* decl) : NamedDecl(vis, name, decl) { }
+        VarDecl(QualExpr* qual, Name* name, ValueDecl* decl) : NamedDecl(qual, name, decl) { }
     };
     struct FnDecl : NamedDecl<FnDecl, FnDataDecl> {
-        FnDecl(Visibility vis, Name* name, FnDataDecl* decl) : NamedDecl(vis, name, decl) { }
+        FnDecl(QualExpr* qual, Name* name, FnDataDecl* decl) : NamedDecl(qual, name, decl) { }
     };
     struct ArgDecl : NamedDecl<ArgDecl, Expr, IdentifierExpr> {
-        ArgDecl(Visibility vis, IdentifierExpr* name, Expr* decl) : NamedDecl(vis, name, decl) { }
+        ArgDecl(QualExpr* qual, IdentifierExpr* name, Expr* decl) : NamedDecl(qual, name, decl) { }
     };
 
     struct ModuleDecl : NamedDecl<ModuleDecl, ExprList> {
-        ModuleDecl(Visibility vis, Name* name, ExprList* decl) : NamedDecl(vis, name, decl) { }
+        ModuleDecl(QualExpr* qual, Name* name, ExprList* decl) : NamedDecl(qual, name, decl) { }
     };
 
 }

@@ -20,6 +20,7 @@ namespace Ides {
         TRACE,
         INFO,
         DEBUG,
+        LINT,
         NOTE,
         WARNING,
         ERROR,

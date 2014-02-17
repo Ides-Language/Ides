@@ -17,9 +17,19 @@ namespace Ides {
     class TypeDecl;
     class Type;
     
-    class Value : public SymbolTable<Ides::Value*> {
+    class Value {
     public:
         virtual ~Value() { }
+        /*virtual Ides::Value*& GetSymbol(const llvm::StringRef str, Ides::Visibility vis = V_PUBLIC) {
+            auto pair = str.split('.');
+            Ides::Value*& lhs = VisibilitySymbolTable<Ides::Value*>::GetSymbol(pair.first, vis);
+            if (pair.second.empty()) return lhs;
+            return lhs->GetSymbol(pair.second, vis);
+        }*/
+    };
+
+    template<typename T>
+    class ValueImpl : public Value {
     };
 }
 

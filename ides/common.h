@@ -43,6 +43,7 @@ extern "C" {
 
 #include <ides/Util/Util.h>
 #include <ides/Diagnostics/Diagnostics.h>
+#include <ides/Lang.h>
 
 
 
