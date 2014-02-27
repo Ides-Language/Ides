@@ -1,0 +1,160 @@
+%template for producing IEEE-format articles using LaTeX.
+%written by Matthew Ward, CS Department, Worcester Polytechnic Institute.
+%use at your own risk.  Complaints to /dev/null.
+%make two column with no page numbering, default is 10 point
+\documentstyle[twocolumn]{article}
+\pagestyle{empty}
+
+%set dimensions of columns, gap between columns, and space between paragraphs
+\setlength{\textheight}{8.75in}
+\setlength{\columnsep}{2.0pc}
+\setlength{\textwidth}{6.8in}
+\setlength{\footheight}{0.0in}
+\setlength{\topmargin}{0.25in}
+\setlength{\headheight}{0.0in}
+\setlength{\headsep}{0.0in}
+\setlength{\oddsidemargin}{-.19in}
+\setlength{\parindent}{1pc}
+
+%I copied stuff out of art10.sty and modified them to conform to IEEE format
+
+\makeatletter
+%as Latex considers descenders in its calculation of interline spacing,
+%to get 12 point spacing for normalsize text, must set it to 10 points
+\def\@normalsize{\@setsize\normalsize{12pt}\xpt\@xpt
+\abovedisplayskip 10pt plus2pt minus5pt\belowdisplayskip \abovedisplayskip
+\abovedisplayshortskip \z@ plus3pt\belowdisplayshortskip 6pt plus3pt
+minus3pt\let\@listi\@listI} 
+
+\def\code{\texttt}
+
+%need an 11 pt font size for subsection and abstract headings
+\def\subsize{\@setsize\subsize{12pt}\xipt\@xipt}
+
+%make section titles bold and 12 point, 2 blank lines before, 1 after
+\def\section{\@startsection {section}{1}{\z@}{24pt plus 2pt minus 2pt}
+{12pt plus 2pt minus 2pt}{\large\bf}}
+
+%make subsection titles bold and 11 point, 1 blank line before, 1 after
+\def\subsection{\@startsection {subsection}{2}{\z@}{12pt plus 2pt minus 2pt}
+{12pt plus 2pt minus 2pt}{\subsize\bf}}
+\makeatother
+
+\begin{document}
+
+%don't want date printed
+\date{}
+
+%make title bold and 14 pt font (Latex default is non-bold, 16 pt)
+\title{\Large\bf The Ides Programming Language}
+
+%for single author (just remove % characters)
+%\author{I. M. Author \\
+%  My Department \\
+%  My Institute \\
+%  My City, ST, zip}
+ 
+%for two authors (this is what is printed)
+\author{\begin{tabular}[t]{c@{\extracolsep{8em}}c}
+  Sean T. Edwards  & Advisor: Larry Latour \\
+ \\
+ \multicolumn{2}{c}{Department of Computer Science} \\
+ \multicolumn{2}{c}{University of Maine School of Computing} \\
+ \multicolumn{2}{c}{Orono, ME 04469} 
+\end{tabular}}
+
+\maketitle
+
+%I don't know why I have to reset thispagesyle, but otherwise get page numbers
+\thispagestyle{empty}
+
+\subsection*{\centering Abstract}
+%IEEE allows italicized abstract
+{\em
+Abstract stuff
+%end italics mode
+}
+
+\section{Introduction}
+
+Intro stuff
+
+P.S. look, I actually used \LaTeX
+
+\section{Rationale}
+Because languages are neat.
+
+\section{Design}
+Stuff I thought about.
+\subsection{Type System}
+
+\subsection{Expression Evaluation}
+
+\subsection{The Standard Library}
+
+\section{\code{idesc}: The Ides Compiler}
+\subsection{The Lexer}
+
+
+\subsection{The Parser}
+
+
+\subsection{Semantic Analysis}
+
+
+\subsection{\code{Std.Lang}: Compiler Support}
+
+
+\subsection{Code Generation}
+LLVM makes the electronics do switchy stuff.
+
+\section{Summary and Conclusions}
+Ides is neat.
+
+\section{Future Work}
+Do the actual dang report, dangit.
+
+\section{Related Work}
+\subsection{Scala}
+Scala\cite{key:scala} is a hybrid object-oriented and functional language for the Java Virtual Machine, and has informed numerous design decisions for Ides.
+
+\subsection{Rust}
+Rust is a type-safe, low-level systems programming language developed by Mozilla. Rust informs many design decisions surrounding memory management and data ownership rules. 
+
+\subsection{F\# ("F Sharp")}
+
+\subsection{LLVM}
+LLVM is an open source compiler infrastructure. It is the underlying technology for several compilers, most notably Clang, a compiler for the C family of languages.
+
+\subsection{Flex}
+Flex is a tool for building lexical analyzers, based on the AT\&T software lex.
+
+\subsection{Bison}
+Bison
+
+\subsection{Asm.js and Emscripten}
+Asm.js is an emulated architecture written in Javascript and designed for execution within a web browser. Emscripten, a Mozilla project, is a backend for LLVM, allowing any LLVM-powered compiler to target the Asm.js architecture, resulting in code that can run in a web browser.
+
+\subsection{Chrome Portable Native Client (PNaCL)}
+
+\subsection{Web and Application Frameworks}
+Frameworks like Play or Ruby on Rails 
+
+%this is how to do an unnumbered subsection
+\subsection*{Acknowledgements}
+Other people did stuff too.
+
+\begin{thebibliography}{9}
+
+\bibitem{key:scala}
+Martin Odersky, 
+``The Scala Language Specification''
+
+%\bibitem{foo:baz}
+%A. N. Expert, 
+%{\em A Book He Wrote,}
+%His Publisher, 1989.
+
+\end{thebibliography}
+
+\end{document}
