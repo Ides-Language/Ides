@@ -19,7 +19,6 @@ cmake_install.cmake
 bin
 
 *.xcodeproj
-docs
 deps/*
 !deps/cmake/
 
