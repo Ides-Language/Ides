@@ -9,11 +9,11 @@ import scala.util.parsing.input.CharArrayReader._
  */
 
 class Scanner extends StdLexical with RegexParsers {
-  val oct = "0[0-9]+".r
-  val dec = "[0-9]+\\.[0-9]+".r
-  val int = "0|[1-9][0-9]*".r
-  val hex = "0x[0-9A-F]+".r
-  val bin = "0b[0-9A-F]+".r
+  val oct = "(0[0-9]+)".r
+  val dec = "([0-9]+\\.[0-9]+)".r
+  val int = "(0|[1-9][0-9]*)".r
+  val hex = "(0x[0-9A-F]+)".r
+  val bin = "(0b[0-9A-F]+)".r
 
   val op_start = s"[!#%\\^&*\\-+/\\\\<>\\|?~]"
   val op_any = s"[=:!#%\\^&*\\-+/\\\\<>\\|?~]"
@@ -38,6 +38,9 @@ class Scanner extends StdLexical with RegexParsers {
     | dec                                                                ^^ DoubleTok
     | ("`[^`]+`".r | s"${id}(_${op})?".r)                                ^^ processIdent
     | op.r                                                               ^^ OpTok
+    | ".."                                                               ^^ OpTok
+    | "=="                                                               ^^ OpTok
+    | "="                                                                ^^ OpTok
     | placeholder.r                                                      ^^ PlaceholderTok
     | '\'' ~ rep( chrExcept('\'', '\n', EofCh) ) ~ '\''                  ^^ { case '\'' ~ chars ~ '\'' => StringLit(chars mkString "") }
     | '\"' ~ rep( chrExcept('\"', '\n', EofCh) ) ~ '\"'                  ^^ { case '\"' ~ chars ~ '\"' => StringLit(chars mkString "") }

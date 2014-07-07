@@ -12,7 +12,7 @@ object Parser extends StdTokenParsers  {
 
   type Tokens = Scanner
 
-  val lexical = new Scanner
+  val lexical = new Tokens
 
   def dbl : Parser[ConstantDec] =
     elem("double", _.isInstanceOf[lexical.DoubleTok]) ^^
@@ -27,8 +27,10 @@ object Parser extends StdTokenParsers  {
       { i => PlaceholderExpr(i.asInstanceOf[lexical.PlaceholderTok].num) }
 
   def operator : Parser[Ident] =
-    elem("operator", _.isInstanceOf[lexical.OpTok]) ^^
-      { i => Ident(i.asInstanceOf[lexical.OpTok].chars) }
+    ( elem("operator", _.isInstanceOf[lexical.OpTok]) ^^ { i => i.asInstanceOf[lexical.OpTok].chars }
+    | "match"
+    | "as"
+    ) ^^ dbg ^^ Ident
 
   def tru = "true" ^^^ { ConstantBool(v = true) }
   def fals = "false" ^^^ { ConstantBool(v = false) }
@@ -41,7 +43,7 @@ object Parser extends StdTokenParsers  {
     | trait_decl <~ ";".?
     )
 
-  def file = compound_expr
+  def file = compound_expr <~ EOI
 
   def identifier : Parser[Ident] = super.ident ^^ Ident
 
@@ -55,7 +57,7 @@ object Parser extends StdTokenParsers  {
     stmt.* ^^ ExprList
 
   def primary_expr : Parser[Expr] =
-    ( constant
+    ( constant ^^ dbg
     | placeholder
     | val_decl
     | var_decl
@@ -64,15 +66,20 @@ object Parser extends StdTokenParsers  {
     | identifier
     )
 
-  def postfix_expr = primary_expr
+  def postfix_expr : Parser[Expr] = primary_expr ~
+    rep( ("(" ~> tuple_items <~ ")") ^^ { args => (lhs: Expr) => CallExpr(lhs, args) }
+       | ("[" ~> tuple_items <~ "]") ^^ { args => (lhs: Expr) => BracketExpr(lhs, args) }
+       | ("{" ~> tuple_items <~ "}") ^^ { args => (lhs: Expr) => UnaryExpr(lhs, args) }
+       | ("." ~> commit(name))       ^^ { i => (lhs: Expr) => BinaryExpr.create(Ident("."), lhs, i) }
+       ) ^^ { case lhs ~ items => items.foldLeft(lhs)((lhs, f) => f(lhs))}
 
-  def prefix_expr =
-    ( operator ~ primary_expr ^^ { case fn ~ rhs => UnaryExpr(fn, rhs) }
-    | primary_expr
+  def prefix_expr : Parser[Expr] =
+    ( operator ~ prefix_expr ^^ { case fn ~ rhs => UnaryExpr(fn, rhs) }
+    | postfix_expr
     )
 
   def infix_expr : Parser[Expr] =
-    ( prefix_expr ~ operator ~ commit(infix_expr) ^^ { case lhs ~ fn ~ rhs => BinaryExpr(fn, lhs, rhs) }
+    ( prefix_expr ~ operator ~ commit(infix_expr) ^^ { case lhs ~ fn ~ rhs => BinaryExpr.create(fn, lhs, rhs) }
     | prefix_expr
     )
 
@@ -111,7 +118,11 @@ object Parser extends StdTokenParsers  {
     }
 
   def fn_decl : Parser[FnDecl] =
-    (qual.? <~ "def") ~ name ~ ("(" ~> arg_items <~ ")") ~ (":" ~> name).? ~ ("=" ~> expr).? ^^ {
+    (qual.? <~ "def") ~
+    commit(name) ~
+    ("(" ~> arg_items <~ ")") ~
+    (":" ~> name).? ~
+    ("=".? ~> commit(expr)).? ^^ {
       case q ~ n ~ a ~ t ~ e => FnDecl(q.getOrElse(QualExpr()), n, a, t, e)
     }
 
@@ -157,6 +168,13 @@ object Parser extends StdTokenParsers  {
 
 
 
+
+  def EOI: Parser[Any] = new Parser[Any] {
+    def apply(in: Input) = {
+      if (in.atEnd) new Success( "EOI", in )
+      else Failure("End of Input expected", in)
+    }
+  }
 
 
   //an implicit keyword function that gives a warning when a given word is not in the reserved/delimiters list

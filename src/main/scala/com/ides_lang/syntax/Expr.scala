@@ -31,7 +31,7 @@ case class CallExpr(lhs: Expr, args: ExprList) extends Expr
 case class BracketExpr(lhs: Expr, args: ExprList) extends Expr
 
 case class BinaryExpr(fn: Ident, lhs: Expr, rhs: Expr) extends Expr
-case class UnaryExpr(fn: Ident, arg: Expr) extends Expr
+case class UnaryExpr(fn: Expr, arg: Expr) extends Expr
 
 case class PartialFunction(patterns: Map[Expr, Expr]) extends Expr
 
@@ -48,3 +48,47 @@ case class StructDecl(qual: QualExpr, name: Name, args: ExprList, supers: ExprLi
 case class TraitDecl(qual: QualExpr, name: Name, args: ExprList, supers: ExprList, body: Expr) extends Expr
 
 case class ModDecl(qual: QualExpr, name: Ident, body: Expr) extends Expr
+
+
+
+object BinaryExpr {
+  object Associativity extends Enumeration {
+    type Associativity = Value
+    val Left, Right, Nonassoc = Value
+  }
+
+  import Associativity._
+
+  val precedence = Seq(
+    //("if", 0, Nonassoc), ("else", -200, Right),
+    ("&&", 1, Left), ("||", 1, Left),
+    ("|", 2, Left), ("^", 5, Right), ("&", 6, Left),
+    ("or", 7, Left),
+    ("==", 8, Left), ("!=", 8, Left),
+    (">", 9, Left),("<", 9, Left),(">=", 9, Left),("<=", 9, Left),
+    ("+", 10, Left),("-", 10, Left),
+    ("*", 11, Left),("/", 11, Left),("%", 11, Left),
+    ("as", 50, Left)
+  )
+
+  def getPrecedence(op: String) =
+    precedence
+      .find(c => op == c._1)
+      .getOrElse(if (op.startsWith("=")) (op, -100, Right) else (op, 0, Left))
+
+  def create(fn: Ident, lhs: Expr, rhs: Expr) = {
+    val prec = getPrecedence(fn.name)
+    rhs match {
+      case BinaryExpr(f, l, r) => {
+        val otherP = getPrecedence(f.name)
+        if ((prec._2 > otherP._2) || (prec._2 == otherP._2 && prec._3 == Left)) {
+          new BinaryExpr(f, new BinaryExpr(fn, lhs, l), r)
+        } else {
+          new BinaryExpr(fn, lhs, rhs)
+        }
+      }
+      case _ =>
+        new BinaryExpr(fn, lhs, rhs)
+    }
+  }
+}
