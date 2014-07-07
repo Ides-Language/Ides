@@ -1,5 +1,8 @@
 build
 *.build
+*.idea
+target
+.idea_modules
 
 CMakeFiles
 CMakeScripts
