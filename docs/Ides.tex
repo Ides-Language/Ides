@@ -1,32 +1,22 @@
 %template for producing IEEE-format articles using LaTeX.
+%modified by Sean Edwards from original template:
 %written by Matthew Ward, CS Department, Worcester Polytechnic Institute.
 %use at your own risk.  Complaints to /dev/null.
 %make two column with no page numbering, default is 10 point
-\documentstyle[twocolumn]{article}
+
+\documentclass[journal]{IEEEtran}
+\usepackage{hyperref}
+\usepackage{graphicx}
+
+\usepackage[english]{babel}
+
+
 \pagestyle{empty}
 
-%set dimensions of columns, gap between columns, and space between paragraphs
-\setlength{\textheight}{8.75in}
-\setlength{\columnsep}{2.0pc}
-\setlength{\textwidth}{6.8in}
-\setlength{\footheight}{0.0in}
-\setlength{\topmargin}{0.25in}
-\setlength{\headheight}{0.0in}
-\setlength{\headsep}{0.0in}
-\setlength{\oddsidemargin}{-.19in}
-\setlength{\parindent}{1pc}
-
-%I copied stuff out of art10.sty and modified them to conform to IEEE format
-
 \makeatletter
-%as Latex considers descenders in its calculation of interline spacing,
-%to get 12 point spacing for normalsize text, must set it to 10 points
-\def\@normalsize{\@setsize\normalsize{12pt}\xpt\@xpt
-\abovedisplayskip 10pt plus2pt minus5pt\belowdisplayskip \abovedisplayskip
-\abovedisplayshortskip \z@ plus3pt\belowdisplayshortskip 6pt plus3pt
-minus3pt\let\@listi\@listI} 
 
 \def\code{\texttt}
+\def\t{\indent}
 
 %need an 11 pt font size for subsection and abstract headings
 \def\subsize{\@setsize\subsize{12pt}\xipt\@xipt}
@@ -38,6 +28,17 @@ minus3pt\let\@listi\@listI}
 %make subsection titles bold and 11 point, 1 blank line before, 1 after
 \def\subsection{\@startsection {subsection}{2}{\z@}{12pt plus 2pt minus 2pt}
 {12pt plus 2pt minus 2pt}{\subsize\bf}}
+
+%\def\subsubsection{\@startsection {subsubsection}{3}{\z@}{10pt plus 2pt minus 2pt}
+%{12pt plus 2pt minus 2pt}{\subsize}}
+
+\newlength \figwidth
+\if@twocolumn
+  \setlength \figwidth {0.9\columnwidth}
+\else
+  \setlength \figwidth {0.5\textwidth}
+\fi
+
 \makeatother
 
 \begin{document}
@@ -47,20 +48,14 @@ minus3pt\let\@listi\@listI}
 
 %make title bold and 14 pt font (Latex default is non-bold, 16 pt)
 \title{\Large\bf The Ides Programming Language}
-
-%for single author (just remove % characters)
-%\author{I. M. Author \\
-%  My Department \\
-%  My Institute \\
-%  My City, ST, zip}
  
 %for two authors (this is what is printed)
 \author{\begin{tabular}[t]{c@{\extracolsep{8em}}c}
-  Sean T. Edwards  & Advisor: Larry Latour \\
- \\
- \multicolumn{2}{c}{Department of Computer Science} \\
- \multicolumn{2}{c}{University of Maine School of Computing} \\
- \multicolumn{2}{c}{Orono, ME 04469} 
+  Sean Edwards  & Advised by Larry Latour \\
+  \\
+  \multicolumn{2}{c}{Department of Computer Science} \\
+  \multicolumn{2}{c}{University of Maine School of Computing} \\
+  \multicolumn{2}{c}{Orono, ME 04469} 
 \end{tabular}}
 
 \maketitle
@@ -71,78 +66,259 @@ minus3pt\let\@listi\@listI}
 \subsection*{\centering Abstract}
 %IEEE allows italicized abstract
 {\em
-Abstract stuff
+The Ides Programming language is a type-safe systems programming language, emphasizing strong static verification and a flexible syntax that strives to be paradigm-agnostic. Developers using Ides should be able to write programs in a natural and familiar way, while being protected from common programming errors by a compiler that enforces good programming practices that many other languages leave to habit. Ides does not strive to break new ground in the field of programming languages, but instead incorporates existing, well-proven ideas from other languages into a low-level programming environment.
+
 %end italics mode
 }
 
 \section{Introduction}
+The Ides programming language is a multi-paradigm language built on LLVM\cite{key:llvm}. It is heavily influenced by Scala\cite{key:scala}, but targets the native platforms supported by LLVM, rather than the JVM. The essence of the project can be summed up in a few goals:
 
-Intro stuff
+\subsection{Early Failure}
+Ides programs are designed to fail as early as possible. In standard Ides code, an uncaught programming error (such as an out-of-bounds array access) should crash the program, and when possible, such errors should be caught at compile time, preventing the error from reaching production status in the first place. As with any programming language, diligence from the programmer is still required, since Ides is not capable of detecting all errors in all domains, but some classes of errors -- easy to detect, and potentially disasterous if uncaught -- are given special consideration in the language's design.
 
-P.S. look, I actually used \LaTeX
+\autoref{fig:unsafecode} shows an example a special construct for explicitly disabling several of the ``fail early'' type of tests, for cases when the compiler is unable to fully verify an operation that the programmer is sure is safe -- for example, calling into an external C library. This type of code is categorically referred to as {\em unsafe code}, and Ides will always require the programmer to be explicit when unsafe operations are performed. Careless application of unsafe code can lead to common security vulnerabilities such as buffer overflows.
 
-\section{Rationale}
-Because languages are neat.
+\subsection{Paradigm Agnostic}
 
-\section{Design}
-Stuff I thought about.
+Ides is a hybrid language, informed by object-oriented, functional, and imperative styles alike. By allowing problems to be expressed in a way that's appropriate for the problem, and familiar to the developer, Ides maximizes the chance that a developer will identify bugs during the writing process.
+
+\subsubsection{Imperative Style}
+
+As in most popular languages, basic expressions\footnote{There is no distinction between expressions and statements in Ides, and any construct that can be a statement, such as \code{if}, can also be an expression in the middle of a larger expression.} in Ides are simply evaluated in order.
+
+Ides supports several of the familiar imperative style structured programming constructs, such as \code{if} and \code{while} statements. C style \code{for} expressions are notably omitted, preferring an iterator-based approach.
+
+\subsubsection{Object-Oriented Style}
+
+As in languages like Python or Ruby, every type in Ides is treated as a class, each with its own methods and properties. All types ultimately inherit from the top type, called \code{Any}.
+
+\subsubsection{Functional Style}
+
+Ides has strong built-in support for closures and lambda expressions, and the standard library has extensive support for higher-order functions.
+
+\subsection{Proven Methods}
+
+In the spirit of only allowing safe, reliable code when reasonable, the Ides language prefers to borrow features from other languages, rather than invent new language features that may have unforeseen consequences. It's relatively easy to add new language features to an existing language, but almost impossible to remove them without breaking existing code and shaking confidence in the language. For this reason, Ides takes a very conservative approach to accepting language features.
+
+\section{Methods of Verification}
+
+
+\subsection{Bottom Type}
+In the C family of language, the keywords throw and return are considered statements, meaning they are only allowed at the top level of an expression tree. In Ides, these keywords are expressions of the bottom type. This allows them to be used within other expressions. The following example shows how a return expression may be used in conjunction with the or operator to provide a contingency for a nullable reference.
+
+
+\subsection{Null References}
+\begin{figure}
+    \code{def nullableToString(var obj : Object?) : String = (obj or return “null”).toString();}
+    \caption{A nullable reference} \label{fig:nullableref}
+\end{figure}
+
+In \autoref{fig:nullableref}, the \code{or} expression evaluates to a non-nullable instance of the \code{Object} type, which implements the \code{toString} method. If \code{obj} is \code{null}, however, the result of the expression is the right-hand side. Since the bottom type is a valid subtype of \code{Object}, the type system considers the code valid. However, since the expression \code{return “null”} itself does not return (but rather causes the function to exit early), there is never actually a value produced, and the \code{toString} method is never called on any object.
+
 \subsection{Type System}
+\autoref{fig:typehierarchy} shows the high-level hierarchy of the Ides type system.
 
-\subsection{Expression Evaluation}
+\begin{figure}
+    \includegraphics[width=\figwidth]{TypeSystem.png}
+    \caption{The Ides type system} \label{fig:typehierarchy}
+\end{figure}
 
-\subsection{The Standard Library}
+\subsection{Unsafe Code}
 
-\section{\code{idesc}: The Ides Compiler}
-\subsection{The Lexer}
-
-
-\subsection{The Parser}
-
-
-\subsection{Semantic Analysis}
-
-
-\subsection{\code{Std.Lang}: Compiler Support}
+\begin{figure}
+    \begin{verbatim}
+unsafe {
+    val x = Std.C.malloc()
+    Std.C.free(x)
+}\end{verbatim}
+    \caption{Unsafe code is clearly deliniated by a dedicated block, drawing attention to a source of possible errors.}
+    \label{fig:unsafecode}
+\end{figure}
 
 
-\subsection{Code Generation}
-LLVM makes the electronics do switchy stuff.
+\subsection{Target Platform}
+Ides is specified in terms of the LLVM platform. This is done in order to keep the Ides project small and manageable. The language specification does not concern itself with hardware platforms, but rather defers that responsibility to LLVM’s own targets.
+
+Ides programs and libraries compile to files which are conventionally given the extension \code{.ilib}. These files are called Ides modules. Ides modules are actually LLVM modules with Ides-specific static data structures and LLVM metadata, which enable the Ides compiler to maintain the contained type information and program declarations.
+
+
+\section{State of the Compiler}
+
+At the time of this writing, the Ides compiler consists of only a parser. The Ides parser and abstract syntax tree allows for a superset of semantically valid Ides programs. The intent of an extremely permissive parser is to form a small set of flexible syntax rules, which can be used in the future to create new language constructs without modifying the compiler's frontend. A complete language grammar can be found in Appendix \ref{app:grammar}.
+
+The Ides compiler also has a rudamentary build system built in. While eventually the language would support various forms of compilation, such as just-in-time (JIT) compilation, or execution of Ides code in a read-eval-print loop (REPL), currently the smallest unit of compilation supported is a precompiled package, which can consist of many source files and directories, and produces only one output binary. This would be the standard form of distribution for applications and libraries.
+
+There are two actions currently supported by the Ides compiler, \code{idesc}:
+
+\begin{itemize}
+  \item \code{--print-ast}: Adding this argument to the invocation of the Ides compiler will output the syntax tree of the input as a YAML\cite{key:yaml} document. This is useful in conjunction with the \code{--parse-ast} argument, which is able to build a syntax tree from YAML input. This feature is designed to allow external tools to manipulate Ides source code without writing an entire parser.
+
+  \item \code{--print-src}: This argument prints the input as source code according to the recommended formatting conventions of the Ides community. Like \code{--print-ast}, this option can be used to translate a YAML tree back into source code for further processing by other tools.
+\end{itemize}
+
 
 \section{Summary and Conclusions}
-Ides is neat.
 
-\section{Future Work}
-Do the actual dang report, dangit.
+Ides is a very large project, and has still a long way to go before it becomes a viable language, but a need has been demonstrated, and there are enough languages with proven techniques for static verification that the goals of this language should be reasonably accomplished. The most important next steps are to finish the intial framework for parsing and semantic analysis. As those core compiler features near completion, a lot more work will be possible, and a lot of it will be able to be done in parallel. At this point, the most valuable thing that the language can have is a community of open source developers working on it.
 
 \section{Related Work}
 \subsection{Scala}
 Scala\cite{key:scala} is a hybrid object-oriented and functional language for the Java Virtual Machine, and has informed numerous design decisions for Ides.
 
 \subsection{Rust}
-Rust is a type-safe, low-level systems programming language developed by Mozilla. Rust informs many design decisions surrounding memory management and data ownership rules. 
+Rust\cite{key:rust} is a type-safe, low-level systems programming language developed by Mozilla. Rust informs many design decisions surrounding memory management and data ownership rules. 
 
-\subsection{F\# ("F Sharp")}
+\subsection{F\# (``F Sharp'')}
+F\#\cite{key:fsharp} is an open source functional language developed by Microsoft for the Common Language Runtime.
 
 \subsection{LLVM}
-LLVM is an open source compiler infrastructure. It is the underlying technology for several compilers, most notably Clang, a compiler for the C family of languages.
+LLVM\cite{key:llvm} is an open source compiler infrastructure. It is the underlying technology for several compilers, most notably Clang, a compiler for the C family of languages.
 
-\subsection{Flex}
-Flex is a tool for building lexical analyzers, based on the AT\&T software lex.
+\subsection{Flex and Bison}
+Flex is a tool for building lexical analyzers, based on the AT\&T software lex. The lexical analysis performed by the Ides compiler is performed by Flex.
 
-\subsection{Bison}
-Bison
+Bison is an open source tool based on the YACC parser generator. It integrates will with Lex, and is a widely supported tool for building parsers in C. The Ides compiler uses Bison to parse the tokens produced by the Flex tokenizer.
+
+The full Ides grammar can be found in Appendix \ref{app:grammar}.
 
 \subsection{Asm.js and Emscripten}
 Asm.js is an emulated architecture written in Javascript and designed for execution within a web browser. Emscripten, a Mozilla project, is a backend for LLVM, allowing any LLVM-powered compiler to target the Asm.js architecture, resulting in code that can run in a web browser.
 
 \subsection{Chrome Portable Native Client (PNaCL)}
 
-\subsection{Web and Application Frameworks}
-Frameworks like Play or Ruby on Rails 
+Google's Portable Native Client sanitizes LLVM assembly code, making it suitable for execution within a web browser. If the project is successful, developers would be able to compile an application to LLVM assembly, using a well-defined application binary interface (ABI) to control the browser in the way that Javascript and plugins like Flash or Silverlight do today. The advantage to this approach is that any language that targets LLVM -- including Ides -- would be able to compile directly to browser code, decoupling clientside, frontend programming from the Javascript language.
 
 %this is how to do an unnumbered subsection
-\subsection*{Acknowledgements}
-Other people did stuff too.
+%\subsection*{Acknowledgements}
+%Other people did stuff too.
+
+\newpage
+\onecolumn
+
+\begin{appendices}
+\section{The Ides Grammar} \label{app:grammar}
+{ %\fontsize{8pt}{8pt}
+\begin{verbatim}
+(* non-terminals *)
+
+start = compound_expr ; (* start rule *)
+
+constant = BOOL_CONSTANT 
+         | INT_CONSTANT 
+         | DECIMAL_CONSTANT 
+         | STRING_CONSTANT
+         | CHAR_CONSTANT
+         ;
+
+operator = OPERATOR
+         | '='
+         | "match"
+         | "as"
+         | "if"
+         | "else"
+         ;
+
+identifier = OPERATOR
+           | IDENTIFIER
+           ;
+
+name = identifier [ '[' arg_list ']' \] ;
+
+compound_expr = stmt [ ';' ] ;
+
+stmt = expr
+     | fn_decl
+     | record_decl
+     | module_decl
+     ;
+
+expr = infix_expr ;
+infix_expr = prefix_expr { operator prefix_expr } ;
+prefix_expr = { operator } postfix_expr ;
+
+postfix_expr = primary_expr { '(' expr_list ')'      (* value arguments *)
+                            | '[' expr_list ']'      (* type arguments *)
+                            | '{' compound_expr '}'  (* block expression *)
+                            | '.' identifier
+                            | "..."
+                            } ;
+
+primary_expr = constant
+             | IDENTIFIER
+             | PLACEHOLDER
+             | val_decl
+             | '(' expr_list ')'      (* tuple value *)
+             | '{' compound_expr '}'  (* lexical scope *)
+             | partial_function
+             ;
+
+\end{verbatim}
+\newpage
+\begin{verbatim}
+partial_function = '{' 
+                       { "case" expr "=>" expr } 
+                       [ "case" "else" "=>" expr ]
+                   '}' ;
+
+fn_decl = qual "def" name '(' expr_list ')' ( [ ':' expr ] "=>" expr
+                                            | [ ':' expr ] ';'
+                                            );
+
+record_decl = qual ( "struct" 
+                   | "class" 
+                   | "trait" ) name [ '(' arg_list ')' ] 
+                        [ ':' expr_list ] "=>" '{' compound_expr '}';
+
+module_decl = qual "mod" name '{' compound_expr '}' ;
+
+(* expr, expr, ... expr *)
+expr_list = [ expr { ',' expr } ] ;
+
+(* v1 : T1, v2 : T2, ... vN : TN *)
+arg_list = [ IDENTIFIER ':' expr { ',' IDENTIFIER ':' expr } ] ;
+
+val_decl = qual ( "val" | "var" ) name ( ':' expr [ "=>" expr ]
+                                       | '=' expr
+                                       ) ;
+
+
+(* qualifiers *)
+qual = vis ["abstract"] ["const"] ["extern"] ["locked"] ;
+vis = "public" | "private" | "protected" | "internal" ;
+
+
+(* terminal symbols *)
+
+OP_FIRST = "[!\#\%\^&\*\-\+/\\<>\|?]" ;
+OPERATOR = "{OP_FIRST}[=:{OP_FIRST}]*" ;
+ID = "[A-Za-z_][A-Za-z0-9]*" ; (* excluding any literals in non-terminal rules *)
+
+IDENTIFIER = {ID}
+           | "`[^`]+`"
+           | "{ID}_{OPERATOR}"
+           ;
+
+BOOL_CONSTANT = "true" | "false" ;
+
+INT_CONSTANT = "[1-9][0-9]*" (* base-10 integer constant *)
+             | "0b[01]+"     (* base-2 integer constant *)
+             | "0[0-9]+"     (* base-8 integer constant *)
+             | "0x[0-9A-F]+" (* base-16 integer constant *)
+             ;
+
+DECIMAL_CONSTANT = "[0-9]+\.[0-9]+" ; (* decimal constant *)
+             ;
+
+STRING_CONSTANT = ".+" ;
+
+CHAR_CONSTANT = '.' ;
+\end{verbatim}
+}
+
+\end{appendices}
+
+\newpage
 
 \begin{thebibliography}{9}
 
@@ -150,11 +326,27 @@ Other people did stuff too.
 Martin Odersky, 
 ``The Scala Language Specification''
 
+\bibitem{key:llvm}
+The LLVM Project,
+\url{http://llvm.org/}
+
+\bibitem{key:fsharp}
+The F\# Project,
+\url{http://fsharp.org/}
+
+\bibitem{key:rust}
+Rust
+\url{http://www.rust-lang.org/}
+
+\bibitem{key:yaml}
+YAML
+
 %\bibitem{foo:baz}
 %A. N. Expert, 
 %{\em A Book He Wrote,}
 %His Publisher, 1989.
 
 \end{thebibliography}
+
 
 \end{document}

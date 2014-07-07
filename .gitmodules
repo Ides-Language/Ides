@@ -1,6 +1,3 @@
-[submodule "deps/llvm"]
-	path = deps/llvm
-	url = http://llvm.org/git/llvm.git
 [submodule "stdlib"]
 	path = stdlib
 	url = git@github.com:Ides-Language/Ides-StdLib.git
