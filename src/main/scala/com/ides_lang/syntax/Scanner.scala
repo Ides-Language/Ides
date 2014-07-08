@@ -2,22 +2,25 @@ package com.ides_lang.syntax
 
 import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.combinator.lexical.{Lexical, StdLexical}
+import scala.util.parsing.combinator.token.Tokens
 import scala.util.parsing.input.CharArrayReader._
+import scala.util.parsing.input.Positional
 
 /**
  * Created by sedwards on 7/6/14.
  */
 
 class Scanner extends StdLexical with RegexParsers {
+
   val oct = "(0[0-9]+)".r
   val dec = "([0-9]+\\.[0-9]+)".r
   val int = "(0|[1-9][0-9]*)".r
   val hex = "(0x[0-9A-F]+)".r
   val bin = "(0b[0-9A-F]+)".r
 
-  val op_start = s"[!#%\\^&*\\-+/\\\\<>\\|?~]"
-  val op_any = s"[=:!#%\\^&*\\-+/\\\\<>\\|?~]"
-  val op = s"$op_start$op_any*"
+  val op_start = "!#%\\^&*\\-+/\\\\<>\\|?~"
+  val op_any   = "=:!#%\\^&*\\-+/\\\\<>\\|?~"
+  val op = s"[$op_start][$op_any]*"
   val id = "[A-Za-z_][A-Za-z0-9]*"
 
   val placeholder = ":[0-9]+"
@@ -37,10 +40,9 @@ class Scanner extends StdLexical with RegexParsers {
     ( (oct | int | hex | bin)                                            ^^ IntegerTok
     | dec                                                                ^^ DoubleTok
     | ("`[^`]+`".r | s"${id}(_${op})?".r)                                ^^ processIdent
-    | op.r                                                               ^^ OpTok
     | ".."                                                               ^^ OpTok
-    | "=="                                                               ^^ OpTok
-    | "="                                                                ^^ OpTok
+    | op.r                                                               ^^ OpTok
+    | s"[=:][$op_any]+".r                                                ^^ OpTok
     | placeholder.r                                                      ^^ PlaceholderTok
     | '\'' ~ rep( chrExcept('\'', '\n', EofCh) ) ~ '\''                  ^^ { case '\'' ~ chars ~ '\'' => StringLit(chars mkString "") }
     | '\"' ~ rep( chrExcept('\"', '\n', EofCh) ) ~ '\"'                  ^^ { case '\"' ~ chars ~ '\"' => StringLit(chars mkString "") }

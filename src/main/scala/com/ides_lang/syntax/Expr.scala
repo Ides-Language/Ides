@@ -30,10 +30,11 @@ case class PlaceholderExpr(v: Integer) extends Expr
 case class CallExpr(lhs: Expr, args: ExprList) extends Expr
 case class BracketExpr(lhs: Expr, args: ExprList) extends Expr
 
-case class BinaryExpr(fn: Ident, lhs: Expr, rhs: Expr) extends Expr
-case class UnaryExpr(fn: Expr, arg: Expr) extends Expr
+case class InfixExpr(fn: Ident, lhs: Expr, rhs: Expr) extends Expr
+case class PrefixExpr(fn: Expr, arg: Expr) extends Expr
 
-case class PartialFunction(patterns: Map[Expr, Expr]) extends Expr
+case class PartialFunction(patterns: List[Case]) extends Expr
+case class Case(pattern: Expr, result: Expr) extends Expr
 
 case class ValDecl(qual: QualExpr, name: Name, ty: Option[Expr], init: Option[Expr]) extends Expr
 
@@ -51,7 +52,7 @@ case class ModDecl(qual: QualExpr, name: Ident, body: Expr) extends Expr
 
 
 
-object BinaryExpr {
+object InfixExpr {
   object Associativity extends Enumeration {
     type Associativity = Value
     val Left, Right, Nonassoc = Value
@@ -68,6 +69,7 @@ object BinaryExpr {
     (">", 9, Left),("<", 9, Left),(">=", 9, Left),("<=", 9, Left),
     ("+", 10, Left),("-", 10, Left),
     ("*", 11, Left),("/", 11, Left),("%", 11, Left),
+    ("://", 12, Nonassoc),
     ("as", 50, Left)
   )
 
@@ -76,19 +78,19 @@ object BinaryExpr {
       .find(c => op == c._1)
       .getOrElse(if (op.startsWith("=")) (op, -100, Right) else (op, 0, Left))
 
-  def create(fn: Ident, lhs: Expr, rhs: Expr) = {
+  def create(fn: Ident, lhs: Expr, rhs: Expr) : InfixExpr = {
     val prec = getPrecedence(fn.name)
     rhs match {
-      case BinaryExpr(f, l, r) => {
+      case InfixExpr(f, l, r) => {
         val otherP = getPrecedence(f.name)
         if ((prec._2 > otherP._2) || (prec._2 == otherP._2 && prec._3 == Left)) {
-          new BinaryExpr(f, new BinaryExpr(fn, lhs, l), r)
+          new InfixExpr(f, create(fn, lhs, l), r)
         } else {
-          new BinaryExpr(fn, lhs, rhs)
+          new InfixExpr(fn, lhs, rhs)
         }
       }
       case _ =>
-        new BinaryExpr(fn, lhs, rhs)
+        new InfixExpr(fn, lhs, rhs)
     }
   }
 }
