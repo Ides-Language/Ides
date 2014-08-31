@@ -2,8 +2,7 @@ os:
   - linux
   - osx
 language: scala
-scala:
-  2.11.2
+scala: 2.11.2
 
 secure: "HJBkFWr0cP/c9DxT5zErMZ3BtJBk98MeF0nnFwNw/YPTPvzXkBPvtfoI+GVNLgbq14X49r3XEloi4zUg9iz4h2nwCGBhK5arkE2Mm0Bg8BUmQvAOF/SCM0Fenm19Vo0tUZCGl+WiZE5vuTVcrxn3rXwYNi682D8VvmSYa6QjJO0="
 

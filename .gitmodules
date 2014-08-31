@@ -1,3 +1,3 @@
 [submodule "stdlib"]
 	path = stdlib
-	url = git@github.com:Ides-Language/Ides-StdLib.git
+    url = https://github.com/Ides-Language/Ides-StdLib.git
