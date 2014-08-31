@@ -8,6 +8,5 @@ secure: "HJBkFWr0cP/c9DxT5zErMZ3BtJBk98MeF0nnFwNw/YPTPvzXkBPvtfoI+GVNLgbq14X49r3
 
 notifications:
   email: false
-  slack:
-    secure: "L2gOLhS+0PKJ4HHoD9exElrVL9IoqGOwGwB5TBJYcL1iX0eQ9U0CfAoYA/gR7S9GeMvE8t3zxn1qlA/B9OeeiGlGEHQ27Xu/kbrlLjCbTjOw8pSGpq88lf5/KKicI1SnIHckAwa/cjYiGqVCsaLkRK4z1klgghyfiQoAN82SGDc="
+  
 script: sbt coveralls
