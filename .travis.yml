@@ -1,35 +1,10 @@
 os:
   - linux
   - osx
-language: cpp
-before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -qq cmake flex bison libboost1.48-dev libboost1.48-all-dev git
-# Unfortunately this is currently the only decent way to get LLVM 3.3 on Ubuntu. :(
-  - wget "http://llvm.org/releases/3.3/clang+llvm-3.3-amd64-Ubuntu-12.04.2.tar.gz"
-  - tar -xzf "clang+llvm-3.3-amd64-Ubuntu-12.04.2.tar.gz"
-  - mv "clang+llvm-3.3-amd64-Ubuntu-12.04.2" deps
+language: scala
+scala:
+  2.11.2
 
-notifications:
-  email: false
-  irc: 
-    channels:
-      - "irc.freenode.org#ides"
-    use_notice: true
-    skip_join: true
+secure: "HJBkFWr0cP/c9DxT5zErMZ3BtJBk98MeF0nnFwNw/YPTPvzXkBPvtfoI+GVNLgbq14X49r3XEloi4zUg9iz4h2nwCGBhK5arkE2Mm0Bg8BUmQvAOF/SCM0Fenm19Vo0tUZCGl+WiZE5vuTVcrxn3rXwYNi682D8VvmSYa6QjJO0="
 
-compiler:
-  - gcc
-  - clang
-
-env:
-  global:
-    - CTEST_OUTPUT_ON_FAILURE=1
-
-script:
-  - cmake .
-  - make
-  - sudo make install
-
-after_success:
-  - ctest -V -D Experimental -C Release --output-on-failure .
+script: sbt coveralls

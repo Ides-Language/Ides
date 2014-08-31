@@ -62,7 +62,7 @@ object Parser extends StdTokenParsers  {
     }
 
   def compound_expr : Parser[Expr] =
-    stmt.* ^^ ExprList
+    stmt.* ^^ ExprList.apply
 
   def primary_expr : Parser[Expr] =
     ( constant
@@ -93,10 +93,10 @@ object Parser extends StdTokenParsers  {
 
   def expr : Parser[Expr] = infix_expr
 
-  def name_items = repsep(name, ",") ^^ ExprList
+  def name_items = repsep(name, ",") ^^ ExprList.apply
 
   def tuple_items : Parser[ExprList] =
-    repsep(expr, ",") ^^ ExprList
+    repsep(expr, ",") ^^ ExprList.apply
 
   def arg_item : Parser[ArgDecl] =
     qual.? ~ identifier ~ (":" ~> name.!).? ~ ("=" ~> expr).? ^^ {
@@ -104,7 +104,7 @@ object Parser extends StdTokenParsers  {
     }
 
   def arg_items : Parser[ExprList] =
-    repsep(arg_item, ",") ^^ ExprList
+    repsep(arg_item, ",") ^^ ExprList.apply
 
   def qual = vis
 
@@ -116,49 +116,49 @@ object Parser extends StdTokenParsers  {
     )
 
   def val_decl : Parser[ValDecl] =
-    (qual.? <~ "val") ~ name ~ (":" ~> name).? ~ ("=" ~> expr).? ^^ {
+    (qual.? <~ "val") ~! name ~! (":" ~> name).? ~ ("=" ~> expr).? ^^ {
       case q ~ n ~ t ~ e => ValDecl(q.getOrElse(QualExpr()), n, t, e)
     }
 
   def var_decl : Parser[VarDecl] =
-    ((qual.? <~ "var") ~ name ~ (":" ~> name).? ~ ("=" ~> expr).?) ^^ {
+    (qual.? <~ "var") ~! name ~! (":" ~> name).? ~ ("=" ~> expr).? ^^ {
       case q ~ n ~ t ~ e => VarDecl(q.getOrElse(QualExpr()), n, t, e)
     }
 
   def fn_decl : Parser[FnDecl] =
-    (qual.? <~ "def") ~
-    name.! ~
-    ("(" ~> arg_items.! <~ ")") ~
+    (qual.? <~ "def") ~!
+    name ~
+    ("(" ~> arg_items.! <~ ")").? ~
     (":" ~> name.!).? ~
     ("=".? ~> expr.!).? ^^ {
-      case q ~ n ~ a ~ t ~ e => FnDecl(q.getOrElse(QualExpr()), n, a, t, e)
+      case q ~ n ~ a ~ t ~ e => FnDecl(q.getOrElse(QualExpr()), n, a.getOrElse(ExprList()), t, e)
     }
 
   def trait_decl : Parser[TraitDecl] =
     (qual.? <~ "trait") ~
     name.! ~
     ("(" ~> arg_items.! <~ ")").? ~
-    (":" ~> repsep(name, ",").! ^^ ExprList).? ~
+    (":" ~> repsep(name, ",").! ^^ ExprList.apply).? ~
     ("{" ~> compound_expr.! <~ "}") ^^ {
-      case q ~ n ~ a ~ t ~ b => TraitDecl(q.getOrElse(QualExpr()), n, a.getOrElse(ExprList(Nil)), t.getOrElse(ExprList(Nil)), b)
+      case q ~ n ~ a ~ t ~ b => TraitDecl(q.getOrElse(QualExpr()), n, a.getOrElse(ExprList()), t.getOrElse(ExprList()), b)
     }
 
   def struct_decl : Parser[StructDecl] =
-    (qual.? <~ "struct") ~
+    (qual.? <~ "struct") ~!
     name.! ~
     ("(" ~> arg_items.! <~ ")").? ~
-    (":" ~> repsep(name, ",").! ^^ ExprList).? ~
+    (":" ~> repsep(name, ",").! ^^ ExprList.apply).? ~
     ("{" ~> compound_expr <~ "}").! ^^ {
-      case q ~ n ~ a ~ t ~ b => StructDecl(q.getOrElse(QualExpr()), n, a.getOrElse(ExprList(Nil)), t.getOrElse(ExprList(Nil)), b)
+      case q ~ n ~ a ~ t ~ b => StructDecl(q.getOrElse(QualExpr()), n, a.getOrElse(ExprList()), t.getOrElse(ExprList()), b)
     }
 
   def class_decl : Parser[ClassDecl] =
     (qual.? <~ "class") ~
     name.! ~
     ("(" ~> arg_items.! <~ ")").? ~
-    (":" ~> repsep(name, ",").! ^^ ExprList).? ~
+    (":" ~> repsep(name, ",").! ^^ ExprList.apply).? ~
     ("{" ~> compound_expr.! <~ "}") ^^ {
-      case q ~ n ~ a ~ t ~ b => ClassDecl(q.getOrElse(QualExpr()), n, a.getOrElse(ExprList(Nil)), t.getOrElse(ExprList(Nil)), b)
+      case q ~ n ~ a ~ t ~ b => ClassDecl(q.getOrElse(QualExpr()), n, a.getOrElse(ExprList()), t.getOrElse(ExprList()), b)
     }
 
   def mod_decl : Parser[ModDecl] =
@@ -169,8 +169,7 @@ object Parser extends StdTokenParsers  {
     }
 
 
-
-  def parseFile(input: String) = file(new lexical.Scanner(input))
+  def parseFile(input: String) : ParseResult[Expr] = file(new lexical.Scanner(input))
 
   //val mod_decl = "mod" ~> name
 

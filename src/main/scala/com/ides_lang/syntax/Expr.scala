@@ -5,19 +5,49 @@ import scala.util.parsing.input.Positional
 /**
  * Created by sedwards on 7/6/14.
  */
-abstract class Expr() extends Positional
+abstract trait Expr extends Positional
 
 case class NullExpr() extends Expr
 
 case class Ident(name: String) extends Expr
 
-case class Name(ident: Ident, genericArgs: ExprList = ExprList(Nil)) extends Expr
+case class Name(ident: Ident, genericArgs: ExprList = ExprList()) extends Expr
+
+object Name {
+  def apply(i: String) : Name = Name(Ident(i))
+}
 
 case class QualExpr(priv: Boolean = false, prot: Boolean = false, internal: Boolean = false, pub: Boolean = false,
                      extern: Boolean = false, const: Boolean = false, abst: Boolean = false, unsafe: Boolean = false,
-                     intrinsic: Boolean = false, impl: Boolean = false, locked: Boolean = false) extends Expr
+                     intrinsic: Boolean = false, impl: Boolean = false, locked: Boolean = false) extends Expr {
+  def | (rhs: QualExpr) = QualExpr(
+    priv || rhs.priv,
+    prot || rhs.prot,
+    internal || rhs.internal,
+    pub || rhs.pub,
+    extern || rhs.extern,
+    const || rhs.const,
+    abst || rhs.abst,
+    unsafe || rhs.unsafe,
+    intrinsic || rhs.intrinsic,
+    impl || rhs.impl,
+    locked || rhs.locked
+  )
+}
 
-case class ExprList(items: List[Expr]) extends Expr
+object QualExpr {
+  val None = QualExpr()
+  val Public = QualExpr(pub = true)
+  val Private = QualExpr(priv = true)
+  val Protected = QualExpr(prot = true)
+  val Internal = QualExpr(internal = true)
+}
+
+case class ExprList(items: Expr*) extends Expr
+
+object ExprList {
+  def apply(l: List[Expr]) : ExprList = ExprList(l : _*)
+}
 
 case class ConstantInt(v: Long) extends Expr
 case class ConstantDec(v: Double) extends Expr
@@ -37,7 +67,6 @@ case class PartialFunction(patterns: List[Case]) extends Expr
 case class Case(pattern: Expr, result: Expr) extends Expr
 
 case class ValDecl(qual: QualExpr, name: Name, ty: Option[Expr], init: Option[Expr]) extends Expr
-
 case class VarDecl(qual: QualExpr, name: Name, ty: Option[Expr], init: Option[Expr]) extends Expr
 
 case class FnDecl(qual: QualExpr, name: Name, args: ExprList, ty: Option[Expr], body: Option[Expr]) extends Expr
