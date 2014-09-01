@@ -1,17 +1,113 @@
 package com.ides_lang.syntax
 
-import scala.util.parsing.combinator.syntactical.StdTokenParsers
+import scala.util.parsing.combinator._
+import scala.util.parsing.combinator.lexical._
+import scala.util.parsing.combinator.syntactical._
+import scala.util.parsing.combinator.token._
+import scala.util.parsing.input.CharArrayReader._
+import scala.util.parsing.input.Positional
 
 /**
  * Created by sedwards on 7/6/14.
  */
+
 object Parser extends StdTokenParsers  {
+
+  class Scanner extends StdLexical with RegexParsers {
+    override type Elem = Char
+
+    val oct = "(0[0-9]+)".r
+    val dec = "([0-9]+\\.[0-9]+)".r
+    val int = "(0|[1-9][0-9]*)".r
+    val hex = "(0x[0-9A-F]+)".r
+    val bin = "(0b[0-9A-F]+)".r
+    val placeholder = ":[0-9]+"
+
+    val op_start = "!#%\\^&*\\-+/\\\\<>\\|?~"
+    val op_any   = "=:!#%\\^&*\\-+/\\\\<>\\|?~"
+    val op = s"[$op_start][$op_any]*"
+    val id = "[A-Za-z_][A-Za-z0-9]*"
+
+    def intFromString(chars: String) = chars match {
+      case oct(n) => Integer.parseInt(n.drop(1), 8)
+      case int(n) => Integer.parseInt(n, 10)
+      case hex(n) => Integer.parseInt(n.drop(2), 16)
+      case bin(n) => Integer.parseInt(n.drop(2), 2)
+    }
+
+    case class OpTok(chars: String) extends Token {
+      override def toString = s"operator $chars"
+    }
+
+    case class IntegerTok(chars: String) extends Token {
+      val num = intFromString(chars)
+      override def toString = chars
+    }
+
+    case class DoubleTok(chars: String) extends Token {
+      val num = chars.toDouble
+      override def toString = chars
+    }
+
+    case class PlaceholderTok(chars: String) extends Token {
+      val num = chars.drop(1).toInt
+      override def toString = chars
+    }
+
+    case class CharTok(char: Char) extends Token {
+      override def chars = toString
+      override def toString = s"'${char.toString}'"
+    }
+
+    case class StringTok(chars: String) extends Token {
+      override def toString = "\""+chars+"\""
+    }
+
+    case class ErrorTok(msg: String) extends Token {
+      def chars = msg
+    }
+
+    def escapeStr = '\\' ~ chrExcept('\n', EofCh) ^^ { case esc ~ char => "\\" + char}
+    def escapeChr = '\\' ~> chrExcept('\n', EofCh)
+
+    override def token: Parser[Token] =
+      ( dec                                                                ^^ DoubleTok
+      | (oct | hex | bin | int)                                            ^^ IntegerTok
+      | ("`[^`]+`".r | s"${id}(_${op})?".r)                                ^^ processIdent
+      | acceptSeq("..")                                                    ^^^ OpTok("..")
+      | op.r                                                               ^^ OpTok
+      | s"[=:][$op_any]+".r                                                ^^ OpTok
+      | placeholder.r                                                      ^^ PlaceholderTok
+      | '\'' ~> (escapeChr | chrExcept('\'', '\n', EofCh)) <~ '\''         ^^ { case char => CharTok(char) }
+      | '\"' ~> rep(escapeStr | chrExcept('\"', '\n', EofCh)) <~ '\"'      ^^ { case chars => StringTok(chars mkString "") }
+      | EofCh                                                              ^^^ EOF
+      | '\'' ~> err("unclosed char literal")
+      | '\"' ~> err("unclosed string literal")
+      | ".".r                                                              ^^ Keyword
+      )
+
+    override def errorToken(msg: String) : Token =
+      ErrorTok(msg)
+  }
+
   def dbg[T](t: T) = { println(t); t }
 
-  type Tokens = Scanner
+  override type Tokens = Scanner
+  override val lexical = new Tokens
   override type Elem = lexical.Token
 
-  val lexical = new Tokens
+  this.lexical.reserved += (
+    "true", "false",
+    "def", "fn", "function", "var", "val", "struct", "class", "trait", "mod",
+    "null", "namespace", "case",
+    "if", "else",
+    "public", "protected", "internal", "private", "extern", "const", "abstract", "unsafe", "intrinsic", "implicit", "locked",
+    "throw", "new", "return", "match", "as",
+    "...", "..", "=>"
+  )
+
+  def errTok : Parser[Nothing] =
+    (elem("error", _.isInstanceOf[lexical.ErrorTok]) ^^ { tok => tok.chars }) >> err
 
   def dbl : Parser[ConstantDec] =
     elem("double", _.isInstanceOf[lexical.DoubleTok]) ^^
@@ -22,8 +118,8 @@ object Parser extends StdTokenParsers  {
       { i => ConstantInt(i.asInstanceOf[lexical.IntegerTok].num) }
 
   def str : Parser[ConstantString] =
-    elem("string", _.isInstanceOf[lexical.StringLit]) ^^
-      { i => ConstantString(i.asInstanceOf[lexical.StringLit].chars) }
+    elem("string", _.isInstanceOf[lexical.StringTok]) ^^
+      { i => ConstantString(i.asInstanceOf[lexical.StringTok].chars) }
 
   def chr : Parser[ConstantChar] =
     elem("char", _.isInstanceOf[lexical.CharTok]) ^^
@@ -44,7 +140,7 @@ object Parser extends StdTokenParsers  {
   def fals = "false" ^^^ { ConstantBool(v = false) }
   def bool = tru | fals
 
-  def constant = chr | dbl | int | str | bool
+  def constant = chr | dbl | int | str | bool | errTok
 
   def stmt : Parser[Expr]=
     ( expr
@@ -53,7 +149,7 @@ object Parser extends StdTokenParsers  {
     | mod_decl
     ) <~ ";".?
 
-  def file = compound_expr <~ EOI
+  def file = compound_expr
 
   def identifier : Parser[Ident] = super.ident ^^ Ident
 
@@ -134,6 +230,8 @@ object Parser extends StdTokenParsers  {
     (":" ~> name.!).? ~
     ("=".? ~> expr.!).? ^^ {
       case q ~ n ~ a ~ t ~ e => FnDecl(q.getOrElse(QualExpr()), n, a.getOrElse(ExprList()), t, e)
+    } withFilter {
+      p => p.ty.isDefined || p.body.isDefined
     }
 
   def trait_decl : Parser[TraitDecl] =
@@ -174,7 +272,7 @@ object Parser extends StdTokenParsers  {
   def parseFile(input: String) : ParseResult[Expr] = parse(file, input)
   def parseExpr(input: String) : ParseResult[Expr] = parse(expr, input)
 
-  def parse[T](p : Parser[T], input: String) = p(new lexical.Scanner(input))
+  def parse[T](p : Parser[T], input: String) = phrase(p)(new lexical.Scanner(input))
 
   //val mod_decl = "mod" ~> name
 
@@ -191,7 +289,7 @@ object Parser extends StdTokenParsers  {
 
   //an implicit keyword function that gives a warning when a given word is not in the reserved/delimiters list
   override implicit def keyword(chars : String): Parser[String] =
-    if(chars.length == 1 || lexical.reserved.contains(chars) || lexical.delimiters.contains(chars)) super.keyword(chars)
+    if(chars.length == 1 || lexical.reserved.contains(chars) || lexical.delimiters.contains(chars)) super.keyword(chars) | errTok
     else failure(s"You are trying to parse `$chars', but it is neither contained in the delimiters list, nor in the reserved keyword list of your lexical object")
 
 

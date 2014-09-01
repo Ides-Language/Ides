@@ -58,11 +58,23 @@ class SyntaxSpec extends IdesSpec {
       }
 
       it("should parse true") {
-        assertParseSuccess(Parser.constant, "true", ConstantBool(true))
+        assertParseSuccess(Parser.constant, "true", ConstantBool(v = true))
       }
 
       it("should parse false") {
-        assertParseSuccess(Parser.constant, "false", ConstantBool(false))
+        assertParseSuccess(Parser.constant, "false", ConstantBool(v = false))
+      }
+
+      it("should parse placeholders") {
+        assertParseSuccess(Parser.placeholder, ":1", PlaceholderExpr(1))
+      }
+
+      it("should catch unclosed strings") {
+        assertParseError(Parser.constant, "\"", "unclosed string literal")
+      }
+
+      it("should catch unclosed chars") {
+        assertParseError(Parser.constant, "'", "unclosed char literal")
       }
     }
 
@@ -104,7 +116,7 @@ class SyntaxSpec extends IdesSpec {
           }
 
           it("should fail parsing on syntax error") {
-            assertError(Parser.parseFile(s"$vt {}"), "identifier expected")
+            assertParseError(Parser.parseFile(s"$vt {}"), "identifier expected")
           }
 
           describe("qualifier parsers") {
@@ -131,6 +143,10 @@ class SyntaxSpec extends IdesSpec {
 
       it("should parse a function with a return type") {
         assertFileSuccess("def f : X = y", FnDecl(QualExpr.None, Name("f"), ExprList(), Some(Name("X")), Some("y")))
+      }
+
+      it("should require a type or body parse a function") {
+        assertParseError(Parser.fn_decl, "def f()", "end of input")
       }
 
       describe("qualifier parsers") {

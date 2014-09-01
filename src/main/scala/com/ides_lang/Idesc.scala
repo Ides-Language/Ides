@@ -2,7 +2,7 @@ package com.ides_lang
 
 import java.io.File
 
-import com.ides_lang.syntax.{Expr, ExprList, Scanner, Parser}
+import com.ides_lang.syntax.{Expr, ExprList, Parser}
 import com.ides_lang.info.BuildInfo
 
 import scala.io.Source
@@ -33,8 +33,7 @@ object Idesc {
   def main(args: Array[String]) {
     parser.parse(args, Config()) map { config =>
       config.files.map { f =>
-        val scanner = new Parser.lexical.Scanner(StreamReader(Source.fromFile(f).bufferedReader()))
-        Parser.file(scanner)
+        Parser.parse(Parser.file, StreamReader(Source.fromFile(f).bufferedReader()).toString)
       }.foldLeft[Try[List[Expr]]](Success(Nil)) { (result, item) =>
         result match {
           case Success(f) => item match {
