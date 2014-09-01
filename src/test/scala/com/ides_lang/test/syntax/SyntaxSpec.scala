@@ -1,6 +1,7 @@
 package com.ides_lang.test.syntax
 
 import com.ides_lang.syntax._
+import com.ides_lang.syntax.Implicits._
 import com.ides_lang.test.IdesSpec
 import org.scalatest._
 
@@ -15,35 +16,51 @@ class SyntaxSpec extends IdesSpec {
     val varTypes = Seq("val", "var")
     val vtr = Map("val" -> ValDecl, "var" -> VarDecl)
 
-    describe("when parsing variables") {
+    describe("when parsing names") {
+      it("should parse empty type args") {
+        assertParseSuccess(Parser.name, "T[]", Name("T", ExprList()))
+      }
 
+      it("should parse 1 type arg") {
+        assertParseSuccess(Parser.name, "T[I]", Name("T", ExprList("I")))
+      }
+
+      it("should parse 2 type args") {
+        assertParseSuccess(Parser.name, "T[I, J]", Name("T", ExprList("I", "J")))
+      }
+
+      it("should parse 3 type args") {
+        assertParseSuccess(Parser.name, "T[I, J, K]", Name("T", ExprList("I", "J", "K")))
+      }
+
+      it("should parse exprs in type args") {
+        assertParseSuccess(Parser.name, "T[I < J]", Name("T", ExprList(InfixExpr("<", "I", "J"))))
+      }
+    }
+
+    describe("when parsing variable delcarations") {
       varTypes.map { vt =>
         describe(s"${vt}s") {
           it("should parse type inference") {
-            assertParseResult(s"$vt x = y", vtr(vt)(QualExpr.None, Name("x"), None, Some(Ident("y"))))
+            assertFileSuccess(s"$vt x = y", vtr(vt)(QualExpr.None, Name("x"), None, Some("y")))
           }
 
           it("should parse type specification") {
-            assertParseResult(s"$vt x : y", vtr(vt)(QualExpr.None, Name("x"), Some(Name("y")), None))
+            assertFileSuccess(s"$vt x : y", vtr(vt)(QualExpr.None, Name("x"), Some(Name("y")), None))
           }
 
           it("should parse type+initializer specification") {
-            assertParseResult(s"$vt x : y = z", vtr(vt)(QualExpr.None, Name("x"), Some(Name("y")), Some(Ident("z"))))
+            assertFileSuccess(s"$vt x : y = z", vtr(vt)(QualExpr.None, Name("x"), Some(Name("y")), Some("z")))
           }
 
           it("should fail parsing on syntax error") {
-            val source = Parser.parseFile(s"$vt {}")
-
-            assert(source match {
-              case s: Parser.Error => true
-              case _ => false
-            })
+            assertError(Parser.parseFile(s"$vt {}"), "identifier expected")
           }
 
           describe("qualifier parsers") {
             quals.map { qual =>
               it(s"should parse $qual qualifier") {
-                assertParseResult(s"$qual $vt x", vtr(vt)(qualVals(qual), Name("x"), None, None))
+                assertFileSuccess(s"$qual $vt x", vtr(vt)(qualVals(qual), Name("x"), None, None))
               }
             }
           }
@@ -51,26 +68,52 @@ class SyntaxSpec extends IdesSpec {
       }
     }
 
-    describe ("when parsing functions") {
+    describe ("when parsing function declarations") {
       it("should parse a basic function") {
-        assertParseResult("def f = x", FnDecl(QualExpr.None, Name("f"), ExprList(), None, Some(Ident("x"))))
+        assertFileSuccess("def f = x", FnDecl(QualExpr.None, Name("f"), ExprList(), None, Some("x")))
       }
 
       it ("should parse a function with an argument") {
-        assertParseResult("def f(x: Y) = z", FnDecl(QualExpr.None, Name("f"), ExprList(
-          ArgDecl(QualExpr.None, Ident("x"), Some(Name("Y")), None)
-        ), None, Some(Ident("z"))))
+        assertFileSuccess("def f(x: Y) = z", FnDecl(QualExpr.None, Name("f"), ExprList(
+          ArgDecl(QualExpr.None, "x", Some(Name("Y")), None)
+        ), None, Some("z")))
       }
 
       it("should parse a function with a return type") {
-        assertParseResult("def f : X = y", FnDecl(QualExpr.None, Name("f"), ExprList(), Some(Name("X")), Some(Ident("y"))))
+        assertFileSuccess("def f : X = y", FnDecl(QualExpr.None, Name("f"), ExprList(), Some(Name("X")), Some("y")))
       }
 
       describe("qualifier parsers") {
         quals.map { qual =>
           it(s"should parse a $qual function") {
-            assertParseResult(s"$qual def f = x", FnDecl(qualVals(qual), Name("f"), ExprList(), None, Some(Ident("x"))))
+            assertFileSuccess(s"$qual def f = x", FnDecl(qualVals(qual), Name("f"), ExprList(), None, Some("x")))
           }
+        }
+      }
+    }
+
+    describe ("when parsing module declarations") {
+      it("should parse an empty module") {
+        assertFileSuccess("mod x { }", ModDecl(QualExpr.None, "x", ExprList()))
+      }
+
+      it("should parse a module with a basic function") {
+        assertFileSuccess("mod x { def f = y }", ModDecl(QualExpr.None, "x", ExprList(FnDecl(QualExpr.None, Name("f"), ExprList(), None, Some("y")))))
+      }
+    }
+
+    describe ("when parsing infix expressions") {
+      describe("order of operations") {
+        it("* is left-associative") {
+          assertParseSuccess(Parser.expr, "x * y * z", InfixExpr("*", InfixExpr("*", "x", "y"), "z"))
+        }
+
+        it("= is right-associative") {
+          assertParseSuccess(Parser.expr, "x = y = z", InfixExpr("=", "x", InfixExpr("=", "y", "z")))
+        }
+
+        it("* is higher than +") {
+          assertParseSuccess(Parser.expr, "x + y * z", InfixExpr("+", "x", InfixExpr("*", "y", "z")))
         }
       }
     }

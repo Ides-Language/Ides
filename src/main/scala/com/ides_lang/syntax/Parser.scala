@@ -1,10 +1,6 @@
 package com.ides_lang.syntax
 
-import scala.reflect.ClassTag
-import scala.util.parsing.combinator._
-import scala.util.parsing.combinator.lexical._
-import scala.util.parsing.combinator.syntactical.{StdTokenParsers, StandardTokenParsers}
-import scala.util.parsing.input.Positional
+import scala.util.parsing.combinator.syntactical.StdTokenParsers
 
 /**
  * Created by sedwards on 7/6/14.
@@ -42,13 +38,15 @@ object Parser extends StdTokenParsers  {
 
   def tru = "true" ^^^ { ConstantBool(v = true) }
   def fals = "false" ^^^ { ConstantBool(v = false) }
+  def bool = tru | fals
 
-  def constant = dbl | int | str | tru | fals
+  def constant = dbl | int | str | bool
 
   def stmt : Parser[Expr]=
     ( expr
     | fn_decl
     | trait_decl
+    | mod_decl
     ) <~ ";".?
 
   def file = compound_expr <~ EOI
@@ -169,7 +167,10 @@ object Parser extends StdTokenParsers  {
     }
 
 
-  def parseFile(input: String) : ParseResult[Expr] = file(new lexical.Scanner(input))
+  def parseFile(input: String) : ParseResult[Expr] = parse(file, input)
+  def parseExpr(input: String) : ParseResult[Expr] = parse(expr, input)
+
+  def parse[T](p : Parser[T], input: String) = p(new lexical.Scanner(input))
 
   //val mod_decl = "mod" ~> name
 

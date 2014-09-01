@@ -5,16 +5,17 @@ import scala.util.parsing.input.Positional
 /**
  * Created by sedwards on 7/6/14.
  */
-abstract trait Expr extends Positional
+trait Expr extends Positional
 
 case class NullExpr() extends Expr
 
 case class Ident(name: String) extends Expr
-
 case class Name(ident: Ident, genericArgs: ExprList = ExprList()) extends Expr
-
 object Name {
-  def apply(i: String) : Name = Name(Ident(i))
+  def apply(s: String) : Name = Parser.parse(Parser.name, s) match {
+    case result : Parser.Success[Name] => result.get
+    case fail => throw new RuntimeException(fail.toString)
+  }
 }
 
 case class QualExpr(priv: Boolean = false, prot: Boolean = false, internal: Boolean = false, pub: Boolean = false,
@@ -50,7 +51,9 @@ object ExprList {
 }
 
 case class ConstantInt(v: Long) extends Expr
+
 case class ConstantDec(v: Double) extends Expr
+
 case class ConstantBool(v: Boolean) extends Expr
 case class ConstantString(v: String) extends Expr
 case class ConstantChar(v: Char) extends Expr
@@ -122,4 +125,8 @@ object InfixExpr {
         new InfixExpr(fn, lhs, rhs)
     }
   }
+}
+
+object Implicits {
+  implicit def strToIdent(s: String) : Ident = Ident(s)
 }
