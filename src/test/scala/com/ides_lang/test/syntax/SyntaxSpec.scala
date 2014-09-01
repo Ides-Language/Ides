@@ -16,6 +16,56 @@ class SyntaxSpec extends IdesSpec {
     val varTypes = Seq("val", "var")
     val vtr = Map("val" -> ValDecl, "var" -> VarDecl)
 
+    describe("when parsing constants") {
+      it("should parse empty strings") {
+        assertParseSuccess(Parser.constant, "\"\"", ConstantString(""))
+      }
+
+      it("should parse \"foobar\" as string") {
+        assertParseSuccess(Parser.constant, "\"foobar\"", ConstantString("foobar"))
+      }
+
+      it("should parse escape-quoted string") {
+        assertParseSuccess(Parser.constant, "\"foo\\\"bar\"", ConstantString("foo\\\"bar"))
+      }
+
+      it("should parse 'x' as char") {
+        assertParseSuccess(Parser.constant, "'x'", ConstantChar('x'))
+      }
+
+      it("should parse escape-quoted char") {
+        assertParseSuccess(Parser.constant, "'\\''", ConstantChar('\''))
+      }
+
+      it("should parse 0 as int") {
+        assertParseSuccess(Parser.constant, "0", ConstantInt(0))
+      }
+
+      it("should parse 0.0 as decimal") {
+        assertParseSuccess(Parser.constant, "0.0", ConstantDec(0.0))
+      }
+
+      it("should parse 0xFF as hex") {
+        assertParseSuccess(Parser.constant, "0xFF", ConstantInt(255))
+      }
+
+      it("should parse 0b11 as binary") {
+        assertParseSuccess(Parser.constant, "0b11", ConstantInt(3))
+      }
+
+      it("should parse 010 as octal") {
+        assertParseSuccess(Parser.constant, "010", ConstantInt(8))
+      }
+
+      it("should parse true") {
+        assertParseSuccess(Parser.constant, "true", ConstantBool(true))
+      }
+
+      it("should parse false") {
+        assertParseSuccess(Parser.constant, "false", ConstantBool(false))
+      }
+    }
+
     describe("when parsing names") {
       it("should parse empty type args") {
         assertParseSuccess(Parser.name, "T[]", Name("T", ExprList()))

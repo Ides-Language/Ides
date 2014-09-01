@@ -13,7 +13,7 @@ case class Ident(name: String) extends Expr
 case class Name(ident: Ident, genericArgs: ExprList = ExprList()) extends Expr
 object Name {
   def apply(s: String) : Name = Parser.parse(Parser.name, s) match {
-    case result : Parser.Success[Name] => result.get
+    case result : Parser.Success[_] => result.get.asInstanceOf[Name]
     case fail => throw new RuntimeException(fail.toString)
   }
 }

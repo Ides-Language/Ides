@@ -25,6 +25,10 @@ object Parser extends StdTokenParsers  {
     elem("string", _.isInstanceOf[lexical.StringLit]) ^^
       { i => ConstantString(i.asInstanceOf[lexical.StringLit].chars) }
 
+  def chr : Parser[ConstantChar] =
+    elem("char", _.isInstanceOf[lexical.CharTok]) ^^
+      { i => ConstantChar(i.asInstanceOf[lexical.CharTok].char) }
+
   def placeholder : Parser[PlaceholderExpr] =
     elem("placeholder", _.isInstanceOf[lexical.PlaceholderTok]) ^^
       { i => PlaceholderExpr(i.asInstanceOf[lexical.PlaceholderTok].num) }
@@ -40,7 +44,7 @@ object Parser extends StdTokenParsers  {
   def fals = "false" ^^^ { ConstantBool(v = false) }
   def bool = tru | fals
 
-  def constant = dbl | int | str | bool
+  def constant = chr | dbl | int | str | bool
 
   def stmt : Parser[Expr]=
     ( expr

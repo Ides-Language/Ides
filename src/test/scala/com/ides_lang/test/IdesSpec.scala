@@ -16,7 +16,7 @@ abstract class IdesSpec extends FunSpec {
   }
 
   def assertParseSuccess[T](parser: Parser.Parser[T], source: String, expr: T) {
-    assertParseSuccess[T](Parser.parse[T](parser, source), expr)
+    assertParseSuccess[T](Parser.parse[T](parser.! <~ Parser.EOI, source), expr)
   }
 
   def assertParseSuccess[T](result : Parser.ParseResult[T], expr: T) {

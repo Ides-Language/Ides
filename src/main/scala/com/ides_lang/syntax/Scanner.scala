@@ -26,6 +26,7 @@ class Scanner extends StdLexical with RegexParsers {
   val placeholder = ":[0-9]+"
 
   this.reserved ++= Seq(
+    "true", "false",
     "def", "fn", "function", "var", "val", "struct", "class", "trait", "mod",
     "null", "namespace", "case",
     "if", "else",
@@ -36,16 +37,19 @@ class Scanner extends StdLexical with RegexParsers {
 
   override type Elem = Char
 
+  def escapeStr = '\\' ~ chrExcept('\n', EofCh) ^^ { case esc ~ char => "\\" + char}
+  def escapeChr = '\\' ~> chrExcept('\n', EofCh)
+
   override def token: Parser[Token] =
-    ( (oct | int | hex | bin)                                            ^^ IntegerTok
-    | dec                                                                ^^ DoubleTok
+    ( dec                                                                ^^ DoubleTok
+    | (oct | hex | bin | int)                                            ^^ IntegerTok
     | ("`[^`]+`".r | s"${id}(_${op})?".r)                                ^^ processIdent
     | ".."                                                               ^^ OpTok
     | op.r                                                               ^^ OpTok
     | s"[=:][$op_any]+".r                                                ^^ OpTok
     | placeholder.r                                                      ^^ PlaceholderTok
-    | '\'' ~ rep( chrExcept('\'', '\n', EofCh) ) ~ '\''                  ^^ { case '\'' ~ chars ~ '\'' => StringLit(chars mkString "") }
-    | '\"' ~ rep( chrExcept('\"', '\n', EofCh) ) ~ '\"'                  ^^ { case '\"' ~ chars ~ '\"' => StringLit(chars mkString "") }
+    | '\'' ~> (escapeChr | chrExcept('\'', '\n', EofCh)) <~ '\''         ^^ { case char => CharTok(char) }
+    | '\"' ~> rep( escapeStr | chrExcept('\"', '\n', EofCh) ) <~ '\"'    ^^ { case chars => StringLit(chars mkString "") }
     | EofCh                                                              ^^^ EOF
     | '\'' ~> failure("unclosed string literal")
     | '\"' ~> failure("unclosed string literal")
@@ -76,6 +80,11 @@ class Scanner extends StdLexical with RegexParsers {
   case class PlaceholderTok(chars: String) extends Token {
     val num = chars.drop(1).toInt
     override def toString = chars
+  }
+
+  case class CharTok(char: Char) extends Token {
+    override def chars = toString
+    override def toString = char.toString
   }
 
 }
