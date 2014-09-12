@@ -42,13 +42,16 @@ object QualExpr {
   val Private = QualExpr(priv = true)
   val Protected = QualExpr(prot = true)
   val Internal = QualExpr(internal = true)
+  val Extern = QualExpr(extern = true)
 }
 
 case class ExprList(items: Expr*) extends Expr
-
 object ExprList {
   def apply(l: List[Expr]) : ExprList = ExprList(l : _*)
 }
+
+case class CompoundExpr(items: ExprList) extends Expr
+case class TupleExpr(items: ExprList) extends Expr
 
 case class ConstantInt(v: Long) extends Expr
 
@@ -66,7 +69,10 @@ case class BracketExpr(lhs: Expr, args: ExprList) extends Expr
 case class InfixExpr(fn: Ident, lhs: Expr, rhs: Expr) extends Expr
 case class PrefixExpr(fn: Expr, arg: Expr) extends Expr
 
-case class PartialFunction(patterns: List[Case]) extends Expr
+case class PartialFunction(patterns: Case*) extends Expr
+object PartialFunction {
+  def apply(l: List[Case]) : PartialFunction = PartialFunction(l : _*)
+}
 case class Case(pattern: Expr, result: Expr) extends Expr
 
 case class ValDecl(qual: QualExpr, name: Name, ty: Option[Expr], init: Option[Expr]) extends Expr
@@ -80,7 +86,7 @@ case class ClassDecl(qual: QualExpr, name: Name, args: ExprList, supers: ExprLis
 case class StructDecl(qual: QualExpr, name: Name, args: ExprList, supers: ExprList, body: Expr) extends Expr
 case class TraitDecl(qual: QualExpr, name: Name, args: ExprList, supers: ExprList, body: Expr) extends Expr
 
-case class ModDecl(qual: QualExpr, name: Ident, body: Expr) extends Expr
+case class ModDecl(qual: QualExpr, name: Ident, body: ExprList) extends Expr
 
 
 

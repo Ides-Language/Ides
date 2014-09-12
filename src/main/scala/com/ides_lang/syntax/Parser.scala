@@ -76,13 +76,14 @@ object Parser extends StdTokenParsers  {
       | ("`[^`]+`".r | s"${id}(_${op})?".r)                                ^^ processIdent
       | acceptSeq("..")                                                    ^^^ OpTok("..")
       | op.r                                                               ^^ OpTok
-      | s"[=:][$op_any]+".r                                                ^^ OpTok
+      | s"[=][$op_any]+".r                                                 ^^ OpTok
       | placeholder.r                                                      ^^ PlaceholderTok
       | '\'' ~> (escapeChr | chrExcept('\'', '\n', EofCh)) <~ '\''         ^^ { case char => CharTok(char) }
       | '\"' ~> rep(escapeStr | chrExcept('\"', '\n', EofCh)) <~ '\"'      ^^ { case chars => StringTok(chars mkString "") }
       | EofCh                                                              ^^^ EOF
       | '\'' ~> err("unclosed char literal")
       | '\"' ~> err("unclosed string literal")
+      | s"[:][$op_any]+".r                                                 ^^ Keyword
       | ".".r                                                              ^^ Keyword
       )
 
@@ -100,10 +101,10 @@ object Parser extends StdTokenParsers  {
     "true", "false",
     "def", "fn", "function", "var", "val", "struct", "class", "trait", "mod",
     "null", "namespace", "case",
-    "if", "else",
+    "if", "else", "unless",
     "public", "protected", "internal", "private", "extern", "const", "abstract", "unsafe", "intrinsic", "implicit", "locked",
     "throw", "new", "return", "match", "as",
-    "...", "..", "=>"
+    "...", "..", ":="
   )
 
   def errTok : Parser[Nothing] =
@@ -129,18 +130,26 @@ object Parser extends StdTokenParsers  {
     elem("placeholder", _.isInstanceOf[lexical.PlaceholderTok]) ^^
       { i => PlaceholderExpr(i.asInstanceOf[lexical.PlaceholderTok].num) }
 
+
+  def op : Parser[String] =
+    elem("operator", _.isInstanceOf[lexical.OpTok]) ^^
+      { i => i.asInstanceOf[lexical.OpTok].chars }
+
   def operator : Parser[Ident] =
-    ( elem("operator", _.isInstanceOf[lexical.OpTok]) ^^ { i => i.asInstanceOf[lexical.OpTok].chars }
+    ( op
     | "="
     | "match"
     | "as"
+    | "if"
+    | "else"
+    | "unless"
     ) ^^ Ident
 
   def tru = "true" ^^^ { ConstantBool(v = true) }
   def fals = "false" ^^^ { ConstantBool(v = false) }
   def bool = tru | fals
 
-  def constant = chr | dbl | int | str | bool | errTok
+  def constant = chr | dbl | int | str | bool
 
   def stmt : Parser[Expr]=
     ( expr
@@ -159,7 +168,7 @@ object Parser extends StdTokenParsers  {
       case i ~ None => Name(i)
     }
 
-  def compound_expr : Parser[Expr] =
+  def compound_expr : Parser[ExprList] =
     stmt.* ^^ ExprList.apply
 
   def primary_expr : Parser[Expr] =
@@ -167,8 +176,9 @@ object Parser extends StdTokenParsers  {
     | placeholder
     | val_decl
     | var_decl
-    | ("(" ~> tuple_items.! <~ ")")
-    | ("{" ~> compound_expr.! <~ "}")
+    | ("(" ~> tuple_items.! <~ ")") ^^ TupleExpr
+    | ("{" ~> partial_fn  <~ "}") ^^ PartialFunction.apply
+    | ("{" ~> compound_expr.! <~ "}") ^^ CompoundExpr
     | identifier
     )
 
@@ -176,7 +186,7 @@ object Parser extends StdTokenParsers  {
     rep( ("(" ~> tuple_items <~ ")") ^^ { args => (lhs: Expr) => CallExpr(lhs, args) }
        | ("[" ~> tuple_items <~ "]") ^^ { args => (lhs: Expr) => BracketExpr(lhs, args) }
        | ("{" ~> tuple_items <~ "}") ^^ { args => (lhs: Expr) => PrefixExpr(lhs, args) }
-       | ("." ~> name.!)       ^^ { i => (lhs: Expr) => InfixExpr.create(Ident("."), lhs, i) }
+       | ("." ~> name.!)             ^^ { i => (lhs: Expr) => InfixExpr.create(Ident("."), lhs, i) }
        ) ^^ { case lhs ~ items => items.foldLeft(lhs)((lhs, f) => f(lhs))}
 
   def prefix_expr : Parser[Expr] =
@@ -190,6 +200,9 @@ object Parser extends StdTokenParsers  {
     )
 
   def expr : Parser[Expr] = infix_expr
+
+  def partial_fn : Parser[List[Case]] =
+    ( ("case" ~> expr <~ ":=") ~ expr ^^ { case cond ~ res => Case(cond, res) } ).*
 
   def name_items = repsep(name, ",") ^^ ExprList.apply
 
@@ -230,8 +243,6 @@ object Parser extends StdTokenParsers  {
     (":" ~> name.!).? ~
     ("=".? ~> expr.!).? ^^ {
       case q ~ n ~ a ~ t ~ e => FnDecl(q.getOrElse(QualExpr()), n, a.getOrElse(ExprList()), t, e)
-    } withFilter {
-      p => p.ty.isDefined || p.body.isDefined
     }
 
   def trait_decl : Parser[TraitDecl] =
@@ -289,7 +300,7 @@ object Parser extends StdTokenParsers  {
 
   //an implicit keyword function that gives a warning when a given word is not in the reserved/delimiters list
   override implicit def keyword(chars : String): Parser[String] =
-    if(chars.length == 1 || lexical.reserved.contains(chars) || lexical.delimiters.contains(chars)) super.keyword(chars) | errTok
+    if(chars.length == 1 || lexical.reserved.contains(chars) || lexical.delimiters.contains(chars)) super.keyword(chars)
     else failure(s"You are trying to parse `$chars', but it is neither contained in the delimiters list, nor in the reserved keyword list of your lexical object")
 
 

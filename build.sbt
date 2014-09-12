@@ -11,6 +11,7 @@ scalaVersion := "2.11.2"
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-parser-combinators" % "2.11.0-M4",
   "com.github.scopt" %% "scopt" % "3.2.0",
+  "org.robovm" % "robovm-llvm" % "1.0.0-alpha-01",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test"
 )
 

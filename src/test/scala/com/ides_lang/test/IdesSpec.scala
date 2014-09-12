@@ -52,4 +52,12 @@ abstract class IdesSpec extends FunSpec {
       case s => fail("Unknown result: " + s.toString)
     }
   }
+
+  def parse[T](parser: Parser.Parser[T], source: String) : T = {
+    Parser.parse[T](parser, source) match {
+      case s : Parser.Success[_] => s.get.asInstanceOf[T]
+      case s : Parser.NoSuccess => fail(s.toString)
+      case s => fail("Unknown result: " + s.toString)
+    }
+  }
 }
